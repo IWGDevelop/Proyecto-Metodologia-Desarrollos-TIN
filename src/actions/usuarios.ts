@@ -10,39 +10,46 @@ export async function crearUsuario(data: {
   empresa?: string
   rol: 'ADMIN_TIN' | 'USUARIO'
   password: string
-}) {
-  const supabase = createAdminClient()
+}): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
 
-  const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-    email: data.email,
-    password: data.password,
-    email_confirm: true,
-    user_metadata: {
-      nombre_completo: data.nombre_completo,
-      rol: data.rol,
-    },
-  })
-
-  if (authError) throw new Error(authError.message)
-
-  // Wait briefly for the DB trigger to create the profile
-  await new Promise(r => setTimeout(r, 800))
-
-  if (authData.user) {
-    // Upsert ensures the profile exists with all fields
-    await (supabase as any).from('perfiles').upsert({
-      id: authData.user.id,
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email: data.email,
-      nombre_completo: data.nombre_completo,
-      cargo: data.cargo ?? null,
-      proceso_interno: data.proceso_interno ?? null,
-      empresa: data.empresa ?? null,
-      rol: data.rol,
-      activo: true,
-    }, { onConflict: 'id' })
-  }
+      password: data.password,
+      email_confirm: true,
+      user_metadata: {
+        nombre_completo: data.nombre_completo,
+        rol: data.rol,
+      },
+    })
 
-  return { id: authData.user?.id }
+    if (authError) return { ok: false, error: authError.message }
+    if (!authData.user) return { ok: false, error: 'No se pudo crear el usuario' }
+
+    // Upsert profile — works regardless of whether the trigger ran first
+    const { error: upsertError } = await (supabase as any)
+      .from('perfiles')
+      .upsert({
+        id: authData.user.id,
+        email: data.email,
+        nombre_completo: data.nombre_completo,
+        cargo: data.cargo ?? null,
+        proceso_interno: data.proceso_interno ?? null,
+        empresa: data.empresa ?? null,
+        rol: data.rol,
+        activo: true,
+      }, { onConflict: 'id' })
+
+    if (upsertError) {
+      // User was created but profile update failed — non-fatal
+      console.error('Profile upsert error:', upsertError.message)
+    }
+
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'Error inesperado al crear usuario' }
+  }
 }
 
 export async function actualizarPerfil(id: string, data: Partial<{
@@ -52,16 +59,21 @@ export async function actualizarPerfil(id: string, data: Partial<{
   empresa: string | null
   rol: 'ADMIN_TIN' | 'USUARIO'
   activo: boolean
-}>) {
-  const supabase = createAdminClient()
-  const { error } = await (supabase as any)
-    .from('perfiles')
-    .update(data)
-    .eq('id', id)
+}>): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('perfiles')
+      .update(data)
+      .eq('id', id)
 
-  if (error) throw new Error(error.message)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'Error al actualizar perfil' }
+  }
 }
 
 export async function toggleUsuarioActivo(id: string, activo: boolean) {
-  await actualizarPerfil(id, { activo })
+  return actualizarPerfil(id, { activo })
 }

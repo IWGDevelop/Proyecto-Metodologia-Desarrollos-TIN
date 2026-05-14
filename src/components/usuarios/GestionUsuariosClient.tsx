@@ -69,24 +69,27 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
   const editForm = useForm<EditForm>({ resolver: zodResolver(editSchema) })
 
   const onCrear = async (data: CreateForm) => {
-    try {
-      await crearUsuario(data)
-      toast.success('Usuario creado exitosamente')
-      setShowCreate(false)
-      createForm.reset()
-      router.push('/admin/usuarios')
-    } catch (e: any) {
-      toast.error(e.message ?? 'Error al crear usuario')
+    const result = await crearUsuario(data)
+    if (!result.ok) {
+      toast.error(result.error ?? 'Error al crear usuario')
+      return
     }
+    toast.success('Usuario creado exitosamente')
+    setShowCreate(false)
+    createForm.reset()
+    window.location.href = '/admin/usuarios'
   }
 
   const onEditar = async (data: EditForm) => {
     if (!editUser) return
-    try {
-      await actualizarPerfil(editUser.id, data)
-      toast.success('Usuario actualizado')
-      setEditUser(null)
-      router.push('/admin/usuarios')
+    const result = await actualizarPerfil(editUser.id, data)
+    if (!result.ok) {
+      toast.error(result.error ?? 'Error al actualizar usuario')
+      return
+    }
+    toast.success('Usuario actualizado')
+    setEditUser(null)
+    window.location.href = '/admin/usuarios'
     } catch (e: any) {
       toast.error(e.message ?? 'Error al actualizar usuario')
     }
