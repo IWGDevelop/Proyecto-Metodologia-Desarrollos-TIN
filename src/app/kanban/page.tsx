@@ -1,8 +1,15 @@
+import { KanbanBoard } from '@/components/kanban/KanbanBoard'
+
 export default function KanbanPage() {
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-slate-800">Kanban</h1>
-      <p className="mt-1 text-slate-500">Vista de tablero por estado</p>
+    <div className="flex h-[calc(100vh-64px)] flex-col gap-4 overflow-hidden p-4">
+      <div>
+        <h1 className="text-xl font-bold text-slate-800">Kanban</h1>
+        <p className="text-sm text-slate-500">Gestión visual de requerimientos por estado · Arrastra para cambiar estado</p>
+      </div>
+      <div className="flex-1 overflow-hidden">
+        <KanbanBoard />
+      </div>
     </div>
   )
 }
