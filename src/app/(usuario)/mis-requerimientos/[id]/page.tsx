@@ -6,6 +6,10 @@ import { Badge } from '@/components/ui/badge'
 import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
+import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
+import { getTareas } from '@/actions/tareas'
+import { getDesarrolladoresReq } from '@/actions/desarrolladores-req'
+import { getPerfil } from '@/lib/supabase/auth'
 import type { Estado, ActividadImpacto, BeneficioCualitativo } from '@/lib/supabase/types'
 
 interface Props {
@@ -18,10 +22,13 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: req, error }, { data: historial }] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilActual] = await Promise.all([
     supabase.from('requerimientos').select('*').eq('id', id).single(),
     supabase.from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: true }),
+    getTareas(id),
+    getDesarrolladoresReq(id),
+    getPerfil(),
   ])
 
   if (error || !req) notFound()
@@ -163,6 +170,19 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
             ))}
           </div>
         </div>
+      )}
+
+      {/* Tareas técnicas / Desarrollo */}
+      {tareas.length > 0 && (
+        <TabDesarrollo
+          requerimientoId={id}
+          rama={(req as any).rama ?? null}
+          tareas={tareas}
+          desarrolladores={desarrolladores}
+          perfilesDisponibles={[]}
+          isAdmin={false}
+          currentUserId={perfilActual?.id}
+        />
       )}
 
       {/* Comentarios */}

@@ -15,6 +15,28 @@ export interface Perfil {
   updated_at: string
 }
 
+export interface TareaTecnica {
+  id: string
+  requerimiento_id: string
+  titulo: string
+  descripcion: string | null
+  completada: boolean
+  completada_por: string | null
+  completada_at: string | null
+  orden: number
+  created_by: string | null
+  created_at: string
+  updated_at: string
+  perfil_completada?: Perfil
+}
+
+export interface RequerimientoDesarrollador {
+  requerimiento_id: string
+  perfil_id: string
+  asignado_at: string
+  perfil?: Perfil
+}
+
 export interface Notificacion {
   id: string
   usuario_id: string
@@ -103,6 +125,7 @@ export interface Requerimiento {
   ahorro_mensual_cop: number | null
   ahorro_anual_cop: number | null
   beneficios_cualitativos: BeneficioCualitativo[]
+  rama: 'TIN' | 'IA' | null
   fecha_envio_tin: string | null
   fecha_inicio_desarrollo: string | null
   fecha_estimada_entrega: string | null

@@ -9,6 +9,10 @@ import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
+import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
+import { getTareas } from '@/actions/tareas'
+import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
+import { getPerfil } from '@/lib/supabase/auth'
 import type { Estado, ActividadImpacto, BeneficioCualitativo } from '@/lib/supabase/types'
 
 interface Props {
@@ -19,10 +23,14 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = await createClient()
 
-  const [{ data: req, error }, { data: historial }] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin] = await Promise.all([
     supabase.from('requerimientos').select('*').eq('id', id).single(),
     supabase.from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
+    getTareas(id),
+    getDesarrolladoresReq(id),
+    getDesarrolladoresDisponibles(),
+    getPerfil(),
   ])
 
   if (error || !req) notFound()
@@ -74,8 +82,9 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       </div>
 
       <Tabs defaultValue="informacion">
-        <TabsList className="w-full justify-start">
+        <TabsList className="w-full justify-start flex-wrap">
           <TabsTrigger value="informacion">Información</TabsTrigger>
+          <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>
           <TabsTrigger value="impacto">Impacto HH</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
@@ -203,6 +212,18 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               </ol>
             )}
           </div>
+        </TabsContent>
+
+        <TabsContent value="desarrollo" className="mt-4">
+          <TabDesarrollo
+            requerimientoId={id}
+            rama={(req as any).rama ?? null}
+            tareas={tareas}
+            desarrolladores={desarrolladores}
+            perfilesDisponibles={perfilesDisponibles}
+            isAdmin
+            currentUserId={perfilAdmin?.id}
+          />
         </TabsContent>
 
         <TabsContent value="comentarios" className="mt-4">
