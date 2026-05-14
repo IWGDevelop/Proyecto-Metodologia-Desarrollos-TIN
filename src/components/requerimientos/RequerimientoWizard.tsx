@@ -17,6 +17,7 @@ import {
   CAMPOS_POR_PASO, BENEFICIOS_CONFIG, type WizardData,
 } from '@/lib/schemas/requerimiento'
 import { crearRequerimiento, actualizarRequerimiento, guardarBorrador } from '@/actions/requerimientos'
+import { registrarAnexo } from '@/actions/historial'
 import { Paso1Encabezado } from './pasos/Paso1Encabezado'
 import { Paso2Solicitante } from './pasos/Paso2Solicitante'
 import { getPerfilesActivos } from '@/actions/perfiles'
@@ -265,6 +266,20 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
         } else {
           const result = await crearRequerimiento({ ...payload, es_borrador: esBorrador })
           id = result.id
+        }
+
+        // Guardar URLs de anexos en la tabla 'anexos' de Supabase
+        if (anexos.length > 0) {
+          await Promise.allSettled(
+            anexos.map(a =>
+              registrarAnexo(id, {
+                nombre_archivo: a.nombre,
+                url_storage:    a.url,
+                tipo_archivo:   a.tipo,
+                tamanio_bytes:  a.tamanio,
+              })
+            )
+          )
         }
 
         // Limpiar localStorage
