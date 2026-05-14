@@ -55,11 +55,21 @@ export const actividadSchema = z.object({
   tiempo_con_mejora_unidad: z.enum(['MINUTOS', 'HORAS'] as const),
 })
 
+// ─── Beneficio cualitativo con cuantificación económica ───────────────────────
 export const beneficioSchema = z.object({
-  tipo: z.string(),
-  seleccionado: z.boolean().default(false),
-  descripcion: z.string().default(''),
+  id: z.string(),
+  nombre: z.string(),
+  icono: z.string(),
+  marcado: z.boolean().default(false),
+  nombre_beneficio: z.string().optional(),    // solo para "Otro"
+  descripcion: z.string().optional(),
+  valor_cop: z.number().min(0).optional(),
+  periodicidad: z.enum(['UNICO', 'MENSUAL', 'ANUAL'] as const).optional(),
+  valor_anual_calculado: z.number().min(0).optional(),
+  justificacion: z.string().optional(),
 })
+
+export type BeneficioItem = z.infer<typeof beneficioSchema>
 
 export const paso5Schema = z.object({
   actividades: z.array(actividadSchema).default([]),
@@ -87,24 +97,38 @@ export const CAMPOS_POR_PASO: Record<number, (keyof WizardData)[]> = {
   6: [],
 }
 
-// ─── Constantes ───────────────────────────────────────────────────────────────
-export const BENEFICIOS_OPCIONES = [
-  'Ventaja competitiva frente al mercado',
-  'Mejora en seguridad de la información',
-  'Reducción de errores operativos',
-  'Mejor experiencia del cliente/usuario',
-  'Cumplimiento normativo o regulatorio',
-  'Optimización de almacenamiento de datos',
-  'Eliminación de reprocesos',
-  'Reducción de riesgos operacionales',
-  'Otro beneficio',
+// ─── Catálogo de beneficios cualitativos ──────────────────────────────────────
+export const BENEFICIOS_CONFIG: Pick<BeneficioItem, 'id' | 'nombre' | 'icono'>[] = [
+  { id: 'ventaja_competitiva',    nombre: 'Ventaja competitiva frente al mercado',    icono: '🏆' },
+  { id: 'seguridad_informacion',  nombre: 'Mejora en seguridad de la información',    icono: '🔒' },
+  { id: 'reduccion_errores',      nombre: 'Reducción de errores operativos',          icono: '❌' },
+  { id: 'experiencia_cliente',    nombre: 'Mejor experiencia del cliente / usuario',  icono: '😊' },
+  { id: 'cumplimiento_normativo', nombre: 'Cumplimiento normativo o regulatorio',     icono: '⚖️' },
+  { id: 'almacenamiento',         nombre: 'Optimización de almacenamiento de datos',  icono: '💾' },
+  { id: 'eliminacion_reprocesos', nombre: 'Eliminación de reprocesos',               icono: '🔄' },
+  { id: 'reduccion_riesgos',      nombre: 'Reducción de riesgos operacionales',       icono: '⚠️' },
+  { id: 'otro',                   nombre: 'Otro beneficio',                           icono: '➕' },
 ]
 
+// ─── Cálculo de valor anual según periodicidad ────────────────────────────────
+export function calcValorAnual(valorCop: number, periodicidad: string): number {
+  switch (periodicidad) {
+    case 'MENSUAL': return valorCop * 12
+    case 'UNICO':   return valorCop
+    case 'ANUAL':   return valorCop
+    default:        return 0
+  }
+}
+
+export function calcTotalCualitativos(beneficios: BeneficioItem[]): number {
+  return beneficios
+    .filter(b => b.marcado)
+    .reduce((sum, b) => sum + (b.valor_anual_calculado ?? 0), 0)
+}
+
+// ─── Constantes ───────────────────────────────────────────────────────────────
 export const FRECUENCIA_MENSUAL: Record<string, number> = {
-  DIARIA: 22,
-  SEMANAL: 4,
-  QUINCENAL: 2,
-  MENSUAL: 1,
+  DIARIA: 22, SEMANAL: 4, QUINCENAL: 2, MENSUAL: 1,
 }
 
 export function calcularActividad(act: z.infer<typeof actividadSchema>) {
@@ -113,10 +137,7 @@ export function calcularActividad(act: z.infer<typeof actividadSchema>) {
   const conMejora = toHoras(act.tiempo_con_mejora ?? 0, act.tiempo_con_mejora_unidad ?? 'MINUTOS')
   const ahorroOcurrencia = Math.max(0, sinMejora - conMejora)
   const frecMes = FRECUENCIA_MENSUAL[act.frecuencia] ?? 1
-  return {
-    ahorro_ocurrencia: ahorroOcurrencia,
-    horas_mes: ahorroOcurrencia * frecMes,
-  }
+  return { ahorro_ocurrencia: ahorroOcurrencia, horas_mes: ahorroOcurrencia * frecMes }
 }
 
 export function defaultWizardValues(): Partial<WizardData> {
@@ -129,8 +150,15 @@ export function defaultWizardValues(): Partial<WizardData> {
     procesos_cargos: [],
     actividades: [],
     horas_laborales_mes: 192,
-    beneficios: BENEFICIOS_OPCIONES.map(tipo => ({
-      tipo, seleccionado: false, descripcion: '',
+    beneficios: BENEFICIOS_CONFIG.map(b => ({
+      ...b,
+      marcado: false,
+      nombre_beneficio: '',
+      descripcion: '',
+      valor_cop: undefined,
+      periodicidad: undefined,
+      valor_anual_calculado: 0,
+      justificacion: '',
     })),
   }
 }

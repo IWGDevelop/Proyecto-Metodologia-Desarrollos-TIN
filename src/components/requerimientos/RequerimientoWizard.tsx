@@ -13,7 +13,8 @@ import { toast } from 'sonner'
 import { cn, formatFechaRelativa } from '@/lib/utils'
 import {
   wizardSchema, defaultWizardValues, calcularActividad,
-  CAMPOS_POR_PASO, type WizardData,
+  calcValorAnual, calcTotalCualitativos,
+  CAMPOS_POR_PASO, BENEFICIOS_CONFIG, type WizardData,
 } from '@/lib/schemas/requerimiento'
 import { crearRequerimiento, actualizarRequerimiento, guardarBorrador } from '@/actions/requerimientos'
 import { Paso1Encabezado } from './pasos/Paso1Encabezado'
@@ -53,9 +54,23 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
     }
   })
 
+  // Beneficios con nueva estructura completa
   const beneficios_cualitativos = (data.beneficios ?? [])
-    .filter(b => b.seleccionado)
-    .map(b => ({ descripcion: `${b.tipo}${b.descripcion ? ': ' + b.descripcion : ''}` }))
+    .filter(b => b.marcado)
+    .map(b => ({
+      id: b.id,
+      nombre: b.id === 'otro' ? (b.nombre_beneficio || 'Otro') : b.nombre,
+      icono: b.icono,
+      marcado: true,
+      descripcion: b.descripcion ?? '',
+      valor_cop: b.valor_cop ?? 0,
+      periodicidad: b.periodicidad ?? 'UNICO',
+      valor_anual_calculado: b.valor_cop && b.periodicidad
+        ? calcValorAnual(b.valor_cop, b.periodicidad) : 0,
+      justificacion: b.justificacion ?? '',
+    }))
+
+  const totalAnualCualitativos = calcTotalCualitativos(data.beneficios ?? [])
 
   return {
     identificacion: data.nombre_desarrollo,
@@ -93,6 +108,8 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
     ahorro_mensual_cop: ahorroMensual,
     ahorro_anual_cop: ahorroAnual,
     beneficios_cualitativos,
+    total_beneficios_cualitativos_anual: totalAnualCualitativos,
+    impacto_economico_total_anual: ahorroAnual + totalAnualCualitativos,
   }
 }
 
@@ -138,6 +155,30 @@ export function RequerimientoWizard({ requerimiento }: Props) {
           ventajas_beneficios: requerimiento.ventajas_beneficios ?? '',
           salario_promedio_cargo: requerimiento.salario_promedio_cargo ?? undefined,
           horas_laborales_mes: requerimiento.horas_laborales_mes ?? 192,
+          beneficios: (() => {
+            const saved = (requerimiento.beneficios_cualitativos as any[]) ?? []
+            return BENEFICIOS_CONFIG.map(cfg => {
+              const guardado = saved.find((b: any) => b.id === cfg.id)
+              if (guardado) {
+                return {
+                  ...cfg,
+                  marcado: true,
+                  nombre_beneficio: guardado.nombre_beneficio ?? '',
+                  descripcion: guardado.descripcion ?? '',
+                  valor_cop: guardado.valor_cop ?? undefined,
+                  periodicidad: guardado.periodicidad as 'UNICO'|'MENSUAL'|'ANUAL'|undefined,
+                  valor_anual_calculado: guardado.valor_anual_calculado ?? 0,
+                  justificacion: guardado.justificacion ?? '',
+                }
+              }
+              return {
+                ...cfg, marcado: false,
+                nombre_beneficio: '', descripcion: '',
+                valor_cop: undefined, periodicidad: undefined,
+                valor_anual_calculado: 0, justificacion: '',
+              }
+            })
+          })(),
         }
       : defaultWizardValues() as WizardData,
     mode: 'onChange',
