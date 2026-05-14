@@ -60,7 +60,10 @@ export async function crearRequerimiento(
   if (error) throw new Error(`Error al crear requerimiento: ${error.message}`)
 
   revalidatePath('/requerimientos')
+  revalidatePath('/admin/requerimientos')
   revalidatePath('/dashboard')
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/mis-requerimientos')
   return result as unknown as Requerimiento
 }
 
@@ -76,7 +79,11 @@ export async function actualizarRequerimiento(
 
   revalidatePath('/requerimientos')
   revalidatePath(`/requerimientos/${id}`)
+  revalidatePath('/admin/requerimientos')
+  revalidatePath(`/admin/requerimientos/${id}`)
   revalidatePath('/dashboard')
+  revalidatePath('/admin/dashboard')
+  revalidatePath('/mis-requerimientos')
   return result as unknown as Requerimiento
 }
 

@@ -115,9 +115,10 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
 
 interface Props {
   requerimiento?: Requerimiento
+  redirectBasePath?: string
 }
 
-export function RequerimientoWizard({ requerimiento }: Props) {
+export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/requerimientos' }: Props) {
   const router = useRouter()
   const [pasoActual, setPasoActual] = useState(1)
   const [confirmado, setConfirmado] = useState(false)
@@ -266,7 +267,7 @@ export function RequerimientoWizard({ requerimiento }: Props) {
           esBorrador ? 'Borrador guardado' : 'Solicitud enviada correctamente',
           { description: esBorrador ? 'Puedes continuar más tarde' : 'El equipo TIN ha sido notificado' }
         )
-        router.push(`/requerimientos/${id}`)
+        router.push(`${redirectBasePath}/${id}`)
       } catch (err: any) {
         toast.error('Error al guardar', { description: err?.message })
       }

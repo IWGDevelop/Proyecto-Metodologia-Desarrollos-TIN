@@ -1,3 +1,29 @@
+// ─── Auth / Perfiles ─────────────────────────────────────────────────────────
+export type RolUsuario = 'ADMIN_TIN' | 'USUARIO'
+
+export interface Perfil {
+  id: string
+  email: string
+  nombre_completo: string
+  cargo: string | null
+  proceso_interno: string | null
+  empresa: 'IWF' | 'ILT' | 'IWG' | null
+  rol: RolUsuario
+  activo: boolean
+  avatar_url: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface Notificacion {
+  id: string
+  usuario_id: string
+  requerimiento_id: string | null
+  mensaje: string
+  leida: boolean
+  created_at: string
+}
+
 // ─── Enums / Union types ─────────────────────────────────────────────────────
 export type Estado =
   | 'SIN_GESTION'

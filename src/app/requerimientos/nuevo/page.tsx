@@ -1,5 +1,2 @@
-import { RequerimientoWizard } from '@/components/requerimientos/RequerimientoWizard'
-
-export default function NuevoRequerimientoPage() {
-  return <RequerimientoWizard />
-}
+import { redirect } from 'next/navigation'
+export default function NuevoRedirect() { redirect('/admin/requerimientos/nuevo') }

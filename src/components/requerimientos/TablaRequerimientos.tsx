@@ -77,10 +77,12 @@ function AccionesMenu({
   row,
   onCambiarEstado,
   onEliminar,
+  basePath,
 }: {
   row: MetricaRequerimiento
   onCambiarEstado: (r: MetricaRequerimiento) => void
   onEliminar: (id: string) => void
+  basePath: string
 }) {
   const router = useRouter()
   return (
@@ -92,10 +94,10 @@ function AccionesMenu({
         <MoreHorizontal size={15} />
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-44" onClick={e => e.stopPropagation()}>
-        <DropdownMenuItem onClick={() => router.push(`/requerimientos/${row.id}`)}>
+        <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}`)}>
           <Eye size={13} className="mr-2" /> Ver detalle
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`/requerimientos/${row.id}/editar`)}>
+        <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
           <Pencil size={13} className="mr-2" /> Editar
         </DropdownMenuItem>
         <DropdownMenuSeparator />
@@ -168,9 +170,10 @@ interface Props {
   filtros: FiltrosRequerimientos
   page: number
   sort: SortConfig
+  basePath?: string
 }
 
-export function TablaRequerimientos({ filtros, page, sort }: Props) {
+export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos' }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -260,7 +263,7 @@ export function TablaRequerimientos({ filtros, page, sort }: Props) {
                       <tr
                         key={row.id}
                         className="group cursor-pointer hover:bg-slate-50 transition-colors"
-                        onClick={() => router.push(`/requerimientos/${row.id}`)}
+                        onClick={() => router.push(`${basePath}/${row.id}`)}
                       >
                         {/* Número */}
                         <td className="px-3 py-2.5">
@@ -367,6 +370,7 @@ export function TablaRequerimientos({ filtros, page, sort }: Props) {
                             row={row}
                             onCambiarEstado={setCambioEstadoRow}
                             onEliminar={setEliminarId}
+                            basePath={basePath}
                           />
                         </td>
                       </tr>

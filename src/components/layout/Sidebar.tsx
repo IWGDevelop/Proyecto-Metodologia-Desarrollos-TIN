@@ -8,6 +8,7 @@ import {
   ClipboardList,
   Kanban,
   BarChart2,
+  Users,
   ChevronLeft,
   ChevronRight,
   X,
@@ -15,10 +16,11 @@ import {
 import { cn } from '@/lib/utils'
 
 const NAV_ITEMS = [
-  { href: '/dashboard',      label: 'Dashboard',      Icon: LayoutDashboard },
-  { href: '/requerimientos', label: 'Requerimientos', Icon: ClipboardList },
-  { href: '/kanban',         label: 'Kanban',          Icon: Kanban },
-  { href: '/reportes',       label: 'Reportes',        Icon: BarChart2 },
+  { href: '/admin/dashboard',      label: 'Dashboard',      Icon: LayoutDashboard },
+  { href: '/admin/requerimientos', label: 'Requerimientos', Icon: ClipboardList },
+  { href: '/admin/kanban',         label: 'Kanban',         Icon: Kanban },
+  { href: '/admin/reportes',       label: 'Reportes',       Icon: BarChart2 },
+  { href: '/admin/usuarios',       label: 'Usuarios',       Icon: Users },
 ]
 
 interface Props {
