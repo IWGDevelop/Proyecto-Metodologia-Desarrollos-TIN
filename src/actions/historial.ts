@@ -1,8 +1,24 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Comentario, Anexo } from '@/lib/supabase/types'
+
+export async function getAnexos(requerimientoId: string): Promise<Anexo[]> {
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await (supabase as any)
+      .from('anexos')
+      .select('*')
+      .eq('requerimiento_id', requerimientoId)
+      .order('created_at', { ascending: false })
+    if (error) return []
+    return data ?? []
+  } catch {
+    return []
+  }
+}
 
 export async function agregarComentario(
   requerimientoId: string,
