@@ -48,10 +48,8 @@ function esPrevisualizble(tipo: string | null) {
 
 function urlPreview(anexo: Anexo): string {
   const tipo = anexo.tipo_archivo ?? ''
-  if (tipo.startsWith('image/') || tipo.includes('pdf')) {
-    return anexo.url_storage
-  }
-  // Word y Excel → Google Docs Viewer
+  if (tipo.startsWith('image/')) return anexo.url_storage
+  // PDF, Word, Excel → Google Docs Viewer (Firebase Storage bloquea iframes directos)
   return `https://docs.google.com/viewer?url=${encodeURIComponent(anexo.url_storage)}&embedded=true`
 }
 
@@ -131,7 +129,6 @@ function PreviewModal({ anexo, onClose }: { anexo: Anexo; onClose: () => void })
               src={urlPreview(anexo)}
               className="h-full w-full border-0"
               title={anexo.nombre_archivo}
-              sandbox="allow-scripts allow-same-origin allow-popups"
             />
           )}
         </div>
