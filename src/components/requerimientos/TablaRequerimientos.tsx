@@ -171,15 +171,16 @@ interface Props {
   page: number
   sort: SortConfig
   basePath?: string
+  isAdmin?: boolean
 }
 
-export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos' }: Props) {
+export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const invalidar = useInvalidateRequerimientos()
 
-  const { data: result, isLoading, isFetching } = useRequerimientos(filtros, page, sort)
+  const { data: result, isLoading, isFetching } = useRequerimientos(filtros, page, sort, isAdmin)
 
   const [cambioEstadoRow, setCambioEstadoRow] = useState<MetricaRequerimiento | null>(null)
   const [eliminarId, setEliminarId] = useState<string | null>(null)

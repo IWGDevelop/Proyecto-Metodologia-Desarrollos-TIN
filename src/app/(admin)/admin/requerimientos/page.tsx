@@ -76,7 +76,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
       </Suspense>
 
       <Suspense fallback={<TablaRequerimientosSkeleton />}>
-        <TablaRequerimientos filtros={filtros} page={page} sort={sort} basePath="/admin/requerimientos" />
+        <TablaRequerimientos filtros={filtros} page={page} sort={sort} basePath="/admin/requerimientos" isAdmin />
       </Suspense>
     </div>
   )

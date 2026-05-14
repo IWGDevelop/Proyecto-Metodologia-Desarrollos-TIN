@@ -2,6 +2,7 @@
 
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
+import { fetchRequerimientosAdmin } from '@/actions/requerimientos-admin'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export const PAGE_SIZE = 20
@@ -27,6 +28,7 @@ export interface RequerimientosResult {
   totalFiltrado: number
 }
 
+// Consulta via browser client (para usuarios normales con RLS)
 async function fetchRequerimientos(
   filtros: FiltrosRequerimientos,
   page: number,
@@ -34,12 +36,10 @@ async function fetchRequerimientos(
 ): Promise<RequerimientosResult> {
   const supabase = createClient()
 
-  // Total sin filtros
   const { count: totalSinFiltro } = await supabase
     .from('requerimientos')
     .select('*', { count: 'exact', head: true })
 
-  // Query con filtros
   let query = supabase
     .from('v_metricas_requerimientos')
     .select('*', { count: 'exact' })
@@ -50,24 +50,12 @@ async function fetchRequerimientos(
       `identificacion.ilike.%${q}%,nombre_desarrollo.ilike.%${q}%,descripcion_situacion_actual.ilike.%${q}%`
     )
   }
-  if (filtros.estados?.length) {
-    query = query.in('estado', filtros.estados)
-  }
-  if (filtros.alcance) {
-    query = query.eq('alcance', filtros.alcance)
-  }
-  if (filtros.prioridad) {
-    query = query.eq('prioridad', parseInt(filtros.prioridad))
-  }
-  if (filtros.proceso_interno) {
-    query = query.eq('proceso_interno', filtros.proceso_interno)
-  }
-  if (filtros.tipo_solucion) {
-    query = query.eq('tipo_solucion', filtros.tipo_solucion)
-  }
-  if (filtros.es_borrador !== undefined) {
-    query = query.eq('es_borrador', filtros.es_borrador)
-  }
+  if (filtros.estados?.length)       query = query.in('estado', filtros.estados)
+  if (filtros.alcance)               query = query.eq('alcance', filtros.alcance)
+  if (filtros.prioridad)             query = query.eq('prioridad', parseInt(filtros.prioridad))
+  if (filtros.proceso_interno)       query = query.eq('proceso_interno', filtros.proceso_interno)
+  if (filtros.tipo_solucion)         query = query.eq('tipo_solucion', filtros.tipo_solucion)
+  if (filtros.es_borrador !== undefined) query = query.eq('es_borrador', filtros.es_borrador)
 
   const validColumns = ['numero', 'prioridad', 'estado', 'dias_en_estado_actual', 'ahorro_anual_cop', 'created_at']
   const col = validColumns.includes(sort.column) ? sort.column : 'created_at'
@@ -89,11 +77,14 @@ async function fetchRequerimientos(
 export function useRequerimientos(
   filtros: FiltrosRequerimientos,
   page: number = 1,
-  sort: SortConfig = { column: 'created_at', direction: 'desc' }
+  sort: SortConfig = { column: 'created_at', direction: 'desc' },
+  isAdmin = false
 ) {
   return useQuery<RequerimientosResult>({
-    queryKey: ['requerimientos', filtros, page, sort],
-    queryFn: () => fetchRequerimientos(filtros, page, sort),
+    queryKey: ['requerimientos', filtros, page, sort, isAdmin],
+    queryFn: () => isAdmin
+      ? fetchRequerimientosAdmin(filtros, page, sort)  // admin client — bypasa RLS
+      : fetchRequerimientos(filtros, page, sort),       // browser client — respeta RLS
     staleTime: 30_000,
     placeholderData: (prev) => prev,
   })
@@ -104,13 +95,17 @@ export function useInvalidateRequerimientos() {
   return () => qc.invalidateQueries({ queryKey: ['requerimientos'] })
 }
 
-// Para exportar TODOS los resultados filtrados sin paginación
 export async function fetchTodosParaExportar(
   filtros: FiltrosRequerimientos,
-  sort: SortConfig
+  sort: SortConfig,
+  isAdmin = false
 ): Promise<MetricaRequerimiento[]> {
-  const supabase = createClient()
+  if (isAdmin) {
+    const result = await fetchRequerimientosAdmin(filtros, 1, sort)
+    return result.data
+  }
 
+  const supabase = createClient()
   let query = supabase.from('v_metricas_requerimientos').select('*')
 
   if (filtros.search?.trim()) {
