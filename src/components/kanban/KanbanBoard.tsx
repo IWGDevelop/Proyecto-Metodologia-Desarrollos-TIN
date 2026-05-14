@@ -51,8 +51,8 @@ function aplicarFiltros(data: KanbanData, filtros: FiltrosKanban): KanbanData {
   ) as KanbanData
 }
 
-export function KanbanBoard() {
-  const { data: serverData, isLoading } = useKanban()
+export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
+  const { data: serverData, isLoading } = useKanban(isAdmin)
   const invalidar = useInvalidateKanban()
 
   const [localData, setLocalData] = useState<KanbanData | null>(null)

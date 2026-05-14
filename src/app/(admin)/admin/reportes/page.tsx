@@ -86,7 +86,7 @@ function exportarCompleto(datos: MetricaRequerimiento[]) {
 
 export default function AdminReportesPage() {
   const [filtros, setFiltros] = useState<TFiltros>(FILTROS_INIT)
-  const { datos, isLoading } = useReportesData(filtros)
+  const { datos, isLoading } = useReportesData(filtros, true)
 
   const handleExportarCompleto = () => {
     if (!datos.length) { toast.error('Sin datos en el período seleccionado'); return }

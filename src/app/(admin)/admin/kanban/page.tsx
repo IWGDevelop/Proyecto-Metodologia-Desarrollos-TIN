@@ -10,7 +10,7 @@ export default function AdminKanbanPage() {
         </p>
       </div>
       <div className="flex-1 overflow-hidden">
-        <KanbanBoard />
+        <KanbanBoard isAdmin />
       </div>
     </div>
   )

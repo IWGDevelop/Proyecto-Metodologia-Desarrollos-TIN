@@ -4,7 +4,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
-import { useAuth } from '@/hooks/useAuth'
 import { fetchKanbanAdmin } from '@/actions/kanban-admin'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
@@ -30,33 +29,25 @@ async function fetchKanbanBrowser(): Promise<KanbanData> {
     SIN_GESTION: [], ANALISIS: [], EN_DESARROLLO: [],
     PRUEBAS_USUARIO: [], STAND_BY: [], ENTREGADO: [], CERRADO: [],
   }
-
   for (const r of (data ?? []) as MetricaRequerimiento[]) {
     const estado = r.estado as Estado
     if (estado in base) base[estado].push(r)
   }
-
   return base
 }
 
-export function useKanban() {
+export function useKanban(isAdmin = false) {
   const qc = useQueryClient()
-  const { isAdmin } = useAuth()
 
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
       .channel('kanban-realtime')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'requerimientos' },
-        () => {
-          qc.invalidateQueries({ queryKey: ['kanban'] })
-          toast.info('🔄 Actualización recibida', { duration: 2500 })
-        }
-      )
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'requerimientos' }, () => {
+        qc.invalidateQueries({ queryKey: ['kanban'] })
+        toast.info('🔄 Actualización recibida', { duration: 2500 })
+      })
       .subscribe()
-
     return () => { supabase.removeChannel(channel) }
   }, [qc])
 
