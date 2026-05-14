@@ -19,6 +19,8 @@ import {
 import { crearRequerimiento, actualizarRequerimiento, guardarBorrador } from '@/actions/requerimientos'
 import { Paso1Encabezado } from './pasos/Paso1Encabezado'
 import { Paso2Solicitante } from './pasos/Paso2Solicitante'
+import { getPerfilesActivos } from '@/actions/perfiles'
+import type { Perfil } from '@/lib/supabase/types'
 import { Paso3Descripcion } from './pasos/Paso3Descripcion'
 import { Paso4Alcance } from './pasos/Paso4Alcance'
 import { Paso5ImpactoHH } from './pasos/Paso5ImpactoHH'
@@ -125,7 +127,12 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
   const [anexos, setAnexos] = useState<AnexoLocal[]>([])
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isPending, startTransition] = useTransition()
+  const [usuarios, setUsuarios] = useState<Perfil[]>([])
   const carpetaTemporal = requerimiento?.id ?? `temp_${Date.now()}`
+
+  useEffect(() => {
+    getPerfilesActivos().then(setUsuarios).catch(() => {})
+  }, [])
 
   // ─── Inicializar form ─────────────────────────────────────────────────────
   const form = useForm<WizardData>({
@@ -349,7 +356,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
 
         {/* Contenido del paso */}
         {pasoActual === 1 && <Paso1Encabezado form={form} />}
-        {pasoActual === 2 && <Paso2Solicitante form={form} />}
+        {pasoActual === 2 && <Paso2Solicitante form={form} usuarios={usuarios} />}
         {pasoActual === 3 && (
           <Paso3Descripcion
             form={form}

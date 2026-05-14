@@ -1,5 +1,11 @@
 import type { Estado, Alcance, TipoSolucion, ProcesoInterno } from './supabase/types'
 
+// ─── Sucursales ───────────────────────────────────────────────────────────────
+export const SUCURSALES = [
+  'Bogotá', 'Cali', 'Medellín', 'Buenaventura',
+  'Cartagena', 'Mosquera', 'Pereira', 'Costa Norte',
+] as const
+
 // ─── SLA por prioridad (días hábiles) ────────────────────────────────────────
 export const SLA_DIAS: Record<number, number> = {
   1: 5,
