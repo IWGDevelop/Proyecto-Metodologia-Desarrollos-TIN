@@ -31,36 +31,25 @@ export default function LoginPage() {
 
   const onSubmit = async (data: LoginForm) => {
     setError(null)
-    const supabase = createClient()
+    try {
+      const supabase = createClient()
 
-    const { error: authError } = await supabase.auth.signInWithPassword({
-      email: data.email,
-      password: data.password,
-    })
+      const { error: authError } = await supabase.auth.signInWithPassword({
+        email: data.email,
+        password: data.password,
+      })
 
-    if (authError) {
-      setError('Correo o contraseña incorrectos. Verifica tus datos.')
-      return
+      if (authError) {
+        setError('Correo o contraseña incorrectos. Verifica tus datos.')
+        return
+      }
+
+      // Redirect to root — page.tsx detects role and redirects accordingly
+      router.push('/')
+      router.refresh()
+    } catch {
+      setError('Error de conexión. Intenta de nuevo.')
     }
-
-    const { data: perfilData } = await (supabase as any)
-      .from('perfiles')
-      .select('rol, activo')
-      .eq('email', data.email)
-      .single()
-
-    if (perfilData && !perfilData.activo) {
-      await supabase.auth.signOut()
-      setError('Tu cuenta está desactivada. Contacta al administrador.')
-      return
-    }
-
-    if (perfilData?.rol === 'ADMIN_TIN') {
-      router.push('/admin/dashboard')
-    } else {
-      router.push('/mis-requerimientos')
-    }
-    router.refresh()
   }
 
   return (
