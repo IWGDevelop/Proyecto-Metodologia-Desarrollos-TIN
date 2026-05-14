@@ -56,8 +56,15 @@ export async function TopImpacto() {
                   <td className="py-2.5 pr-4 text-right font-medium text-slate-600">
                     {r.horas_ahorradas_mes != null ? `${r.horas_ahorradas_mes} h` : '—'}
                   </td>
-                  <td className="py-2.5 pr-2 text-right font-bold text-emerald-600">
-                    {formatCOP(r.ahorro_anual_cop)}
+                  <td className="py-2.5 pr-2 text-right">
+                    <p className="font-bold text-emerald-600">
+                      {formatCOP((r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop)}
+                    </p>
+                    {(r as any).total_beneficios_cualitativos_anual > 0 && (
+                      <p className="text-[10px] text-slate-400">
+                        incl. {formatCOP((r as any).total_beneficios_cualitativos_anual)} cualitativos
+                      </p>
+                    )}
                   </td>
                   <td className="py-2.5">
                     <Link href={`/requerimientos/${r.id}`}>

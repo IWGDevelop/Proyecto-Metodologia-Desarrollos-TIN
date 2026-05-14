@@ -86,6 +86,9 @@ export interface Requerimiento {
   fecha_salida_vivo: string | null
   fecha_cierre: string | null
   horas_hombre_ahorradas: number | null
+  // Campos de migración: cuantificación económica de beneficios cualitativos
+  total_beneficios_cualitativos_anual: number | null
+  impacto_economico_total_anual: number | null
   created_at: string
   updated_at: string
 }
@@ -138,6 +141,8 @@ export interface ImpactoEconomico {
   total_horas_anio: number | null
   total_ahorro_mensual_cop: number | null
   total_ahorro_anual_cop: number | null
+  total_cualitativos_anual: number | null
+  total_impacto_anual: number | null
   promedio_horas_mes: number | null
 }
 
@@ -153,6 +158,8 @@ export interface TopImpacto {
   horas_ahorradas_mes: number | null
   ahorro_mensual_cop: number | null
   ahorro_anual_cop: number | null
+  total_beneficios_cualitativos_anual: number | null
+  impacto_economico_total_anual: number | null
 }
 
 // ─── Database schema (compatible con supabase-js v2) ────────────────────────

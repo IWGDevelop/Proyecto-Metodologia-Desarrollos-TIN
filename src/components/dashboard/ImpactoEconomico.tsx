@@ -1,26 +1,33 @@
 import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCOP } from '@/lib/utils'
-import { DollarSign, Calendar, Clock, ClipboardCheck } from 'lucide-react'
+import { DollarSign, Calendar, Clock, ClipboardCheck, TrendingUp } from 'lucide-react'
 
 async function getImpactoData() {
   const supabase = await createClient()
 
-  const [{ data: impacto }, { count: totalReq }] = await Promise.all([
+  const [{ data: impacto }, { count: totalReq }, { data: reqs }] = await Promise.all([
     supabase.from('v_impacto_economico').select('*'),
     supabase.from('requerimientos')
       .select('*', { count: 'exact', head: true })
       .eq('es_borrador', false),
+    // Leemos los campos nuevos directamente de la tabla para garantizar el total
+    supabase.from('requerimientos')
+      .select('ahorro_mensual_cop, ahorro_anual_cop, horas_ahorradas_mes, total_beneficios_cualitativos_anual, impacto_economico_total_anual')
+      .eq('es_borrador', false),
   ])
 
-  const totales = (impacto ?? []).reduce(
-    (acc, row) => ({
-      ahorro_mensual: acc.ahorro_mensual + (row.total_ahorro_mensual_cop ?? 0),
-      ahorro_anual:   acc.ahorro_anual   + (row.total_ahorro_anual_cop   ?? 0),
-      horas_mes:      acc.horas_mes      + (row.total_horas_mes          ?? 0),
-      con_impacto:    acc.con_impacto    + (row.total_requerimientos     ?? 0),
+  const totales = (reqs ?? []).reduce(
+    (acc, r: any) => ({
+      ahorro_mensual:    acc.ahorro_mensual    + (r.ahorro_mensual_cop                    ?? 0),
+      ahorro_anual_hh:  acc.ahorro_anual_hh   + (r.ahorro_anual_cop                      ?? 0),
+      cualitativos:     acc.cualitativos       + (r.total_beneficios_cualitativos_anual   ?? 0),
+      impacto_total:    acc.impacto_total      + (r.impacto_economico_total_anual         ?? (r.ahorro_anual_cop ?? 0)),
+      horas_mes:        acc.horas_mes          + (r.horas_ahorradas_mes                   ?? 0),
+      con_impacto:      r.ahorro_anual_cop || r.impacto_economico_total_anual
+                          ? acc.con_impacto + 1 : acc.con_impacto,
     }),
-    { ahorro_mensual: 0, ahorro_anual: 0, horas_mes: 0, con_impacto: 0 }
+    { ahorro_mensual: 0, ahorro_anual_hh: 0, cualitativos: 0, impacto_total: 0, horas_mes: 0, con_impacto: 0 }
   )
 
   return { ...totales, total: totalReq ?? 0 }
@@ -28,20 +35,28 @@ async function getImpactoData() {
 
 export async function ImpactoEconomico() {
   const d = await getImpactoData()
+  const tieneCualitativos = d.cualitativos > 0
 
   const stats = [
     {
-      icono: DollarSign,
-      label: 'Ahorro mensual total',
-      valor: formatCOP(d.ahorro_mensual),
-      sub: 'COP / mes',
+      icono: TrendingUp,
+      label: 'Impacto económico total anual',
+      valor: formatCOP(d.impacto_total),
+      sub: tieneCualitativos ? 'HH + beneficios cualitativos' : 'COP / año',
+      destacado: true,
     },
     {
-      icono: Calendar,
-      label: 'Ahorro anual proyectado',
-      valor: formatCOP(d.ahorro_anual),
+      icono: DollarSign,
+      label: 'Ahorro en horas hombre/año',
+      valor: formatCOP(d.ahorro_anual_hh),
       sub: 'COP / año',
     },
+    ...(tieneCualitativos ? [{
+      icono: Calendar,
+      label: 'Beneficios cualitativos/año',
+      valor: formatCOP(d.cualitativos),
+      sub: 'COP / año',
+    }] : []),
     {
       icono: Clock,
       label: 'Horas hombre ahorradas',
@@ -60,20 +75,22 @@ export async function ImpactoEconomico() {
     <div className="rounded-xl bg-gradient-to-br from-slate-800 to-slate-900 p-6 text-white shadow-lg">
       <div className="mb-5">
         <h2 className="text-base font-semibold text-slate-200">Impacto económico total</h2>
-        <p className="text-xs text-slate-400">Solo requerimientos publicados con cálculo registrado</p>
+        <p className="text-xs text-slate-400">
+          Ahorro en horas hombre{tieneCualitativos ? ' + beneficios cualitativos cuantificados' : ''} · Solo requerimientos publicados
+        </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        {stats.map(({ icono: Icono, label, valor, sub }) => (
+      <div className={`grid gap-4 ${stats.length <= 4 ? 'grid-cols-2 lg:grid-cols-4' : 'grid-cols-2 lg:grid-cols-5'}`}>
+        {stats.map(({ icono: Icono, label, valor, sub, destacado }) => (
           <div
             key={label}
-            className="rounded-lg bg-white/10 p-4 backdrop-blur-sm"
+            className={`rounded-lg p-4 backdrop-blur-sm ${destacado ? 'bg-emerald-500/20 ring-1 ring-emerald-400/30 col-span-2 lg:col-span-1' : 'bg-white/10'}`}
           >
-            <div className="mb-2 flex h-8 w-8 items-center justify-center rounded-md bg-blue-500/30">
-              <Icono size={16} className="text-blue-300" />
+            <div className={`mb-2 flex h-8 w-8 items-center justify-center rounded-md ${destacado ? 'bg-emerald-400/30' : 'bg-blue-500/30'}`}>
+              <Icono size={16} className={destacado ? 'text-emerald-300' : 'text-blue-300'} />
             </div>
             <p className="text-xs font-medium text-slate-400">{label}</p>
-            <p className="mt-1 text-xl font-bold text-white">{valor}</p>
+            <p className={`mt-1 font-bold text-white ${destacado ? 'text-2xl' : 'text-xl'}`}>{valor}</p>
             <p className="text-xs text-slate-500">{sub}</p>
           </div>
         ))}

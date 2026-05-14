@@ -42,22 +42,32 @@ interface Props {
 }
 
 export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
-  const conImpacto = datos.filter(r => r.ahorro_anual_cop && r.ahorro_anual_cop > 0)
+  // Incluye reqs con impacto HH O con beneficios cualitativos
+  const conImpacto = datos.filter(r =>
+    (r.ahorro_anual_cop && r.ahorro_anual_cop > 0) ||
+    (r.total_beneficios_cualitativos_anual && r.total_beneficios_cualitativos_anual > 0)
+  )
 
-  const totalMensual    = conImpacto.reduce((s, r) => s + (r.ahorro_mensual_cop ?? 0), 0)
-  const totalAnual      = conImpacto.reduce((s, r) => s + (r.ahorro_anual_cop ?? 0), 0)
-  const totalHorasMes   = conImpacto.reduce((s, r) => s + (r.horas_ahorradas_mes ?? 0), 0)
-  const promedioAhorro  = conImpacto.length ? totalAnual / conImpacto.length : 0
+  const impactoTotalFn = (r: MetricaRequerimiento) =>
+    r.impacto_economico_total_anual ?? ((r.ahorro_anual_cop ?? 0) + (r.total_beneficios_cualitativos_anual ?? 0))
+
+  const totalMensual         = conImpacto.reduce((s, r) => s + (r.ahorro_mensual_cop ?? 0), 0)
+  const totalAnualHH         = conImpacto.reduce((s, r) => s + (r.ahorro_anual_cop ?? 0), 0)
+  const totalCualitativos    = conImpacto.reduce((s, r) => s + (r.total_beneficios_cualitativos_anual ?? 0), 0)
+  const totalImpacto         = conImpacto.reduce((s, r) => s + impactoTotalFn(r), 0)
+  const totalHorasMes        = conImpacto.reduce((s, r) => s + (r.horas_ahorradas_mes ?? 0), 0)
+  const promedioAhorro       = conImpacto.length ? totalImpacto / conImpacto.length : 0
 
   const top10 = [...conImpacto]
-    .sort((a, b) => (b.ahorro_anual_cop ?? 0) - (a.ahorro_anual_cop ?? 0))
+    .sort((a, b) => impactoTotalFn(b) - impactoTotalFn(a))
     .slice(0, 10)
     .map(r => ({
       nombre: (r.nombre_desarrollo ?? r.identificacion ?? '').slice(0, 30) + '...',
       nombreCompleto: r.nombre_desarrollo ?? r.identificacion,
       responsable: r.responsable,
       mensual: r.ahorro_mensual_cop ?? 0,
-      anual: r.ahorro_anual_cop ?? 0,
+      anual: impactoTotalFn(r),
+      cualitativos: r.total_beneficios_cualitativos_anual ?? 0,
     }))
 
   // Agrupado por alcance + tipo_solucion
@@ -82,8 +92,9 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
       { titulo: 'Responsable',       ancho: 22, render: r => r.responsable },
       { titulo: 'Horas/mes',         ancho: 12, render: r => r.horas_ahorradas_mes?.toFixed(1) },
       { titulo: 'Ahorro mensual COP',ancho: 20, render: r => r.ahorro_mensual_cop },
-      { titulo: 'Ahorro anual COP',  ancho: 20, render: r => r.ahorro_anual_cop },
-      { titulo: 'Beneficios cuali.', ancho: 15, render: r => (r.beneficios_cualitativos as any[])?.length ?? 0 },
+      { titulo: 'Ahorro HH anual',    ancho: 20, render: r => r.ahorro_anual_cop },
+      { titulo: 'Cualitativos anual', ancho: 20, render: r => r.total_beneficios_cualitativos_anual ?? 0 },
+      { titulo: 'Impacto total anual',ancho: 22, render: r => r.impacto_economico_total_anual ?? (r.ahorro_anual_cop ?? 0) },
     ])
   }
 
@@ -104,14 +115,16 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
       {/* Cards KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
-          { label: 'Ahorro mensual total', valor: formatCOP(totalMensual), color: 'text-slate-700' },
-          { label: 'Ahorro anual total',   valor: formatCOP(totalAnual),   color: 'text-emerald-700 text-xl font-extrabold' },
-          { label: 'Horas hombre / mes',   valor: `${totalHorasMes.toFixed(1)} h`, color: 'text-slate-700' },
-          { label: 'Promedio por req.',     valor: formatCOP(promedioAhorro), color: 'text-slate-700' },
-        ].map(({ label, valor, color }) => (
+          { label: 'Impacto total anual',  valor: formatCOP(totalImpacto),   color: 'text-emerald-700 text-xl font-extrabold', note: totalCualitativos > 0 ? 'HH + cualitativos' : '' },
+          { label: 'Ahorro HH anual',      valor: formatCOP(totalAnualHH),   color: 'text-slate-700', note: '' },
+          ...(totalCualitativos > 0 ? [{ label: 'Cualitativos anual', valor: formatCOP(totalCualitativos), color: 'text-blue-700', note: '' }] : []),
+          { label: 'Horas hombre / mes',   valor: `${totalHorasMes.toFixed(1)} h`, color: 'text-slate-700', note: '' },
+          { label: 'Promedio por req.',    valor: formatCOP(promedioAhorro),  color: 'text-slate-700', note: '' },
+        ].map(({ label, valor, color, note }) => (
           <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
             <p className="text-xs text-slate-500">{label}</p>
             <p className={cn('mt-1 font-bold', color)}>{valor}</p>
+            {note && <p className="text-xs text-slate-400">{note}</p>}
           </div>
         ))}
       </div>
@@ -125,7 +138,7 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
               <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="#f1f5f9" />
               <XAxis type="number" tickFormatter={v => formatCOP(v)} tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis dataKey="nombre" type="category" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={140} />
-              <Tooltip content={({ active, payload }) => {
+              <Tooltip content={({ active, payload }: any) => {
                 if (!active || !payload?.length) return null
                 const d = payload[0].payload
                 return (
@@ -133,7 +146,8 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
                     <p className="font-semibold text-slate-700 mb-1 max-w-[200px] line-clamp-2">{d.nombreCompleto}</p>
                     <p className="text-slate-500">Responsable: {d.responsable}</p>
                     <p className="text-slate-600">Mensual: {formatCOP(d.mensual)}</p>
-                    <p className="font-bold text-emerald-600">Anual: {formatCOP(d.anual)}</p>
+                    <p className="font-bold text-emerald-600">Impacto total: {formatCOP(d.anual)}</p>
+                    {d.cualitativos > 0 && <p className="text-blue-600">incl. cualitativos: {formatCOP(d.cualitativos)}</p>}
                   </div>
                 )
               }} />
@@ -172,14 +186,14 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
             <table className="w-full text-xs">
               <thead className="bg-slate-50">
                 <tr>
-                  {['#', 'Nombre', 'Alcance', 'Responsable', 'Horas/mes', 'Ahorro mensual', 'Ahorro anual', 'Beneficios'].map(h => (
+                  {['#', 'Nombre', 'Alcance', 'Responsable', 'Horas/mes', 'Ahorro HH mensual', 'Cualitativos anual', 'Impacto total anual'].map(h => (
                     <th key={h} className="px-3 py-2.5 text-left font-medium text-slate-400">{h}</th>
                   ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {[...conImpacto]
-                  .sort((a, b) => (b.ahorro_anual_cop ?? 0) - (a.ahorro_anual_cop ?? 0))
+                  .sort((a, b) => impactoTotalFn(b) - impactoTotalFn(a))
                   .map((r, i) => (
                     <tr key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}>
                       <td className="px-3 py-2 text-slate-400">{i + 1}</td>
@@ -190,7 +204,10 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
                       <td className="px-3 py-2 text-slate-500">{r.responsable ?? '—'}</td>
                       <td className="px-3 py-2 font-medium">{r.horas_ahorradas_mes?.toFixed(1) ?? '—'} h</td>
                       <td className="px-3 py-2 font-medium text-emerald-600">{formatCOP(r.ahorro_mensual_cop)}</td>
-                      <td className="px-3 py-2 font-bold text-emerald-700">{formatCOP(r.ahorro_anual_cop)}</td>
+                      <td className="px-3 py-2 font-medium text-blue-600">
+                        {r.total_beneficios_cualitativos_anual ? formatCOP(r.total_beneficios_cualitativos_anual) : <span className="text-slate-300">—</span>}
+                      </td>
+                      <td className="px-3 py-2 font-bold text-emerald-700">{formatCOP(impactoTotalFn(r))}</td>
                       <td className="px-3 py-2 text-center text-slate-500">
                         {(r.beneficios_cualitativos as any[])?.length ?? 0}
                       </td>
