@@ -1,7 +1,6 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -19,7 +18,6 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 export default function LoginPage() {
-  const router = useRouter()
   const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
@@ -44,9 +42,8 @@ export default function LoginPage() {
         return
       }
 
-      // Redirect to root — page.tsx detects role and redirects accordingly
-      router.push('/')
-      router.refresh()
+      // Hard navigation so the browser sends fresh cookies to the server
+      window.location.href = '/'
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
     }
