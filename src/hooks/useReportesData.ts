@@ -3,6 +3,8 @@
 import { useQuery } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { useMemo } from 'react'
+import { useAuth } from '@/hooks/useAuth'
+import { fetchReportesAdmin } from '@/actions/reportes-admin'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export interface FiltrosReportes {
@@ -31,7 +33,7 @@ export function calcularRango(preset: FiltrosReportes['preset']): { desde: strin
   }
 }
 
-async function fetchTodosRequerimientos(): Promise<MetricaRequerimiento[]> {
+async function fetchReportesBrowser(): Promise<MetricaRequerimiento[]> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('v_metricas_requerimientos')
@@ -43,9 +45,11 @@ async function fetchTodosRequerimientos(): Promise<MetricaRequerimiento[]> {
 }
 
 export function useReportesData(filtros: FiltrosReportes) {
+  const { isAdmin } = useAuth()
+
   const { data: todos = [], isLoading, error } = useQuery<MetricaRequerimiento[]>({
-    queryKey: ['reportes-data'],
-    queryFn: fetchTodosRequerimientos,
+    queryKey: ['reportes-data', isAdmin],
+    queryFn: () => isAdmin ? fetchReportesAdmin() : fetchReportesBrowser(),
     staleTime: 60_000,
   })
 

@@ -4,6 +4,8 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
+import { useAuth } from '@/hooks/useAuth'
+import { fetchKanbanAdmin } from '@/actions/kanban-admin'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 export const COLUMNAS_KANBAN: Estado[] = [
@@ -13,7 +15,7 @@ export const COLUMNAS_KANBAN: Estado[] = [
 
 export type KanbanData = Record<Estado, MetricaRequerimiento[]>
 
-async function fetchKanban(): Promise<KanbanData> {
+async function fetchKanbanBrowser(): Promise<KanbanData> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('v_metricas_requerimientos')
@@ -39,8 +41,8 @@ async function fetchKanban(): Promise<KanbanData> {
 
 export function useKanban() {
   const qc = useQueryClient()
+  const { isAdmin } = useAuth()
 
-  // Realtime subscription
   useEffect(() => {
     const supabase = createClient()
     const channel = supabase
@@ -59,8 +61,8 @@ export function useKanban() {
   }, [qc])
 
   return useQuery<KanbanData>({
-    queryKey: ['kanban'],
-    queryFn: fetchKanban,
+    queryKey: ['kanban', isAdmin],
+    queryFn: () => isAdmin ? fetchKanbanAdmin() : fetchKanbanBrowser(),
     staleTime: 30_000,
     refetchInterval: 60_000,
   })
