@@ -1,7 +1,6 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { revalidatePath } from 'next/cache'
 
 export async function crearUsuario(data: {
   email: string
@@ -26,33 +25,24 @@ export async function crearUsuario(data: {
 
   if (authError) throw new Error(authError.message)
 
-  if (authData.user) {
-    const { error: perfilError } = await (supabase as any)
-      .from('perfiles')
-      .update({
-        cargo: data.cargo ?? null,
-        proceso_interno: data.proceso_interno ?? null,
-        empresa: data.empresa ?? null,
-        rol: data.rol,
-      })
-      .eq('id', authData.user.id)
+  // Wait briefly for the DB trigger to create the profile
+  await new Promise(r => setTimeout(r, 800))
 
-    if (perfilError) {
-      // Profile may not exist yet if trigger hasn't run; try insert
-      await (supabase as any).from('perfiles').upsert({
-        id: authData.user.id,
-        email: data.email,
-        nombre_completo: data.nombre_completo,
-        cargo: data.cargo ?? null,
-        proceso_interno: data.proceso_interno ?? null,
-        empresa: data.empresa ?? null,
-        rol: data.rol,
-      })
-    }
+  if (authData.user) {
+    // Upsert ensures the profile exists with all fields
+    await (supabase as any).from('perfiles').upsert({
+      id: authData.user.id,
+      email: data.email,
+      nombre_completo: data.nombre_completo,
+      cargo: data.cargo ?? null,
+      proceso_interno: data.proceso_interno ?? null,
+      empresa: data.empresa ?? null,
+      rol: data.rol,
+      activo: true,
+    }, { onConflict: 'id' })
   }
 
-  revalidatePath('/admin/usuarios')
-  return authData.user
+  return { id: authData.user?.id }
 }
 
 export async function actualizarPerfil(id: string, data: Partial<{
@@ -70,20 +60,8 @@ export async function actualizarPerfil(id: string, data: Partial<{
     .eq('id', id)
 
   if (error) throw new Error(error.message)
-  revalidatePath('/admin/usuarios')
 }
 
 export async function toggleUsuarioActivo(id: string, activo: boolean) {
   await actualizarPerfil(id, { activo })
-}
-
-export async function getUsuarios() {
-  const supabase = createAdminClient()
-  const { data, error } = await (supabase as any)
-    .from('perfiles')
-    .select('*')
-    .order('created_at', { ascending: false })
-
-  if (error) throw new Error(error.message)
-  return data
 }

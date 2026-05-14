@@ -74,7 +74,7 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
       toast.success('Usuario creado exitosamente')
       setShowCreate(false)
       createForm.reset()
-      router.refresh()
+      router.push('/admin/usuarios')
     } catch (e: any) {
       toast.error(e.message ?? 'Error al crear usuario')
     }
@@ -86,7 +86,7 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
       await actualizarPerfil(editUser.id, data)
       toast.success('Usuario actualizado')
       setEditUser(null)
-      router.refresh()
+      router.push('/admin/usuarios')
     } catch (e: any) {
       toast.error(e.message ?? 'Error al actualizar usuario')
     }

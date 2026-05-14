@@ -1,10 +1,25 @@
-import { getUsuarios } from '@/actions/usuarios'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { GestionUsuariosClient } from '@/components/usuarios/GestionUsuariosClient'
+import type { Perfil } from '@/lib/supabase/types'
 
 export const dynamic = 'force-dynamic'
 
+async function fetchUsuarios(): Promise<Perfil[]> {
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await (supabase as any)
+      .from('perfiles')
+      .select('*')
+      .order('created_at', { ascending: false })
+    if (error) return []
+    return data ?? []
+  } catch {
+    return []
+  }
+}
+
 export default async function UsuariosPage() {
-  const usuarios = await getUsuarios().catch(() => [])
+  const usuarios = await fetchUsuarios()
 
   return (
     <div className="space-y-5 p-6">
