@@ -10,6 +10,7 @@ import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
+import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -87,6 +88,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>
           <TabsTrigger value="impacto">Impacto HH</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="anexos">Anexos</TabsTrigger>
         </TabsList>
@@ -224,6 +226,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             isAdmin
             currentUserId={perfilAdmin?.id}
           />
+        </TabsContent>
+
+        <TabsContent value="reuniones" className="mt-4">
+          <TabReuniones requerimientoId={id} />
         </TabsContent>
 
         <TabsContent value="comentarios" className="mt-4">

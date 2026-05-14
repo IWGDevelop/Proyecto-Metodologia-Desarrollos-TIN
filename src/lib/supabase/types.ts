@@ -162,6 +162,29 @@ export interface Comentario {
   created_at: string
 }
 
+// ─── Tabla: reuniones ────────────────────────────────────────────────────────
+export interface TareaReunion {
+  id: string
+  reunion_id: string
+  descripcion: string
+  responsable_email: string | null
+  fecha_compromiso: string | null
+  completada: boolean
+  created_at: string
+}
+
+export interface Reunion {
+  id: string
+  requerimiento_id: string
+  titulo: string
+  fecha_reunion: string
+  url_video: string | null
+  notas: string | null
+  created_by: string | null
+  created_at: string
+  tareas: TareaReunion[]
+}
+
 // ─── Tabla: anexos ────────────────────────────────────────────────────────────
 export interface Anexo {
   id: string
