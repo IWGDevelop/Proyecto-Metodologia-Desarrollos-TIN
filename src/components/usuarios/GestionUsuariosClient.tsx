@@ -90,9 +90,6 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
     toast.success('Usuario actualizado')
     setEditUser(null)
     window.location.href = '/admin/usuarios'
-    } catch (e: any) {
-      toast.error(e.message ?? 'Error al actualizar usuario')
-    }
   }
 
   const openEdit = (u: Perfil) => {
