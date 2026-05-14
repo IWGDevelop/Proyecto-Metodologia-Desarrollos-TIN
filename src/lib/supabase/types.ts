@@ -1,0 +1,343 @@
+// ─── Enums / Union types ─────────────────────────────────────────────────────
+export type Estado =
+  | 'SIN_GESTION'
+  | 'ANALISIS'
+  | 'EN_DESARROLLO'
+  | 'PRUEBAS_USUARIO'
+  | 'STAND_BY'
+  | 'ENTREGADO'
+  | 'CERRADO'
+
+export type Alcance = 'IWF' | 'ILT' | 'IWG'
+export type TipoSolicitud = 'NUEVO_DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'INFORME'
+export type TipoSolucion = 'DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'SUPERSET' | 'POR_DEFINIR'
+export type ProcesoInterno =
+  | 'FINANCIERO' | 'OPERACIONES' | 'COMERCIAL' | 'CARGA'
+  | 'SISTEMAS_GESTION' | 'SERVICIO_CLIENTE' | 'COMPRAS'
+  | 'SEGUROS' | 'DATOS' | 'TI' | 'GENERAL'
+export type Impacta = 'FUNCIONARIOS' | 'CLIENTES' | 'AMBOS'
+
+// ─── Tipos JSONB embebidos ───────────────────────────────────────────────────
+export interface ProcesoCargo {
+  proceso: string
+  cargo: string
+  cantidad_usuarios: number
+}
+
+export interface ActividadImpacto {
+  actividad: string
+  horas_mes: number
+  porcentaje_automatizable: number
+}
+
+export interface BeneficioCualitativo {
+  descripcion: string
+}
+
+// ─── Tabla: requerimientos ───────────────────────────────────────────────────
+export interface Requerimiento {
+  id: string
+  numero: string | null
+  alcance: Alcance | null
+  identificacion: string
+  prioridad: number | null
+  estado: Estado
+  motivo_stand_by: string | null
+  porcentaje_avance: number
+  es_borrador: boolean
+  fecha_envio_solicitud: string | null
+  fecha_solicitud: string | null
+  tipo_solicitud: TipoSolicitud | null
+  empresa: string | null
+  sucursal: string | null
+  proceso_igsi: string | null
+  proceso_interno: ProcesoInterno | null
+  responsable: string | null
+  partes_interesadas: string[] | null
+  nombre_desarrollo: string | null
+  tipo_solucion: TipoSolucion | null
+  viabilidad_tecnica: boolean | null
+  descripcion_situacion_actual: string | null
+  definicion_requerimiento: string | null
+  objetivo: string | null
+  criterios_validacion: string | null
+  integra_otros_aplicativos: boolean
+  detalle_integracion: string | null
+  tipo_operacion_integracion: string[] | null
+  definicion_usuarios: string | null
+  impacta: Impacta | null
+  tipos_cliente: string[] | null
+  procesos_cargos: ProcesoCargo[]
+  ventajas_beneficios: string | null
+  actividades_impacto: ActividadImpacto[]
+  salario_promedio_cargo: number | null
+  horas_laborales_mes: number
+  valor_hora_hombre: number | null
+  horas_ahorradas_mes: number | null
+  ahorro_mensual_cop: number | null
+  ahorro_anual_cop: number | null
+  beneficios_cualitativos: BeneficioCualitativo[]
+  fecha_envio_tin: string | null
+  fecha_inicio_desarrollo: string | null
+  fecha_estimada_entrega: string | null
+  fecha_real_entrega: string | null
+  inicio_pruebas_usuario: string | null
+  fin_pruebas_usuario: string | null
+  fecha_salida_vivo: string | null
+  fecha_cierre: string | null
+  horas_hombre_ahorradas: number | null
+  created_at: string
+  updated_at: string
+}
+
+// ─── Tabla: historial_estados ─────────────────────────────────────────────────
+export interface HistorialEstado {
+  id: string
+  requerimiento_id: string
+  estado_anterior: Estado | null
+  estado_nuevo: Estado
+  observacion: string | null
+  usuario: string | null
+  created_at: string
+}
+
+// ─── Tabla: comentarios ───────────────────────────────────────────────────────
+export interface Comentario {
+  id: string
+  requerimiento_id: string
+  comentario: string
+  usuario: string
+  created_at: string
+}
+
+// ─── Tabla: anexos ────────────────────────────────────────────────────────────
+export interface Anexo {
+  id: string
+  requerimiento_id: string
+  nombre_archivo: string
+  url_storage: string
+  tipo_archivo: string | null
+  tamanio_bytes: number | null
+  created_at: string
+}
+
+// ─── Vistas ───────────────────────────────────────────────────────────────────
+export interface MetricaRequerimiento extends Requerimiento {
+  dias_respuesta_tin: number | null
+  dias_en_estado_actual: number | null
+  dias_desarrollo: number | null
+  dias_pruebas: number | null
+  cumple_sla: boolean | null
+}
+
+export interface ImpactoEconomico {
+  alcance: Alcance | null
+  tipo_solucion: TipoSolucion | null
+  total_requerimientos: number
+  total_horas_mes: number | null
+  total_horas_anio: number | null
+  total_ahorro_mensual_cop: number | null
+  total_ahorro_anual_cop: number | null
+  promedio_horas_mes: number | null
+}
+
+export interface TopImpacto {
+  id: string
+  numero: string | null
+  identificacion: string
+  alcance: Alcance | null
+  responsable: string | null
+  proceso_interno: ProcesoInterno | null
+  prioridad: number | null
+  estado: Estado
+  horas_ahorradas_mes: number | null
+  ahorro_mensual_cop: number | null
+  ahorro_anual_cop: number | null
+}
+
+// ─── Database schema (compatible con supabase-js v2) ────────────────────────
+export type Database = {
+  public: {
+    Tables: {
+      requerimientos: {
+        Row: Requerimiento
+        Insert: {
+          id?: string
+          numero?: string | null
+          alcance?: Alcance | null
+          identificacion: string
+          prioridad?: number | null
+          estado?: Estado
+          motivo_stand_by?: string | null
+          porcentaje_avance?: number
+          es_borrador?: boolean
+          fecha_envio_solicitud?: string | null
+          fecha_solicitud?: string | null
+          tipo_solicitud?: TipoSolicitud | null
+          empresa?: string | null
+          sucursal?: string | null
+          proceso_igsi?: string | null
+          proceso_interno?: ProcesoInterno | null
+          responsable?: string | null
+          partes_interesadas?: string[] | null
+          nombre_desarrollo?: string | null
+          tipo_solucion?: TipoSolucion | null
+          viabilidad_tecnica?: boolean | null
+          descripcion_situacion_actual?: string | null
+          definicion_requerimiento?: string | null
+          objetivo?: string | null
+          criterios_validacion?: string | null
+          integra_otros_aplicativos?: boolean
+          detalle_integracion?: string | null
+          tipo_operacion_integracion?: string[] | null
+          definicion_usuarios?: string | null
+          impacta?: Impacta | null
+          tipos_cliente?: string[] | null
+          procesos_cargos?: ProcesoCargo[]
+          ventajas_beneficios?: string | null
+          actividades_impacto?: ActividadImpacto[]
+          salario_promedio_cargo?: number | null
+          horas_laborales_mes?: number
+          valor_hora_hombre?: number | null
+          horas_ahorradas_mes?: number | null
+          ahorro_mensual_cop?: number | null
+          ahorro_anual_cop?: number | null
+          beneficios_cualitativos?: BeneficioCualitativo[]
+          fecha_envio_tin?: string | null
+          fecha_inicio_desarrollo?: string | null
+          fecha_estimada_entrega?: string | null
+          fecha_real_entrega?: string | null
+          inicio_pruebas_usuario?: string | null
+          fin_pruebas_usuario?: string | null
+          fecha_salida_vivo?: string | null
+          fecha_cierre?: string | null
+          horas_hombre_ahorradas?: number | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          numero?: string | null
+          alcance?: Alcance | null
+          identificacion?: string
+          prioridad?: number | null
+          estado?: Estado
+          motivo_stand_by?: string | null
+          porcentaje_avance?: number
+          es_borrador?: boolean
+          fecha_envio_solicitud?: string | null
+          fecha_solicitud?: string | null
+          tipo_solicitud?: TipoSolicitud | null
+          empresa?: string | null
+          sucursal?: string | null
+          proceso_igsi?: string | null
+          proceso_interno?: ProcesoInterno | null
+          responsable?: string | null
+          partes_interesadas?: string[] | null
+          nombre_desarrollo?: string | null
+          tipo_solucion?: TipoSolucion | null
+          viabilidad_tecnica?: boolean | null
+          descripcion_situacion_actual?: string | null
+          definicion_requerimiento?: string | null
+          objetivo?: string | null
+          criterios_validacion?: string | null
+          integra_otros_aplicativos?: boolean
+          detalle_integracion?: string | null
+          tipo_operacion_integracion?: string[] | null
+          definicion_usuarios?: string | null
+          impacta?: Impacta | null
+          tipos_cliente?: string[] | null
+          procesos_cargos?: ProcesoCargo[]
+          ventajas_beneficios?: string | null
+          actividades_impacto?: ActividadImpacto[]
+          salario_promedio_cargo?: number | null
+          horas_laborales_mes?: number
+          valor_hora_hombre?: number | null
+          horas_ahorradas_mes?: number | null
+          ahorro_mensual_cop?: number | null
+          ahorro_anual_cop?: number | null
+          beneficios_cualitativos?: BeneficioCualitativo[]
+          fecha_envio_tin?: string | null
+          fecha_inicio_desarrollo?: string | null
+          fecha_estimada_entrega?: string | null
+          fecha_real_entrega?: string | null
+          inicio_pruebas_usuario?: string | null
+          fin_pruebas_usuario?: string | null
+          fecha_salida_vivo?: string | null
+          fecha_cierre?: string | null
+          horas_hombre_ahorradas?: number | null
+        }
+        Relationships: []
+      }
+      historial_estados: {
+        Row: HistorialEstado
+        Insert: {
+          id?: string
+          requerimiento_id: string
+          estado_anterior?: Estado | null
+          estado_nuevo: Estado
+          observacion?: string | null
+          usuario?: string | null
+          created_at?: string
+        }
+        Update: {
+          estado_anterior?: Estado | null
+          estado_nuevo?: Estado
+          observacion?: string | null
+          usuario?: string | null
+        }
+        Relationships: []
+      }
+      comentarios: {
+        Row: Comentario
+        Insert: {
+          id?: string
+          requerimiento_id: string
+          comentario: string
+          usuario: string
+          created_at?: string
+        }
+        Update: {
+          comentario?: string
+          usuario?: string
+        }
+        Relationships: []
+      }
+      anexos: {
+        Row: Anexo
+        Insert: {
+          id?: string
+          requerimiento_id: string
+          nombre_archivo: string
+          url_storage: string
+          tipo_archivo?: string | null
+          tamanio_bytes?: number | null
+          created_at?: string
+        }
+        Update: {
+          nombre_archivo?: string
+          url_storage?: string
+          tipo_archivo?: string | null
+          tamanio_bytes?: number | null
+        }
+        Relationships: []
+      }
+    }
+    Views: {
+      v_metricas_requerimientos: {
+        Row: MetricaRequerimiento
+        Relationships: []
+      }
+      v_impacto_economico: {
+        Row: ImpactoEconomico
+        Relationships: []
+      }
+      v_top_impacto: {
+        Row: TopImpacto
+        Relationships: []
+      }
+    }
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
+  }
+}
