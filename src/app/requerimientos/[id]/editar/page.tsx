@@ -1,13 +1,22 @@
+import { notFound } from 'next/navigation'
+import { createClient } from '@/lib/supabase/server'
+import { RequerimientoWizard } from '@/components/requerimientos/RequerimientoWizard'
+
 interface Props {
   params: Promise<{ id: string }>
 }
 
 export default async function EditarRequerimientoPage({ params }: Props) {
   const { id } = await params
-  return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold text-slate-800">Editar Requerimiento</h1>
-      <p className="mt-1 text-slate-500">ID: {id}</p>
-    </div>
-  )
+  const supabase = await createClient()
+
+  const { data: requerimiento, error } = await supabase
+    .from('requerimientos')
+    .select('*')
+    .eq('id', id)
+    .single()
+
+  if (error || !requerimiento) notFound()
+
+  return <RequerimientoWizard requerimiento={requerimiento as any} />
 }
