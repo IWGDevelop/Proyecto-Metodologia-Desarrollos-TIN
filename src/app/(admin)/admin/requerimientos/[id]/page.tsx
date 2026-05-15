@@ -11,6 +11,7 @@ import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
 import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
+import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -88,6 +89,13 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>
           <TabsTrigger value="impacto">Impacto HH</TabsTrigger>
           <TabsTrigger value="historial">Historial</TabsTrigger>
+          <TabsTrigger value="impacto-real">
+            Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
+              <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">
+                {req.impacto_economico_total_anual_real ? '✓' : '!'}
+              </span>
+            )}
+          </TabsTrigger>
           <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="anexos">Anexos</TabsTrigger>
@@ -226,6 +234,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             isAdmin
             currentUserId={perfilAdmin?.id}
           />
+        </TabsContent>
+
+        <TabsContent value="impacto-real" className="mt-4">
+          <TabImpactoReal req={req as any} />
         </TabsContent>
 
         <TabsContent value="reuniones" className="mt-4">

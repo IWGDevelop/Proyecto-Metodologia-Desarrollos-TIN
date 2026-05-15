@@ -96,6 +96,11 @@ export interface BeneficioCualitativo {
   descripcion: string
 }
 
+export interface BeneficioCualitativoReal {
+  descripcion: string
+  valor_anual_cop: number
+}
+
 // ─── Tabla: requerimientos ───────────────────────────────────────────────────
 export interface Requerimiento {
   id: string
@@ -152,6 +157,13 @@ export interface Requerimiento {
   // Campos de migración: cuantificación económica de beneficios cualitativos
   total_beneficios_cualitativos_anual: number | null
   impacto_economico_total_anual: number | null
+  // Impacto REAL (registrado al finalizar el requerimiento)
+  horas_ahorradas_mes_real: number | null
+  ahorro_mensual_cop_real: number | null
+  ahorro_anual_cop_real: number | null
+  beneficios_cualitativos_real: BeneficioCualitativoReal[]
+  total_beneficios_cualitativos_anual_real: number | null
+  impacto_economico_total_anual_real: number | null
   created_at: string
   updated_at: string
 }

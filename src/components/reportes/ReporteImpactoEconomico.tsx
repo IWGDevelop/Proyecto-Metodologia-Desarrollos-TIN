@@ -1,5 +1,8 @@
 'use client'
 
+'use client'
+
+import { useState } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell, Legend,
@@ -41,21 +44,44 @@ interface Props {
   isLoading: boolean
 }
 
+const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
+
+type Tab = 'estimado' | 'real'
+
 export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
-  // Incluye reqs con impacto HH O con beneficios cualitativos
-  const conImpacto = datos.filter(r =>
-    (r.ahorro_anual_cop && r.ahorro_anual_cop > 0) ||
-    (r.total_beneficios_cualitativos_anual && r.total_beneficios_cualitativos_anual > 0)
+  const [tab, setTab] = useState<Tab>('estimado')
+
+  // Estimado: reqs NO finalizados con impacto calculado
+  const conImpactoEst = datos.filter(r =>
+    !ESTADOS_FINALIZADOS.includes(r.estado as string) &&
+    ((r.ahorro_anual_cop && r.ahorro_anual_cop > 0) ||
+     (r.total_beneficios_cualitativos_anual && r.total_beneficios_cualitativos_anual > 0))
   )
 
-  const impactoTotalFn = (r: MetricaRequerimiento) =>
-    r.impacto_economico_total_anual ?? ((r.ahorro_anual_cop ?? 0) + (r.total_beneficios_cualitativos_anual ?? 0))
+  // Real: reqs finalizados con impacto real registrado
+  const conImpactoReal = datos.filter(r =>
+    ESTADOS_FINALIZADOS.includes(r.estado as string) &&
+    (r as any).impacto_economico_total_anual_real !== null
+  )
 
-  const totalMensual         = conImpacto.reduce((s, r) => s + (r.ahorro_mensual_cop ?? 0), 0)
-  const totalAnualHH         = conImpacto.reduce((s, r) => s + (r.ahorro_anual_cop ?? 0), 0)
-  const totalCualitativos    = conImpacto.reduce((s, r) => s + (r.total_beneficios_cualitativos_anual ?? 0), 0)
+  const conImpacto = tab === 'estimado' ? conImpactoEst : conImpactoReal
+
+  const impactoTotalFn = (r: MetricaRequerimiento) => {
+    if (tab === 'real') return (r as any).impacto_economico_total_anual_real ?? 0
+    return r.impacto_economico_total_anual ?? ((r.ahorro_anual_cop ?? 0) + (r.total_beneficios_cualitativos_anual ?? 0))
+  }
+
+  const ahorroMensualFn = (r: MetricaRequerimiento) =>
+    tab === 'real' ? ((r as any).ahorro_mensual_cop_real ?? 0) : (r.ahorro_mensual_cop ?? 0)
+
+  const horasMesFn = (r: MetricaRequerimiento) =>
+    tab === 'real' ? ((r as any).horas_ahorradas_mes_real ?? 0) : (r.horas_ahorradas_mes ?? 0)
+
+  const totalMensual         = conImpacto.reduce((s, r) => s + ahorroMensualFn(r), 0)
+  const totalAnualHH         = conImpacto.reduce((s, r) => s + (tab === 'real' ? ((r as any).ahorro_anual_cop_real ?? 0) : (r.ahorro_anual_cop ?? 0)), 0)
+  const totalCualitativos    = conImpacto.reduce((s, r) => s + (tab === 'real' ? ((r as any).total_beneficios_cualitativos_anual_real ?? 0) : (r.total_beneficios_cualitativos_anual ?? 0)), 0)
   const totalImpacto         = conImpacto.reduce((s, r) => s + impactoTotalFn(r), 0)
-  const totalHorasMes        = conImpacto.reduce((s, r) => s + (r.horas_ahorradas_mes ?? 0), 0)
+  const totalHorasMes        = conImpacto.reduce((s, r) => s + horasMesFn(r), 0)
   const promedioAhorro       = conImpacto.length ? totalImpacto / conImpacto.length : 0
 
   const top10 = [...conImpacto]
@@ -65,9 +91,9 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
       nombre: (r.nombre_desarrollo ?? r.identificacion ?? '').slice(0, 30) + '...',
       nombreCompleto: r.nombre_desarrollo ?? r.identificacion,
       responsable: r.responsable,
-      mensual: r.ahorro_mensual_cop ?? 0,
+      mensual: ahorroMensualFn(r),
       anual: impactoTotalFn(r),
-      cualitativos: r.total_beneficios_cualitativos_anual ?? 0,
+      cualitativos: tab === 'real' ? ((r as any).total_beneficios_cualitativos_anual_real ?? 0) : (r.total_beneficios_cualitativos_anual ?? 0),
     }))
 
   // Agrupado por alcance + tipo_solucion
@@ -102,15 +128,43 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-wrap gap-3">
         <div className="flex items-center gap-2">
           <TrendingUp size={18} className="text-emerald-600" />
           <h2 className="text-base font-bold text-slate-800">Impacto económico consolidado</h2>
         </div>
-        <Button variant="outline" size="sm" onClick={exportar} className="gap-1.5 text-xs">
-          <Download size={13} /> Exportar Excel
-        </Button>
+        <div className="flex items-center gap-2">
+          {/* Tabs Estimado / Real */}
+          <div className="flex rounded-lg border border-slate-200 bg-slate-50 p-0.5">
+            {(['estimado', 'real'] as Tab[]).map(t => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={cn(
+                  'rounded-md px-3 py-1 text-xs font-semibold transition-all',
+                  tab === t
+                    ? t === 'real'
+                      ? 'bg-emerald-600 text-white shadow-sm'
+                      : 'bg-white text-slate-700 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                )}
+              >
+                {t === 'estimado' ? '📊 Estimado' : '✅ Real'}
+              </button>
+            ))}
+          </div>
+          <Button variant="outline" size="sm" onClick={exportar} className="gap-1.5 text-xs">
+            <Download size={13} /> Exportar Excel
+          </Button>
+        </div>
       </div>
+
+      {/* Aviso contextual */}
+      <p className="text-xs text-slate-400">
+        {tab === 'estimado'
+          ? `📊 Valores estimados — requerimientos en curso o pendientes (${conImpactoEst.length})`
+          : `✅ Valores reales — requerimientos finalizados con datos registrados (${conImpactoReal.length})`}
+      </p>
 
       {/* Cards KPI */}
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -202,10 +256,12 @@ export function ReporteImpactoEconomico({ datos, isLoading }: Props) {
                       </td>
                       <td className="px-3 py-2 text-slate-500">{r.alcance ?? '—'}</td>
                       <td className="px-3 py-2 text-slate-500">{r.responsable ?? '—'}</td>
-                      <td className="px-3 py-2 font-medium">{r.horas_ahorradas_mes?.toFixed(1) ?? '—'} h</td>
-                      <td className="px-3 py-2 font-medium text-emerald-600">{formatCOP(r.ahorro_mensual_cop)}</td>
+                      <td className="px-3 py-2 font-medium">{horasMesFn(r).toFixed(1)} h</td>
+                      <td className="px-3 py-2 font-medium text-emerald-600">{formatCOP(ahorroMensualFn(r))}</td>
                       <td className="px-3 py-2 font-medium text-blue-600">
-                        {r.total_beneficios_cualitativos_anual ? formatCOP(r.total_beneficios_cualitativos_anual) : <span className="text-slate-300">—</span>}
+                        {(tab === 'real' ? (r as any).total_beneficios_cualitativos_anual_real : r.total_beneficios_cualitativos_anual)
+                          ? formatCOP(tab === 'real' ? (r as any).total_beneficios_cualitativos_anual_real : r.total_beneficios_cualitativos_anual)
+                          : <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-3 py-2 font-bold text-emerald-700">{formatCOP(impactoTotalFn(r))}</td>
                       <td className="px-3 py-2 text-center text-slate-500">

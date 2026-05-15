@@ -20,9 +20,12 @@ import { KanbanCardDetail } from './KanbanCardDetail'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ESTADOS, COLOR_PALETTE } from '@/lib/constants'
 import { cambiarEstado } from '@/actions/requerimientos'
+import { guardarImpactoReal } from '@/actions/impacto-real'
 import { useKanban, useInvalidateKanban, useEstadosKanban, type KanbanData } from '@/hooks/useKanban'
-import { cn } from '@/lib/utils'
+import { cn, formatCOP } from '@/lib/utils'
 import type { MetricaRequerimiento, EstadoKanban } from '@/lib/supabase/types'
+
+const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
 
 interface PendingMove {
   card: MetricaRequerimiento
@@ -80,6 +83,10 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const [observacion, setObservacion] = useState('')
   const [confirmando, setConfirmando] = useState(false)
+  // Impacto real al finalizar
+  const [showImpactoReal, setShowImpactoReal] = useState(false)
+  const [horasMesReal, setHorasMesReal] = useState<number>(0)
+  const [valorHoraReal, setValorHoraReal] = useState<number>(0)
   const [detailCard, setDetailCard] = useState<MetricaRequerimiento | null>(null)
   const [filtros, setFiltros] = useState<FiltrosKanban>(FILTROS_INIT)
 
@@ -123,6 +130,10 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     if (!card || fromEstado === toEstado) return
     setPendingMove({ card, fromEstado, toEstado })
     setObservacion('')
+    setShowImpactoReal(false)
+    // Pre-fill impacto real con los estimados del card
+    setHorasMesReal((card as any).horas_ahorradas_mes ?? 0)
+    setValorHoraReal((card as any).valor_hora_hombre ?? 0)
   }, [data])
 
   const confirmarCambio = async () => {
@@ -149,6 +160,19 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
 
     try {
       await cambiarEstado(card.id, toEstado, observacion || undefined)
+      // Guardar impacto real si se ingresaron datos y es estado finalizado
+      if (ESTADOS_FINALIZADOS.includes(toEstado) && showImpactoReal && horasMesReal > 0) {
+        const ahorroMensual = Math.round(horasMesReal * valorHoraReal)
+        const ahorroAnual   = ahorroMensual * 12
+        await guardarImpactoReal(card.id, {
+          horas_ahorradas_mes_real: horasMesReal,
+          ahorro_mensual_cop_real:  ahorroMensual,
+          ahorro_anual_cop_real:    ahorroAnual,
+          beneficios_cualitativos_real: [],
+          total_beneficios_cualitativos_anual_real: null,
+          impacto_economico_total_anual_real: ahorroAnual,
+        })
+      }
       toast.success('Estado actualizado correctamente')
       invalidar()
       setLocalData(null)
@@ -158,10 +182,15 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     } finally {
       setConfirmando(false)
       setObservacion('')
+      setShowImpactoReal(false)
     }
   }
 
-  const cancelarCambio = () => { setPendingMove(null); setObservacion('') }
+  const cancelarCambio = () => {
+    setPendingMove(null)
+    setObservacion('')
+    setShowImpactoReal(false)
+  }
 
   const isLoading = loadingData || loadingColumnas
 
@@ -240,6 +269,62 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
                     onChange={e => setObservacion(e.target.value)}
                   />
                 </div>
+
+                {/* Impacto real — solo para estados finalizados */}
+                {ESTADOS_FINALIZADOS.includes(pendingMove.toEstado) && (
+                  <div className="rounded-xl border border-emerald-200 bg-emerald-50/50 p-3 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-emerald-800">
+                        📊 Registrar impacto real (opcional)
+                      </p>
+                      <button
+                        onClick={() => setShowImpactoReal(v => !v)}
+                        className="text-xs text-emerald-600 hover:underline"
+                      >
+                        {showImpactoReal ? 'Ocultar' : 'Completar ahora'}
+                      </button>
+                    </div>
+                    {!showImpactoReal && (
+                      <p className="text-xs text-emerald-700">
+                        Puedes registrar las horas y ahorros reales obtenidos. También puedes hacerlo después desde el detalle del requerimiento → pestaña <strong>Impacto Real</strong>.
+                      </p>
+                    )}
+                    {showImpactoReal && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-500">
+                            Horas ahorradas/mes
+                            {(pendingMove.card as any).horas_ahorradas_mes && (
+                              <span className="ml-1 text-slate-400">(est. {(pendingMove.card as any).horas_ahorradas_mes?.toFixed(1)} h)</span>
+                            )}
+                          </label>
+                          <input
+                            type="number" min={0} step={0.5}
+                            value={horasMesReal}
+                            onChange={e => setHorasMesReal(parseFloat(e.target.value) || 0)}
+                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <label className="text-xs text-slate-500">Valor hora hombre (COP)</label>
+                          <input
+                            type="number" min={0} step={1000}
+                            value={valorHoraReal}
+                            onChange={e => setValorHoraReal(parseFloat(e.target.value) || 0)}
+                            className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-emerald-400"
+                          />
+                        </div>
+                        {horasMesReal > 0 && valorHoraReal > 0 && (
+                          <div className="col-span-2 rounded-lg bg-emerald-100 px-3 py-2 text-xs text-emerald-800">
+                            Ahorro anual real estimado: <strong>{formatCOP(Math.round(horasMesReal * valorHoraReal) * 12)}</strong>
+                            <br />
+                            <span className="text-emerald-600">Podrás agregar beneficios cualitativos desde el detalle</span>
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             )
           })()}
