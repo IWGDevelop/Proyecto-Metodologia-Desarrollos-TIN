@@ -259,7 +259,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         </TabsContent>
 
         <TabsContent value="reuniones" className="mt-4">
-          <TabReuniones requerimientoId={id} />
+          <TabReuniones requerimientoId={id} isAdmin={perfilAdmin?.rol === 'ADMIN_TIN'} />
         </TabsContent>
 
         <TabsContent value="comentarios" className="mt-4">

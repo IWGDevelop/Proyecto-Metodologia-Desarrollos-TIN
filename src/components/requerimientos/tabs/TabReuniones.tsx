@@ -6,6 +6,7 @@ import {
   getReuniones, crearReunion, agregarTareaReunion,
   toggleTareaReunion, eliminarTareaReunion, eliminarReunion,
   guardarRespuestaTarea, registrarAnexoTarea, eliminarAnexoTarea,
+  actualizarMotivoYPenalizacion,
 } from '@/actions/reuniones'
 import { getPerfilesActivos } from '@/actions/perfiles'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -13,15 +14,15 @@ import { storage } from '@/lib/firebase'
 import { Skeleton } from '@/components/ui/skeleton'
 import {
   Video, PlayCircle, Plus, Trash2, CheckSquare, Square, Lock,
-  ChevronDown, ChevronUp, CalendarCheck, UserCheck, X, Link2,
+  ChevronDown, ChevronUp, CalendarCheck, Calendar, UserCheck, X, Link2,
   Paperclip, MessageSquare, AlertCircle, FileText, Image, File,
-  Download,
+  Download, DollarSign, Clock,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import { cn } from '@/lib/utils'
+import { cn, formatCOP } from '@/lib/utils'
 import type { Reunion, TareaReunion, AnexoTareaReunion, Perfil } from '@/lib/supabase/types'
 
-interface Props { requerimientoId: string }
+interface Props { requerimientoId: string; isAdmin?: boolean }
 
 const TIPOS_PERMITIDOS = [
   'application/pdf', 'application/msword',
@@ -39,15 +40,23 @@ function formatFecha(str: string | null) {
   })
 }
 
-function badgeFecha(str: string | null, completada: boolean) {
+function badgeFechaCompromiso(str: string | null, completada: boolean) {
   if (!str) return null
   const hoy  = new Date(); hoy.setHours(0, 0, 0, 0)
   const date = new Date(str + 'T12:00:00')
-  if (completada) return { label: formatFecha(str), cls: 'bg-emerald-50 text-emerald-700' }
-  if (date < hoy) return { label: formatFecha(str), cls: 'bg-red-50 text-red-600' }
+  if (completada) return { label: `Compromiso: ${formatFecha(str)}`, cls: 'bg-slate-100 text-slate-500' }
+  if (date < hoy) return { label: `Vencida: ${formatFecha(str)}`, cls: 'bg-red-50 text-red-600' }
   if (Math.ceil((date.getTime() - hoy.getTime()) / 86400000) <= 3)
     return { label: formatFecha(str), cls: 'bg-amber-50 text-amber-700' }
   return { label: formatFecha(str), cls: 'bg-slate-100 text-slate-600' }
+}
+
+function calcDiasTarde(fechaCumplimiento: string | null, fechaCompromiso: string | null): number {
+  if (!fechaCumplimiento || !fechaCompromiso) return 0
+  return Math.round(
+    (new Date(fechaCumplimiento + 'T12:00:00').getTime() -
+     new Date(fechaCompromiso  + 'T12:00:00').getTime()) / 86400000
+  )
 }
 
 function formatBytes(bytes: number | null) {
@@ -77,23 +86,63 @@ function VideoChip({ url }: { url: string }) {
   )
 }
 
-/* ── Panel de evidencia (respuesta + anexos) de una tarea ────────────────── */
+/* ── Panel de evidencia + cumplimiento ───────────────────────────────────── */
 function PanelEvidencia({
-  tarea, onRefresh,
+  tarea, isAdmin, onRefresh,
 }: {
-  tarea: TareaReunion; onRefresh: () => void
+  tarea: TareaReunion; isAdmin: boolean; onRefresh: () => void
 }) {
   const inputRef = useRef<HTMLInputElement>(null)
-  const [respuesta, setRespuesta]   = useState(tarea.respuesta ?? '')
-  const [uploading, setUploading]   = useState<string[]>([])
-  const [isPending, startT]         = useTransition()
-  const respuestaCambiada = respuesta.trim() !== (tarea.respuesta ?? '').trim()
+  const [respuesta, setRespuesta]                 = useState(tarea.respuesta ?? '')
+  const [uploading, setUploading]                 = useState<string[]>([])
+  const [isPending, startT]                       = useTransition()
+  const [motivo, setMotivo]                       = useState(tarea.motivo_incumplimiento ?? '')
+  const [penalizacion, setPenalizacion]           = useState<number | null>(tarea.penalizacion_cop ?? null)
+  const [fechaCumplManual, setFechaCumplManual]   = useState('')
+  const [isPendingC, startTC]                     = useTransition()
+
+  const respuestaCambiada    = respuesta.trim() !== (tarea.respuesta ?? '').trim()
+  const motivoCambiado       = motivo.trim() !== (tarea.motivo_incumplimiento ?? '').trim()
+  const penalizacionCambiada = penalizacion !== (tarea.penalizacion_cop ?? null)
+
+  const diasTarde = calcDiasTarde(tarea.fecha_cumplimiento, tarea.fecha_compromiso)
+  const esTarde   = diasTarde > 0
 
   const guardarRespuesta = () => {
     startT(async () => {
       const res = await guardarRespuestaTarea(tarea.id, respuesta)
       if (res.ok) { toast.success('Respuesta guardada'); onRefresh() }
       else toast.error(res.error ?? 'Error al guardar')
+    })
+  }
+
+  const guardarFechaCumpl = () => {
+    startTC(async () => {
+      const res = await actualizarMotivoYPenalizacion(tarea.id, {
+        fecha_cumplimiento: fechaCumplManual || null,
+      })
+      if (res.ok) { toast.success('Fecha de cumplimiento registrada'); onRefresh() }
+      else toast.error(res.error ?? 'Error')
+    })
+  }
+
+  const guardarMotivo = () => {
+    startTC(async () => {
+      const res = await actualizarMotivoYPenalizacion(tarea.id, {
+        motivo_incumplimiento: motivo.trim() || null,
+      })
+      if (res.ok) { toast.success('Motivo guardado'); onRefresh() }
+      else toast.error(res.error ?? 'Error')
+    })
+  }
+
+  const guardarPenalizacion = () => {
+    startTC(async () => {
+      const res = await actualizarMotivoYPenalizacion(tarea.id, {
+        penalizacion_cop: penalizacion,
+      })
+      if (res.ok) { toast.success('Penalización guardada'); onRefresh() }
+      else toast.error(res.error ?? 'Error')
     })
   }
 
@@ -133,6 +182,7 @@ function PanelEvidencia({
 
   return (
     <div className="ml-7 mt-2 space-y-3 rounded-xl border border-slate-200 bg-white p-3">
+
       {/* Respuesta */}
       <div className="space-y-1.5">
         <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -146,11 +196,8 @@ function PanelEvidencia({
           className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
         />
         {respuestaCambiada && (
-          <button
-            onClick={guardarRespuesta}
-            disabled={isPending}
-            className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-          >
+          <button onClick={guardarRespuesta} disabled={isPending}
+            className="rounded-lg bg-blue-600 px-3 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
             {isPending ? 'Guardando...' : 'Guardar respuesta'}
           </button>
         )}
@@ -159,10 +206,9 @@ function PanelEvidencia({
         )}
       </div>
 
-      {/* Separador */}
       <div className="border-t border-slate-100" />
 
-      {/* Anexos de evidencia */}
+      {/* Anexos */}
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
@@ -173,30 +219,19 @@ function PanelEvidencia({
               </span>
             )}
           </label>
-          <button
-            onClick={() => inputRef.current?.click()}
-            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
-          >
+          <button onClick={() => inputRef.current?.click()}
+            className="flex items-center gap-1 rounded-lg border border-slate-200 bg-slate-50 px-2.5 py-1 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600">
             <Plus size={11} /> Adjuntar
           </button>
         </div>
-
-        <input
-          ref={inputRef} type="file" multiple
-          accept={TIPOS_PERMITIDOS.join(',')}
-          className="hidden"
-          onChange={e => Array.from(e.target.files ?? []).forEach(subirAnexo)}
-        />
-
-        {/* Subiendo */}
+        <input ref={inputRef} type="file" multiple accept={TIPOS_PERMITIDOS.join(',')} className="hidden"
+          onChange={e => Array.from(e.target.files ?? []).forEach(subirAnexo)} />
         {uploading.map(nombre => (
           <div key={nombre} className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs text-blue-700">
             <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
             Subiendo {nombre}...
           </div>
         ))}
-
-        {/* Lista de anexos */}
         {tarea.anexos.length > 0 ? (
           <ul className="space-y-1">
             {tarea.anexos.map(a => (
@@ -205,21 +240,14 @@ function PanelEvidencia({
                 <span className="flex-1 truncate text-xs font-medium text-slate-700">{a.nombre_archivo}</span>
                 <span className="shrink-0 text-xs text-slate-400">{formatBytes(a.tamanio_bytes)}</span>
                 <a href={a.url_storage} target="_blank" rel="noopener noreferrer"
-                  className="shrink-0 text-slate-400 hover:text-blue-500">
-                  <Download size={13} />
-                </a>
-                <button onClick={() => handleEliminarAnexo(a)}
-                  className="shrink-0 text-slate-300 hover:text-red-400">
+                  className="shrink-0 text-slate-400 hover:text-blue-500"><Download size={13} /></a>
+                <button onClick={() => handleEliminarAnexo(a)} className="shrink-0 text-slate-300 hover:text-red-400">
                   <X size={12} />
                 </button>
               </li>
             ))}
           </ul>
-        ) : (
-          !uploading.length && (
-            <p className="text-xs text-slate-400 italic">Sin anexos adjuntos</p>
-          )
-        )}
+        ) : (!uploading.length && <p className="text-xs text-slate-400 italic">Sin anexos adjuntos</p>)}
       </div>
 
       {/* Aviso sin evidencia */}
@@ -229,23 +257,156 @@ function PanelEvidencia({
           Agrega una respuesta escrita o al menos un anexo para poder marcar esta tarea como completada.
         </div>
       )}
+
+      {/* ══ Sección de cumplimiento (siempre visible si la tarea está completada) ══ */}
+      {tarea.completada && (
+        <>
+          <div className="border-t border-slate-200" />
+          <div className="space-y-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cumplimiento</p>
+
+            {/* Estado: A tiempo / Incumplida / Sin fecha */}
+            {tarea.fecha_cumplimiento ? (
+              <div className={cn(
+                'flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs font-medium',
+                esTarde ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
+              )}>
+                {esTarde ? (
+                  <div className="space-y-0.5">
+                    <p>
+                      ❌ <strong>Incumplida</strong> — {diasTarde} día{diasTarde !== 1 ? 's' : ''} de retraso
+                    </p>
+                    <p className="font-normal text-red-600/80">
+                      Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
+                      {tarea.fecha_compromiso && ` · Compromiso: ${formatFecha(tarea.fecha_compromiso)}`}
+                    </p>
+                  </div>
+                ) : (
+                  <p>✅ <strong>A tiempo</strong> — Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
+                    {tarea.fecha_compromiso && ` (compromiso: ${formatFecha(tarea.fecha_compromiso)})`}
+                  </p>
+                )}
+              </div>
+            ) : isAdmin ? (
+              /* Admin puede establecer la fecha manualmente para tareas sin fecha_cumplimiento */
+              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 space-y-2">
+                <p className="text-xs text-slate-500">
+                  Fecha de cumplimiento no registrada. Se establece automáticamente al guardar evidencia,
+                  o puede ingresarla manualmente.
+                </p>
+                <div className="flex items-end gap-2">
+                  <div className="space-y-0.5">
+                    <span className="text-[10px] font-medium text-slate-400">Fecha de cumplimiento</span>
+                    <input
+                      type="date"
+                      value={fechaCumplManual}
+                      onChange={e => setFechaCumplManual(e.target.value)}
+                      className="block rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                    />
+                  </div>
+                  {fechaCumplManual && (
+                    <button onClick={guardarFechaCumpl} disabled={isPendingC}
+                      className="rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-50">
+                      {isPendingC ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  )}
+                </div>
+              </div>
+            ) : (
+              <p className="text-xs text-slate-400 italic">
+                Fecha de cumplimiento pendiente — se registrará al guardar evidencia.
+              </p>
+            )}
+
+            {/* Motivo del incumplimiento (cuando hay retraso) */}
+            {esTarde && (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                  <AlertCircle size={12} className="text-red-400" />
+                  Motivo del incumplimiento
+                </label>
+                <textarea
+                  value={motivo}
+                  onChange={e => setMotivo(e.target.value)}
+                  placeholder="Explica por qué no se cumplió en la fecha acordada..."
+                  rows={2}
+                  className="w-full rounded-lg border border-red-100 bg-red-50/30 px-3 py-2 text-sm text-slate-700 outline-none focus:border-red-300 focus:ring-1 focus:ring-red-300 resize-none"
+                />
+                {motivoCambiado && (
+                  <button onClick={guardarMotivo} disabled={isPendingC}
+                    className="rounded-lg bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-700 disabled:opacity-50">
+                    {isPendingC ? 'Guardando...' : 'Guardar motivo'}
+                  </button>
+                )}
+                {tarea.motivo_incumplimiento && !motivoCambiado && (
+                  <p className="text-xs text-slate-500">✓ Motivo registrado</p>
+                )}
+              </div>
+            )}
+
+            {/* Penalización en COP — solo admin puede editar */}
+            {isAdmin ? (
+              <div className="space-y-1.5">
+                <label className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                  <DollarSign size={12} className="text-orange-500" />
+                  Penalización en COP
+                  <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-[10px] font-medium text-orange-600">
+                    Solo admin
+                  </span>
+                </label>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="number" min="0" step="1000"
+                    value={penalizacion ?? ''}
+                    onChange={e => setPenalizacion(e.target.value ? parseFloat(e.target.value) : null)}
+                    placeholder="0"
+                    className="w-48 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm text-slate-700 outline-none focus:border-orange-400 focus:ring-1 focus:ring-orange-400"
+                  />
+                  {penalizacionCambiada && (
+                    <button onClick={guardarPenalizacion} disabled={isPendingC}
+                      className="rounded-lg bg-orange-500 px-3 py-1 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-50">
+                      {isPendingC ? 'Guardando...' : 'Guardar'}
+                    </button>
+                  )}
+                  {tarea.penalizacion_cop != null && !penalizacionCambiada && (
+                    <span className="text-xs font-semibold text-orange-600">
+                      = {formatCOP(tarea.penalizacion_cop)}
+                    </span>
+                  )}
+                </div>
+              </div>
+            ) : (
+              tarea.penalizacion_cop != null && (
+                <div className="flex items-center gap-2 rounded-lg bg-orange-50 px-3 py-2 text-xs">
+                  <DollarSign size={12} className="text-orange-500 shrink-0" />
+                  <span className="text-slate-600">Penalización:</span>
+                  <span className="font-bold text-orange-600">{formatCOP(tarea.penalizacion_cop)}</span>
+                </div>
+              )
+            )}
+          </div>
+        </>
+      )}
     </div>
   )
 }
 
 /* ── Fila de una tarea individual ────────────────────────────────────────── */
 function FilaTarea({
-  tarea, perfiles, onRefresh,
+  tarea, perfiles, isAdmin, onRefresh,
 }: {
-  tarea: TareaReunion; perfiles: Perfil[]; onRefresh: () => void
+  tarea: TareaReunion; perfiles: Perfil[]; isAdmin: boolean; onRefresh: () => void
 }) {
   const [expanded, setExpanded] = useState(false)
   const [isPending, startT]     = useTransition()
 
   const tieneEvidencia = !!(tarea.respuesta?.trim() || tarea.anexos.length > 0)
-  const badge          = badgeFecha(tarea.fecha_compromiso, tarea.completada)
+  const badge          = badgeFechaCompromiso(tarea.fecha_compromiso, tarea.completada)
   const nombre         = perfiles.find(p => p.email === tarea.responsable_email)?.nombre_completo
                          ?? tarea.responsable_email
+
+  const diasTarde = calcDiasTarde(tarea.fecha_cumplimiento, tarea.fecha_compromiso)
+  const esTarde   = diasTarde > 0
 
   const handleToggle = () => {
     if (!tarea.completada && !tieneEvidencia) {
@@ -272,15 +433,11 @@ function FilaTarea({
       'rounded-xl border transition-colors',
       tarea.completada ? 'border-emerald-100 bg-emerald-50/40' : 'border-slate-100 bg-white'
     )}>
-      {/* Fila principal */}
       <div className="flex items-start gap-2 px-3 py-2.5">
         {/* Checkbox / lock */}
-        <button
-          onClick={handleToggle}
-          disabled={isPending}
+        <button onClick={handleToggle} disabled={isPending}
           title={!tieneEvidencia && !tarea.completada ? 'Sin evidencia — agrega respuesta o anexo' : undefined}
-          className="mt-0.5 shrink-0"
-        >
+          className="mt-0.5 shrink-0">
           {tarea.completada
             ? <CheckSquare size={16} className="text-emerald-500" />
             : tieneEvidencia
@@ -296,15 +453,45 @@ function FilaTarea({
           )}>
             {tarea.descripcion}
           </p>
-          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-slate-400">
             {nombre && (
               <span className="flex items-center gap-1">
                 <UserCheck size={10} /> {nombre}
               </span>
             )}
+            {/* Fecha inicio */}
+            {tarea.fecha_inicio && (
+              <span className="flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-slate-500">
+                <Calendar size={10} /> Inicio: {formatFecha(tarea.fecha_inicio)}
+              </span>
+            )}
+            {/* Fecha compromiso */}
             {badge && (
               <span className={cn('rounded-full px-2 py-0.5 font-medium', badge.cls)}>
                 {badge.label}
+              </span>
+            )}
+            {/* Cumplimiento: A tiempo / Incumplida */}
+            {tarea.completada && tarea.fecha_cumplimiento && (
+              <span className={cn(
+                'rounded-full px-2 py-0.5 font-medium',
+                esTarde ? 'bg-red-50 text-red-600' : 'bg-emerald-50 text-emerald-700'
+              )}>
+                {esTarde
+                  ? `❌ Incumplida ${diasTarde}d · ${formatFecha(tarea.fecha_cumplimiento)}`
+                  : `✅ A tiempo · ${formatFecha(tarea.fecha_cumplimiento)}`}
+              </span>
+            )}
+            {/* Cumplimiento pendiente (completada pero sin fecha_cumplimiento) */}
+            {tarea.completada && !tarea.fecha_cumplimiento && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-slate-400 font-medium">
+                <Clock size={9} className="inline mr-0.5" /> Fecha cumpl. pendiente
+              </span>
+            )}
+            {/* Penalización */}
+            {tarea.penalizacion_cop != null && (
+              <span className="flex items-center gap-0.5 rounded-full bg-orange-50 px-2 py-0.5 font-medium text-orange-600">
+                <DollarSign size={9} /> {formatCOP(tarea.penalizacion_cop)}
               </span>
             )}
             {tarea.anexos.length > 0 && (
@@ -320,27 +507,20 @@ function FilaTarea({
           </div>
         </div>
 
-        {/* Acciones */}
-        <button
-          onClick={() => setExpanded(e => !e)}
+        <button onClick={() => setExpanded(e => !e)}
           className="mt-0.5 shrink-0 rounded-lg p-1 text-slate-400 hover:bg-slate-100"
-          title={expanded ? 'Cerrar panel' : 'Respuesta y anexos'}
-        >
+          title={expanded ? 'Cerrar panel' : 'Respuesta y anexos'}>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
-        <button
-          onClick={handleEliminar}
-          disabled={isPending}
-          className="mt-0.5 shrink-0 text-slate-200 hover:text-red-400"
-        >
+        <button onClick={handleEliminar} disabled={isPending}
+          className="mt-0.5 shrink-0 text-slate-200 hover:text-red-400">
           <X size={13} />
         </button>
       </div>
 
-      {/* Panel de evidencia */}
       {expanded && (
         <div className="pb-3 px-3">
-          <PanelEvidencia tarea={tarea} onRefresh={onRefresh} />
+          <PanelEvidencia tarea={tarea} isAdmin={isAdmin} onRefresh={onRefresh} />
         </div>
       )}
     </li>
@@ -348,39 +528,57 @@ function FilaTarea({
 }
 
 /* ── Formulario tarea fila ───────────────────────────────────────────────── */
-interface TareaForm { descripcion: string; responsable_email: string; fecha_compromiso: string }
-const TAREA_VACIA: TareaForm = { descripcion: '', responsable_email: '', fecha_compromiso: '' }
+interface TareaForm {
+  descripcion: string
+  responsable_email: string
+  fecha_inicio: string
+  fecha_compromiso: string
+}
+const TAREA_VACIA: TareaForm = { descripcion: '', responsable_email: '', fecha_inicio: '', fecha_compromiso: '' }
 
 function FilaTareaForm({ tarea, onChange, onRemove, perfiles, idx }: {
   tarea: TareaForm; onChange: (t: TareaForm) => void
   onRemove?: () => void; perfiles: Perfil[]; idx: number
 }) {
   return (
-    <div className="grid gap-2 rounded-lg border border-slate-200 bg-slate-50 p-2.5 sm:grid-cols-[1fr_auto_auto_auto]">
+    <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-2">
       <input
         placeholder={`Tarea ${idx + 1}...`}
         value={tarea.descripcion}
         onChange={e => onChange({ ...tarea, descripcion: e.target.value })}
         className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
       />
-      <select
-        value={tarea.responsable_email}
-        onChange={e => onChange({ ...tarea, responsable_email: e.target.value })}
-        className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400"
-      >
-        <option value="">Sin responsable</option>
-        {perfiles.map(p => <option key={p.id} value={p.email}>{p.nombre_completo}</option>)}
-      </select>
-      <input
-        type="date" value={tarea.fecha_compromiso}
-        onChange={e => onChange({ ...tarea, fecha_compromiso: e.target.value })}
-        className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
-      />
-      {onRemove && (
-        <button type="button" onClick={onRemove} className="text-slate-300 hover:text-red-400">
-          <X size={14} />
-        </button>
-      )}
+      <div className="grid gap-2 grid-cols-2 sm:grid-cols-[1fr_auto_auto_auto]">
+        <select
+          value={tarea.responsable_email}
+          onChange={e => onChange({ ...tarea, responsable_email: e.target.value })}
+          className="col-span-2 sm:col-span-1 rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm text-slate-700 outline-none focus:border-blue-400"
+        >
+          <option value="">Sin responsable</option>
+          {perfiles.map(p => <option key={p.id} value={p.email}>{p.nombre_completo}</option>)}
+        </select>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium text-slate-400">Inicio</span>
+          <input
+            type="date" value={tarea.fecha_inicio}
+            onChange={e => onChange({ ...tarea, fecha_inicio: e.target.value })}
+            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+          />
+        </div>
+        <div className="flex flex-col gap-0.5">
+          <span className="text-[10px] font-medium text-slate-400">Compromiso</span>
+          <input
+            type="date" value={tarea.fecha_compromiso}
+            onChange={e => onChange({ ...tarea, fecha_compromiso: e.target.value })}
+            className="rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+          />
+        </div>
+        {onRemove && (
+          <button type="button" onClick={onRemove} className="self-end pb-1.5 text-slate-300 hover:text-red-400">
+            <X size={14} />
+          </button>
+        )}
+      </div>
     </div>
   )
 }
@@ -406,9 +604,10 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
         requerimientoId,
         { titulo: titulo.trim(), fecha_reunion: fecha, url_video: urlVideo || undefined, notas: notas || undefined },
         tareasValidas.map(t => ({
-          descripcion: t.descripcion.trim(),
+          descripcion:       t.descripcion.trim(),
           responsable_email: t.responsable_email || undefined,
-          fecha_compromiso: t.fecha_compromiso || undefined,
+          fecha_inicio:      t.fecha_inicio      || undefined,
+          fecha_compromiso:  t.fecha_compromiso  || undefined,
         }))
       )
       if (res.ok) { toast.success('Reunión registrada'); onCreated() }
@@ -423,18 +622,14 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-500">Título <span className="text-red-500">*</span></label>
-          <input
-            placeholder="Reunión de levantamiento..."
+          <input placeholder="Reunión de levantamiento..."
             value={titulo} onChange={e => setTitulo(e.target.value)}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-          />
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" />
         </div>
         <div className="space-y-1">
           <label className="text-xs font-medium text-slate-500">Fecha <span className="text-red-500">*</span></label>
-          <input
-            type="date" value={fecha} onChange={e => setFecha(e.target.value)}
-            className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-          />
+          <input type="date" value={fecha} onChange={e => setFecha(e.target.value)}
+            className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" />
         </div>
       </div>
 
@@ -442,21 +637,16 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
         <label className="flex items-center gap-1 text-xs font-medium text-slate-500">
           <Link2 size={11} /> URL del video (YouTube o Google Drive)
         </label>
-        <input
-          placeholder="https://youtube.com/... o https://drive.google.com/..."
+        <input placeholder="https://youtube.com/... o https://drive.google.com/..."
           value={urlVideo} onChange={e => setUrlVideo(e.target.value)}
-          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
-        />
+          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400" />
       </div>
 
       <div className="space-y-1">
         <label className="text-xs font-medium text-slate-500">Notas / resumen</label>
-        <textarea
-          placeholder="Puntos tratados, decisiones, acuerdos..."
-          value={notas} onChange={e => setNotas(e.target.value)}
-          rows={2}
-          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
-        />
+        <textarea placeholder="Puntos tratados, decisiones, acuerdos..."
+          value={notas} onChange={e => setNotas(e.target.value)} rows={2}
+          className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none" />
       </div>
 
       <div className="space-y-2">
@@ -464,37 +654,28 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
           <label className="text-xs font-semibold text-slate-600">
             Tareas generadas ({tareas.filter(t => t.descripcion.trim()).length})
           </label>
-          <button
-            type="button"
-            onClick={() => setTareas(prev => [...prev, { ...TAREA_VACIA }])}
-            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800"
-          >
+          <button type="button" onClick={() => setTareas(prev => [...prev, { ...TAREA_VACIA }])}
+            className="flex items-center gap-1 text-xs text-blue-600 hover:text-blue-800">
             <Plus size={12} /> Agregar tarea
           </button>
         </div>
         <div className="space-y-2">
           {tareas.map((t, i) => (
-            <FilaTareaForm
-              key={i} idx={i} tarea={t} perfiles={perfiles}
+            <FilaTareaForm key={i} idx={i} tarea={t} perfiles={perfiles}
               onChange={u => setTareas(prev => prev.map((p, j) => j === i ? u : p))}
-              onRemove={tareas.length > 1 ? () => setTareas(prev => prev.filter((_, j) => j !== i)) : undefined}
-            />
+              onRemove={tareas.length > 1 ? () => setTareas(prev => prev.filter((_, j) => j !== i)) : undefined} />
           ))}
         </div>
-        <p className="text-xs text-slate-400">Descripción · Responsable · Fecha compromiso</p>
+        <p className="text-xs text-slate-400">Descripción · Responsable · Fecha inicio · Fecha compromiso</p>
       </div>
 
       <div className="flex justify-end gap-2">
-        <button
-          type="button" onClick={onCancel}
-          className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50"
-        >
+        <button type="button" onClick={onCancel}
+          className="rounded-lg border border-slate-200 bg-white px-4 py-1.5 text-sm text-slate-600 hover:bg-slate-50">
           Cancelar
         </button>
-        <button
-          type="button" onClick={handleSubmit} disabled={isPending}
-          className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
-        >
+        <button type="button" onClick={handleSubmit} disabled={isPending}
+          className="rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
           {isPending ? 'Guardando...' : 'Guardar reunión'}
         </button>
       </div>
@@ -503,8 +684,8 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
 }
 
 /* ── Tarjeta de una reunión ──────────────────────────────────────────────── */
-function CardReunion({ reunion, perfiles, onRefresh }: {
-  reunion: Reunion; perfiles: Perfil[]; onRefresh: () => void
+function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
+  reunion: Reunion; perfiles: Perfil[]; isAdmin: boolean; onRefresh: () => void
 }) {
   const [expanded, setExpanded]     = useState(true)
   const [addingTask, setAddingTask] = useState(false)
@@ -523,9 +704,10 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
     if (!nuevaTarea.descripcion.trim()) { toast.error('Escribe la descripción'); return }
     startT(async () => {
       const res = await agregarTareaReunion(reunion.id, {
-        descripcion: nuevaTarea.descripcion.trim(),
+        descripcion:       nuevaTarea.descripcion.trim(),
         responsable_email: nuevaTarea.responsable_email || undefined,
-        fecha_compromiso: nuevaTarea.fecha_compromiso || undefined,
+        fecha_inicio:      nuevaTarea.fecha_inicio      || undefined,
+        fecha_compromiso:  nuevaTarea.fecha_compromiso  || undefined,
       })
       if (res.ok) { setNuevaTarea({ ...TAREA_VACIA }); setAddingTask(false); onRefresh() }
       else toast.error(res.error ?? 'Error al agregar tarea')
@@ -534,7 +716,6 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
-      {/* Header */}
       <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-100">
         <div className="flex-1 min-w-0">
           <div className="flex flex-wrap items-center gap-2">
@@ -548,9 +729,7 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
             {total > 0 && (
               <span className={cn(
                 'rounded-full px-2 py-0.5 font-medium',
-                tareasCompletadas === total
-                  ? 'bg-emerald-50 text-emerald-700'
-                  : 'bg-blue-50 text-blue-600'
+                tareasCompletadas === total ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-600'
               )}>
                 {tareasCompletadas}/{total} tareas completadas
               </span>
@@ -569,7 +748,6 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
         </div>
       </div>
 
-      {/* Body */}
       {expanded && (
         <div className="px-4 py-3 space-y-3 bg-white">
           {reunion.notas && (
@@ -578,29 +756,22 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
             </p>
           )}
 
-          {/* Tareas */}
           {reunion.tareas.length === 0 && !addingTask ? (
             <p className="text-xs italic text-slate-400">Sin tareas registradas</p>
           ) : (
             <ul className="space-y-2">
               {reunion.tareas.map(t => (
-                <FilaTarea key={t.id} tarea={t} perfiles={perfiles} onRefresh={onRefresh} />
+                <FilaTarea key={t.id} tarea={t} perfiles={perfiles} isAdmin={isAdmin} onRefresh={onRefresh} />
               ))}
             </ul>
           )}
 
-          {/* Inline add task */}
           {addingTask ? (
             <div className="space-y-2 pt-1">
-              <FilaTareaForm
-                idx={0} tarea={nuevaTarea} perfiles={perfiles}
-                onChange={setNuevaTarea}
-              />
+              <FilaTareaForm idx={0} tarea={nuevaTarea} perfiles={perfiles} onChange={setNuevaTarea} />
               <div className="flex gap-3">
                 <button onClick={() => { setAddingTask(false); setNuevaTarea({ ...TAREA_VACIA }) }}
-                  className="text-xs text-slate-400 hover:text-slate-600">
-                  Cancelar
-                </button>
+                  className="text-xs text-slate-400 hover:text-slate-600">Cancelar</button>
                 <button onClick={handleAgregarTarea} disabled={isPending}
                   className="text-xs font-medium text-blue-600 hover:text-blue-800 disabled:opacity-50">
                   {isPending ? 'Guardando...' : 'Agregar tarea'}
@@ -620,7 +791,7 @@ function CardReunion({ reunion, perfiles, onRefresh }: {
 }
 
 /* ── Componente principal ────────────────────────────────────────────────── */
-export function TabReuniones({ requerimientoId }: Props) {
+export function TabReuniones({ requerimientoId, isAdmin = false }: Props) {
   const qc = useQueryClient()
   const [showForm, setShowForm] = useState(false)
 
@@ -667,7 +838,7 @@ export function TabReuniones({ requerimientoId }: Props) {
       ) : (
         <div className="space-y-3">
           {reuniones.map(r => (
-            <CardReunion key={r.id} reunion={r} perfiles={perfiles} onRefresh={refresh} />
+            <CardReunion key={r.id} reunion={r} perfiles={perfiles} isAdmin={isAdmin} onRefresh={refresh} />
           ))}
         </div>
       )}

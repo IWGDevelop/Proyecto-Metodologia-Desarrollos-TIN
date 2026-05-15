@@ -225,9 +225,13 @@ export interface TareaReunion {
   reunion_id: string
   descripcion: string
   responsable_email: string | null
+  fecha_inicio: string | null
   fecha_compromiso: string | null
   completada: boolean
   respuesta: string | null
+  fecha_cumplimiento: string | null
+  motivo_incumplimiento: string | null
+  penalizacion_cop: number | null
   created_at: string
   anexos: AnexoTareaReunion[]
 }

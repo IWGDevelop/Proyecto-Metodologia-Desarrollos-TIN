@@ -29,7 +29,7 @@ export async function getReuniones(requerimientoId: string): Promise<Reunion[]> 
 export async function crearReunion(
   requerimientoId: string,
   datos: { titulo: string; fecha_reunion: string; url_video?: string; notas?: string },
-  tareas: { descripcion: string; responsable_email?: string; fecha_compromiso?: string }[]
+  tareas: { descripcion: string; responsable_email?: string; fecha_inicio?: string; fecha_compromiso?: string }[]
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const perfil = await getPerfil()
@@ -57,6 +57,7 @@ export async function crearReunion(
           reunion_id: reunion.id,
           descripcion: t.descripcion,
           responsable_email: t.responsable_email || null,
+          fecha_inicio: t.fecha_inicio || null,
           fecha_compromiso: t.fecha_compromiso || null,
         })))
       if (errT) return { ok: false, error: errT.message }
@@ -70,7 +71,7 @@ export async function crearReunion(
 
 export async function agregarTareaReunion(
   reunionId: string,
-  tarea: { descripcion: string; responsable_email?: string; fecha_compromiso?: string }
+  tarea: { descripcion: string; responsable_email?: string; fecha_inicio?: string; fecha_compromiso?: string }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = createAdminClient()
@@ -80,6 +81,7 @@ export async function agregarTareaReunion(
         reunion_id: reunionId,
         descripcion: tarea.descripcion,
         responsable_email: tarea.responsable_email || null,
+        fecha_inicio: tarea.fecha_inicio || null,
         fecha_compromiso: tarea.fecha_compromiso || null,
       })
     if (error) return { ok: false, error: error.message }
@@ -95,6 +97,15 @@ export async function guardarRespuestaTarea(
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = createAdminClient()
+    // Auto-set fecha_cumplimiento on first evidence (only if not already set)
+    if (respuesta.trim()) {
+      const hoy = new Date().toISOString().split('T')[0]
+      await (supabase as any)
+        .from('tareas_reunion')
+        .update({ fecha_cumplimiento: hoy })
+        .eq('id', id)
+        .is('fecha_cumplimiento', null)
+    }
     const { error } = await (supabase as any)
       .from('tareas_reunion')
       .update({ respuesta: respuesta.trim() || null })
@@ -116,9 +127,37 @@ export async function registrarAnexoTarea(
       .from('anexos_tarea_reunion')
       .insert({ tarea_reunion_id: tareaId, ...payload })
     if (error) return { ok: false, error: error.message }
+    // Auto-set fecha_cumplimiento on first evidence (only if not already set)
+    const hoy = new Date().toISOString().split('T')[0]
+    await (supabase as any)
+      .from('tareas_reunion')
+      .update({ fecha_cumplimiento: hoy })
+      .eq('id', tareaId)
+      .is('fecha_cumplimiento', null)
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }
+  }
+}
+
+export async function actualizarMotivoYPenalizacion(
+  id: string,
+  data: {
+    motivo_incumplimiento?: string | null
+    penalizacion_cop?: number | null
+    fecha_cumplimiento?: string | null
+  }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('tareas_reunion')
+      .update(data)
+      .eq('id', id)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e?.message }
   }
 }
 
