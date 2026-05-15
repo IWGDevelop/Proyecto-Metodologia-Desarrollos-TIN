@@ -9,16 +9,17 @@ export async function getReuniones(requerimientoId: string): Promise<Reunion[]> 
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
       .from('reuniones')
-      .select('*, tareas_reunion(*)')
+      .select('*, tareas_reunion(*, anexos_tarea_reunion(*))')
       .eq('requerimiento_id', requerimientoId)
       .order('fecha_reunion', { ascending: false })
     if (error) return []
     return (data ?? []).map((r: any) => ({
       ...r,
-      tareas: (r.tareas_reunion ?? []).sort(
-        (a: TareaReunion, b: TareaReunion) =>
+      tareas: (r.tareas_reunion ?? [])
+        .sort((a: TareaReunion, b: TareaReunion) =>
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-      ),
+        )
+        .map((t: any) => ({ ...t, anexos: t.anexos_tarea_reunion ?? [] })),
     }))
   } catch {
     return []
@@ -27,17 +28,8 @@ export async function getReuniones(requerimientoId: string): Promise<Reunion[]> 
 
 export async function crearReunion(
   requerimientoId: string,
-  datos: {
-    titulo: string
-    fecha_reunion: string
-    url_video?: string
-    notas?: string
-  },
-  tareas: {
-    descripcion: string
-    responsable_email?: string
-    fecha_compromiso?: string
-  }[]
+  datos: { titulo: string; fecha_reunion: string; url_video?: string; notas?: string },
+  tareas: { descripcion: string; responsable_email?: string; fecha_compromiso?: string }[]
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const perfil = await getPerfil()
@@ -61,14 +53,12 @@ export async function crearReunion(
     if (tareas.length > 0) {
       const { error: errT } = await (supabase as any)
         .from('tareas_reunion')
-        .insert(
-          tareas.map(t => ({
-            reunion_id: reunion.id,
-            descripcion: t.descripcion,
-            responsable_email: t.responsable_email || null,
-            fecha_compromiso: t.fecha_compromiso || null,
-          }))
-        )
+        .insert(tareas.map(t => ({
+          reunion_id: reunion.id,
+          descripcion: t.descripcion,
+          responsable_email: t.responsable_email || null,
+          fecha_compromiso: t.fecha_compromiso || null,
+        })))
       if (errT) return { ok: false, error: errT.message }
     }
 
@@ -80,11 +70,7 @@ export async function crearReunion(
 
 export async function agregarTareaReunion(
   reunionId: string,
-  tarea: {
-    descripcion: string
-    responsable_email?: string
-    fecha_compromiso?: string
-  }
+  tarea: { descripcion: string; responsable_email?: string; fecha_compromiso?: string }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = createAdminClient()
@@ -103,19 +89,79 @@ export async function agregarTareaReunion(
   }
 }
 
-export async function toggleTareaReunion(
+export async function guardarRespuestaTarea(
   id: string,
-  completada: boolean
-): Promise<{ ok: boolean }> {
+  respuesta: string
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
       .from('tareas_reunion')
-      .update({ completada })
+      .update({ respuesta: respuesta.trim() || null })
+      .eq('id', id)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function registrarAnexoTarea(
+  tareaId: string,
+  payload: { nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_tarea_reunion')
+      .insert({ tarea_reunion_id: tareaId, ...payload })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function eliminarAnexoTarea(id: string): Promise<{ ok: boolean }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_tarea_reunion')
+      .delete()
       .eq('id', id)
     return { ok: !error }
   } catch {
     return { ok: false }
+  }
+}
+
+export async function toggleTareaReunion(
+  id: string,
+  completada: boolean
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+
+    if (completada) {
+      const [{ data: tarea }, { data: anexos }] = await Promise.all([
+        (supabase as any).from('tareas_reunion').select('respuesta').eq('id', id).single(),
+        (supabase as any).from('anexos_tarea_reunion').select('id').eq('tarea_reunion_id', id),
+      ])
+      const tieneRespuesta = tarea?.respuesta?.trim()
+      const tieneAnexos   = anexos && anexos.length > 0
+      if (!tieneRespuesta && !tieneAnexos) {
+        return { ok: false, error: 'Debes agregar una respuesta o al menos un anexo antes de marcar como completada' }
+      }
+    }
+
+    const { error } = await (supabase as any)
+      .from('tareas_reunion')
+      .update({ completada })
+      .eq('id', id)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
   }
 }
 
