@@ -115,7 +115,12 @@ export async function eliminarTarea(id: string): Promise<{ ok: boolean; error?: 
   }
 }
 
-export async function toggleTarea(id: string, completada: boolean): Promise<{ ok: boolean; error?: string }> {
+export async function toggleTarea(
+  id: string,
+  completada: boolean,
+  fechaCompletada?: string,       // YYYY-MM-DD elegida por el usuario
+  motivoIncumplimiento?: string   // obligatorio si completó tarde
+): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
@@ -125,8 +130,10 @@ export async function toggleTarea(id: string, completada: boolean): Promise<{ ok
       .from('tareas_tecnicas')
       .update({
         completada,
-        completada_por: completada ? (user?.id ?? null) : null,
-        completada_at:  completada ? new Date().toISOString() : null,
+        completada_por:         completada ? (user?.id ?? null) : null,
+        completada_at:          completada ? new Date().toISOString() : null,
+        fecha_completada:       completada ? (fechaCompletada ?? new Date().toISOString().split('T')[0]) : null,
+        motivo_incumplimiento:  completada ? (motivoIncumplimiento?.trim() || null) : null,
       })
       .eq('id', id)
 

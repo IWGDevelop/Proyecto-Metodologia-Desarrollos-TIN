@@ -39,6 +39,8 @@ export interface TareaTecnica {
   completada: boolean
   completada_por: string | null
   completada_at: string | null
+  fecha_completada: string | null        // fecha elegida por el usuario (YYYY-MM-DD)
+  motivo_incumplimiento: string | null   // obligatorio cuando completó después del compromiso
   orden: number
   created_by: string | null
   created_at: string

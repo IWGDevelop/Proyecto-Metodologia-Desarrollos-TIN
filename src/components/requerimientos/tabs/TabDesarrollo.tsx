@@ -6,6 +6,7 @@ import {
   Plus, Trash2, UserPlus, UserMinus, Pencil, Check, X,
   Brain, Cpu, ChevronDown, ChevronUp, Clock, Calendar,
   User, AlertTriangle, Save, TrendingUp, TrendingDown,
+  CheckCircle2, XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -81,6 +82,119 @@ function DialogConfirmar({ open, titulo, descripcion, peligro, onConfirm, onCanc
   )
 }
 
+/* ── Dialog de completar tarea (fecha + motivo) ─────────────────────────── */
+function DialogCompletarTarea({ open, tarea, onConfirm, onCancel }: {
+  open: boolean
+  tarea: TareaTecnica
+  onConfirm: (fecha: string, motivo: string) => void
+  onCancel: () => void
+}) {
+  const hoy = new Date().toISOString().split('T')[0]
+  const [fecha, setFecha]   = useState(hoy)
+  const [motivo, setMotivo] = useState('')
+
+  const compromiso = tarea.fecha_compromiso
+  const esTarde    = compromiso ? fecha > compromiso : false
+  const diasAtraso = (() => {
+    if (!compromiso || !esTarde) return 0
+    const d1 = new Date(compromiso + 'T12:00:00')
+    const d2 = new Date(fecha     + 'T12:00:00')
+    return Math.ceil((d2.getTime() - d1.getTime()) / 86400000)
+  })()
+  const motivoRequerido = esTarde
+
+  return (
+    <Dialog open={open} onOpenChange={o => !o && onCancel()}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <CheckCircle2 size={16} className="text-emerald-500" />
+            Registrar completación de tarea
+          </DialogTitle>
+        </DialogHeader>
+
+        <div className="space-y-4">
+          <p className="text-sm text-slate-600 line-clamp-2 font-medium">{tarea.titulo}</p>
+
+          {/* Fecha de completación */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600">
+              Fecha en que se completó <span className="text-red-500">*</span>
+            </label>
+            <input
+              type="date"
+              value={fecha}
+              max={hoy}
+              onChange={e => { setFecha(e.target.value); setMotivo('') }}
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+
+          {/* Estado de cumplimiento */}
+          {compromiso && (
+            <div className={cn(
+              'flex items-start gap-2.5 rounded-xl p-3 text-sm',
+              esTarde
+                ? 'border border-red-200 bg-red-50 text-red-700'
+                : 'border border-emerald-200 bg-emerald-50 text-emerald-700'
+            )}>
+              {esTarde
+                ? <XCircle size={16} className="mt-0.5 shrink-0" />
+                : <CheckCircle2 size={16} className="mt-0.5 shrink-0" />}
+              <div>
+                {esTarde ? (
+                  <>
+                    <p className="font-semibold">Incumplimiento: {diasAtraso} día{diasAtraso !== 1 ? 's' : ''} de atraso</p>
+                    <p className="text-xs mt-0.5 text-red-600">
+                      Fecha compromiso: {formatFecha(compromiso)}
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="font-semibold">Completada dentro del plazo</p>
+                    <p className="text-xs mt-0.5 text-emerald-600">
+                      Compromiso: {formatFecha(compromiso)}
+                    </p>
+                  </>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Motivo */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-slate-600">
+              {esTarde
+                ? <>Motivo del incumplimiento <span className="text-red-500">*</span></>
+                : 'Observaciones (opcional)'}
+            </label>
+            <Textarea
+              rows={3}
+              placeholder={esTarde
+                ? 'Describe el motivo por el que no se cumplió con la fecha comprometida...'
+                : 'Observaciones adicionales sobre la completación...'}
+              value={motivo}
+              onChange={e => setMotivo(e.target.value)}
+              className="resize-none text-sm"
+            />
+          </div>
+        </div>
+
+        <DialogFooter className="gap-2">
+          <Button variant="outline" onClick={onCancel}>Cancelar</Button>
+          <Button
+            onClick={() => onConfirm(fecha, motivo)}
+            disabled={motivoRequerido && !motivo.trim()}
+            className="bg-emerald-600 hover:bg-emerald-700"
+          >
+            Confirmar completado
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 /* ── Fila de tarea ───────────────────────────────────────────────────────── */
 function TareaRow({
   tarea, perfiles, isAdmin,
@@ -89,7 +203,7 @@ function TareaRow({
   tarea: TareaTecnica
   perfiles: Perfil[]
   isAdmin: boolean
-  onToggle: (id: string, completada: boolean) => void
+  onToggle: (id: string, completada: boolean, fecha?: string, motivo?: string) => void
   onDelete: (id: string) => void
   onHoraAdded: (tareaId: string, r: RegistroHorasTarea) => void
   onHoraDeleted: (tareaId: string, registroId: string) => void
@@ -119,9 +233,14 @@ function TareaRow({
   const badge = badgeFechaCompromiso(tarea.fecha_compromiso, tarea.completada)
 
   const confirmarAccion = () => {
-    if (!pendingConfirm) return
+    if (!pendingConfirm || pendingConfirm === 'completar') return
     if (pendingConfirm === 'eliminar') onDelete(tarea.id)
-    else onToggle(tarea.id, pendingConfirm === 'completar')
+    else onToggle(tarea.id, false) // descompletar
+    setPendingConfirm(null)
+  }
+
+  const confirmarCompletar = (fecha: string, motivo: string) => {
+    onToggle(tarea.id, true, fecha, motivo || undefined)
     setPendingConfirm(null)
   }
 
@@ -181,19 +300,22 @@ function TareaRow({
 
   return (
     <>
+      {/* Diálogo especial para COMPLETAR (fecha + motivo) */}
+      <DialogCompletarTarea
+        open={pendingConfirm === 'completar'}
+        tarea={tarea}
+        onConfirm={confirmarCompletar}
+        onCancel={() => setPendingConfirm(null)}
+      />
+
+      {/* Diálogos simples: eliminar / reabrir */}
       <DialogConfirmar
-        open={pendingConfirm !== null}
-        titulo={
-          pendingConfirm === 'eliminar'      ? 'Eliminar tarea' :
-          pendingConfirm === 'completar'     ? 'Marcar como completada' :
-                                               'Reabrir tarea'
-        }
+        open={pendingConfirm === 'eliminar' || pendingConfirm === 'descompletar'}
+        titulo={pendingConfirm === 'eliminar' ? 'Eliminar tarea' : 'Reabrir tarea'}
         descripcion={
           pendingConfirm === 'eliminar'
             ? `¿Eliminar "${tarea.titulo}"? Se eliminarán todos sus registros de horas. Esta acción es irreversible.`
-            : pendingConfirm === 'completar'
-              ? `¿Marcar "${tarea.titulo}" como completada? La tarea quedará bloqueada para edición.`
-              : `¿Reabrir "${tarea.titulo}"? Volverá al estado en progreso.`
+            : `¿Reabrir "${tarea.titulo}"? Volverá al estado en progreso y se borrará la fecha de completación.`
         }
         peligro={pendingConfirm === 'eliminar'}
         onConfirm={confirmarAccion}
@@ -242,9 +364,18 @@ function TareaRow({
                   <Clock size={10} /> {totalHoras.toFixed(1)} h
                 </span>
               )}
-              {tarea.completada && tarea.completada_at && (
-                <span className="text-xs text-emerald-600">✓ {formatFechaRelativa(tarea.completada_at)}</span>
-              )}
+              {tarea.completada && tarea.fecha_completada && (() => {
+                const incumplida = tarea.fecha_compromiso && tarea.fecha_completada > tarea.fecha_compromiso
+                return (
+                  <span className={cn(
+                    'flex items-center gap-1 text-xs font-medium',
+                    incumplida ? 'text-red-500' : 'text-emerald-600'
+                  )}>
+                    {incumplida ? <XCircle size={11} /> : <CheckCircle2 size={11} />}
+                    {incumplida ? 'Incumplida' : 'A tiempo'} · {formatFecha(tarea.fecha_completada)}
+                  </span>
+                )
+              })()}
             </div>
           </div>
 
@@ -280,7 +411,29 @@ function TareaRow({
         {/* Panel expandido */}
         {expanded && (
           <div className="border-t border-slate-100 px-3 pb-3 pt-2.5 space-y-4">
-            {/* Formulario de edición */}
+            {/* Resumen de completación */}
+            {tarea.completada && tarea.fecha_completada && (
+              <div className={cn(
+                'rounded-xl border p-3 space-y-1',
+                (tarea.fecha_compromiso && tarea.fecha_completada > tarea.fecha_compromiso)
+                  ? 'border-red-200 bg-red-50'
+                  : 'border-emerald-200 bg-emerald-50'
+              )}>
+                <div className="flex items-center gap-2 text-xs font-semibold">
+                  {(tarea.fecha_compromiso && tarea.fecha_completada > tarea.fecha_compromiso)
+                    ? <><XCircle size={13} className="text-red-500" /> <span className="text-red-700">Completada con incumplimiento</span></>
+                    : <><CheckCircle2 size={13} className="text-emerald-500" /> <span className="text-emerald-700">Completada a tiempo</span></>}
+                  <span className="ml-auto font-normal text-slate-500">{formatFecha(tarea.fecha_completada)}</span>
+                </div>
+                {tarea.motivo_incumplimiento && (
+                  <p className="text-xs text-red-600 mt-1">
+                    <span className="font-semibold">Motivo: </span>{tarea.motivo_incumplimiento}
+                  </p>
+                )}
+              </div>
+            )}
+
+          {/* Formulario de edición */}
             {editando ? (
               <div className="space-y-2 rounded-lg border border-blue-100 bg-blue-50/40 p-3">
                 <p className="text-xs font-semibold text-slate-600">Editar tarea</p>
@@ -588,12 +741,18 @@ export function TabDesarrollo({
   const disponibles      = perfilesDisponibles.filter(p => !asignadosIds.has(p.id))
 
   // ── Acciones sobre tareas ────────────────────────────────────────────────
-  const handleToggleTarea = (id: string, completada: boolean) => {
+  const handleToggleTarea = (id: string, completada: boolean, fecha?: string, motivo?: string) => {
     setTareas(prev => prev.map(t =>
-      t.id === id ? { ...t, completada, completada_at: completada ? new Date().toISOString() : null } : t
+      t.id === id ? {
+        ...t,
+        completada,
+        completada_at:          completada ? new Date().toISOString() : null,
+        fecha_completada:       completada ? (fecha ?? null) : null,
+        motivo_incumplimiento:  completada ? (motivo ?? null) : null,
+      } : t
     ))
     startTransition(async () => {
-      const res = await toggleTarea(id, completada)
+      const res = await toggleTarea(id, completada, fecha, motivo)
       if (!res.ok) {
         toast.error(res.error ?? 'Error al actualizar')
         setTareas(prev => prev.map(t => t.id === id ? { ...t, completada: !completada } : t))
