@@ -12,6 +12,7 @@ import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
 import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
+import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -76,11 +77,19 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             )}
           </div>
         </div>
-        <Link href={`/admin/requerimientos/${id}/editar`}>
-          <Button size="sm" variant="outline" className="gap-1.5">
-            <Pencil size={13} /> Editar
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <CambiarEstadoBtn
+            requerimientoId={id}
+            estadoActual={req.estado}
+            horasEstimadas={req.horas_ahorradas_mes}
+            valorHoraEstimado={req.valor_hora_hombre}
+          />
+          <Link href={`/admin/requerimientos/${id}/editar`}>
+            <Button size="sm" variant="outline" className="gap-1.5">
+              <Pencil size={13} /> Editar
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Tabs defaultValue="informacion">
