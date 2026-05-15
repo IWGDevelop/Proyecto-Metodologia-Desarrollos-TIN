@@ -23,9 +23,10 @@ const ALCANCES = [
 interface Props {
   form: UseFormReturn<WizardData>
   usuarios?: Perfil[]
+  isAdmin?: boolean
 }
 
-export function Paso2Solicitante({ form, usuarios = [] }: Props) {
+export function Paso2Solicitante({ form, usuarios = [], isAdmin = false }: Props) {
   const { register, watch, setValue, formState: { errors } } = form
 
   const alcanceActual   = watch('alcance')
@@ -219,37 +220,43 @@ export function Paso2Solicitante({ form, usuarios = [] }: Props) {
         {errors.nombre_desarrollo && <p className="text-xs text-red-500">{errors.nombre_desarrollo.message}</p>}
       </div>
 
-      {/* Prioridad */}
-      <div className="space-y-2">
-        <Label>Prioridad <span className="text-red-500">*</span></Label>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {[1, 2, 3, 4].map(p => {
-            const cfg = PRIORIDADES[p]
-            const seleccionado = prioridadActual === p
-            return (
-              <button
-                key={p}
-                type="button"
-                onClick={() => setValue('prioridad', p, { shouldValidate: true })}
-                className={cn(
-                  'rounded-xl border-2 p-3 text-left transition-all',
-                  seleccionado
-                    ? cn(cfg.bgColor, cfg.borderColor, 'ring-2 ring-offset-1')
-                    : 'border-slate-200 bg-white hover:border-slate-300'
-                )}
-              >
-                <p className={cn('text-sm font-bold', seleccionado ? cfg.textColor : 'text-slate-600')}>
-                  P{p} {cfg.label}
-                </p>
-                <p className="mt-0.5 text-xs text-slate-500">
-                  Respuesta en {SLA_DIAS[p]} días
-                </p>
-              </button>
-            )
-          })}
+      {/* Prioridad — solo visible para administradores */}
+      {isAdmin && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <Label>Prioridad</Label>
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-xs text-blue-600 font-medium">
+              Solo admin · basada en impacto económico
+            </span>
+          </div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            {[1, 2, 3, 4].map(p => {
+              const cfg = PRIORIDADES[p]
+              const seleccionado = prioridadActual === p
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setValue('prioridad', seleccionado ? null : p, { shouldValidate: false })}
+                  className={cn(
+                    'rounded-xl border-2 p-3 text-left transition-all',
+                    seleccionado
+                      ? cn(cfg.bgColor, cfg.borderColor, 'ring-2 ring-offset-1')
+                      : 'border-slate-200 bg-white hover:border-slate-300'
+                  )}
+                >
+                  <p className={cn('text-sm font-bold', seleccionado ? cfg.textColor : 'text-slate-600')}>
+                    P{p} {cfg.label}
+                  </p>
+                  <p className="mt-0.5 text-xs text-slate-500">
+                    SLA {SLA_DIAS[p]} días
+                  </p>
+                </button>
+              )
+            })}
+          </div>
         </div>
-        {errors.prioridad && <p className="text-xs text-red-500">{errors.prioridad.message}</p>}
-      </div>
+      )}
     </div>
   )
 }

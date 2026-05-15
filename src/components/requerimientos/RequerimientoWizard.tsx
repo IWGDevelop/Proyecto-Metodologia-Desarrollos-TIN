@@ -119,9 +119,10 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
 interface Props {
   requerimiento?: Requerimiento
   redirectBasePath?: string
+  isAdmin?: boolean
 }
 
-export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/requerimientos' }: Props) {
+export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/requerimientos', isAdmin = false }: Props) {
   const router = useRouter()
   const [pasoActual, setPasoActual] = useState(1)
   const [confirmado, setConfirmado] = useState(false)
@@ -371,7 +372,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
 
         {/* Contenido del paso */}
         {pasoActual === 1 && <Paso1Encabezado form={form} />}
-        {pasoActual === 2 && <Paso2Solicitante form={form} usuarios={usuarios} />}
+        {pasoActual === 2 && <Paso2Solicitante form={form} usuarios={usuarios} isAdmin={isAdmin} />}
         {pasoActual === 3 && (
           <Paso3Descripcion
             form={form}

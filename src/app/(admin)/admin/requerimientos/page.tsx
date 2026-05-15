@@ -48,7 +48,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
     es_borrador:     params.borrador === 'true' ? true : undefined,
   }
   const sort: SortConfig = {
-    column:    params.sort ?? 'created_at',
+    column:    params.sort ?? 'impacto_economico_total_anual',
     direction: (params.dir === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc',
   }
   const page = Math.max(1, parseInt(params.page ?? '1'))

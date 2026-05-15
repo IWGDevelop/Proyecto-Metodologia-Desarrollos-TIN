@@ -57,9 +57,12 @@ export async function fetchRequerimientosAdmin(
     if (filtros.tipo_solucion)         query = query.eq('tipo_solucion', filtros.tipo_solucion)
     if (filtros.es_borrador !== undefined) query = query.eq('es_borrador', filtros.es_borrador)
 
-    // Ordenamiento
+    // Ordenamiento — columnas de impacto siempre con nulls al final
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
-    query = query.order(col, { ascending: sort.direction === 'asc' })
+    const nullsFirst = sort.direction === 'asc'
+    const isImpacto = ['impacto_economico_total_anual', 'ahorro_anual_cop',
+                       'total_beneficios_cualitativos_anual'].includes(col)
+    query = query.order(col, { ascending: sort.direction === 'asc', nullsFirst: isImpacto ? false : nullsFirst })
 
     // Paginación
     const from = (page - 1) * PAGE_SIZE

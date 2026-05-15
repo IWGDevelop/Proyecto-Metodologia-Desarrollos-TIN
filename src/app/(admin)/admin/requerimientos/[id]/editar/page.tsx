@@ -18,6 +18,7 @@ export default async function EditarRequerimientoAdminPage({ params }: Props) {
     <RequerimientoWizard
       requerimiento={requerimiento as any}
       redirectBasePath="/admin/requerimientos"
+      isAdmin
     />
   )
 }

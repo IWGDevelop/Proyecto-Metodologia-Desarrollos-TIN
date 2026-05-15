@@ -20,7 +20,7 @@ export const paso2Schema = z.object({
   nombre_desarrollo: z.string()
     .min(1, 'El nombre del desarrollo es requerido')
     .max(300, 'Máximo 300 caracteres'),
-  prioridad: z.number().min(1).max(4),
+  prioridad: z.number().min(1).max(4).nullable().optional(),
 })
 
 export const paso3Schema = z.object({
@@ -90,7 +90,7 @@ export type WizardData = z.infer<typeof wizardSchema>
 // ─── Campos a validar por paso ────────────────────────────────────────────────
 export const CAMPOS_POR_PASO: Record<number, (keyof WizardData)[]> = {
   1: ['fecha_solicitud', 'tipo_solicitud'],
-  2: ['alcance', 'sucursal', 'proceso_interno', 'responsable', 'nombre_desarrollo', 'prioridad'],
+  2: ['alcance', 'sucursal', 'proceso_interno', 'responsable', 'nombre_desarrollo'],
   3: ['descripcion_situacion_actual', 'definicion_requerimiento', 'objetivo', 'criterios_validacion'],
   4: ['impacta', 'ventajas_beneficios'],
   5: [],

@@ -240,25 +240,34 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50">
                   <tr>
-                    <ColHeader label="#"            column="numero"                sort={sort} onSort={handleSort} className="w-16" />
-                    <ColHeader label="Nombre"       sort={sort} onSort={handleSort} className="min-w-[220px]" />
+                    <ColHeader label="Rank"         sort={sort} onSort={handleSort} className="w-14 text-center" />
+                    <ColHeader label="Nombre"       sort={sort} onSort={handleSort} className="min-w-[200px]" />
                     <ColHeader label="Alcance"      sort={sort} onSort={handleSort} className="w-20" />
-                    <ColHeader label="Tipo"         sort={sort} onSort={handleSort} className="w-28" />
-                    <ColHeader label="Proceso"      sort={sort} onSort={handleSort} className="w-32" />
-                    <ColHeader label="Responsable"  sort={sort} onSort={handleSort} className="w-36" />
+                    <ColHeader label="Responsable"  sort={sort} onSort={handleSort} className="w-32" />
                     <ColHeader label="P"            column="prioridad"             sort={sort} onSort={handleSort} className="w-12" />
-                    <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-36" />
-                    <ColHeader label="Días"         column="dias_en_estado_actual" sort={sort} onSort={handleSort} className="w-16" />
-                    <ColHeader label="Avance"       sort={sort} onSort={handleSort} className="w-24" />
-                    <ColHeader label="Impacto COP"  column="ahorro_anual_cop"      sort={sort} onSort={handleSort} className="w-32" />
+                    <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-32" />
+                    <ColHeader label="Avance"       sort={sort} onSort={handleSort} className="w-20" />
+                    <ColHeader label="HH anual"     column="ahorro_anual_cop"                    sort={sort} onSort={handleSort} className="w-28 text-right" />
+                    <ColHeader label="Cualitativos" column="total_beneficios_cualitativos_anual" sort={sort} onSort={handleSort} className="w-28 text-right" />
+                    <ColHeader label="Total impacto" column="impacto_economico_total_anual"      sort={sort} onSort={handleSort} className="w-32 text-right" />
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {rows.map(row => {
-                    const estadoCfg = ESTADOS[row.estado as Estado]
+                  {rows.map((row, rowIdx) => {
+                    const estadoCfg = ESTADOS[row.estado as Estado] ?? { label: row.estado, bgColor: 'bg-slate-100', textColor: 'text-slate-600' }
                     const slaExcedido = row.cumple_sla === false
-                    const diasColor = slaExcedido ? 'text-red-600 font-semibold' : 'text-slate-600'
+                    const rankNum = (page - 1) * PAGE_SIZE + rowIdx + 1
+                    const tieneImpacto = (row.impacto_economico_total_anual ?? 0) > 0 ||
+                                        (row.ahorro_anual_cop ?? 0) > 0 ||
+                                        ((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
+
+                    // badge de ranking: top 3 con colores
+                    const rankBadge = tieneImpacto
+                      ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }
+                      : rankNum === 2 ? { cls: 'bg-slate-100 text-slate-600 border-slate-300', ico: '🥈' }
+                      : rankNum === 3 ? { cls: 'bg-orange-50 text-orange-600 border-orange-200', ico: '🥉' }
+                      : null : null
 
                     return (
                       <tr
@@ -266,12 +275,20 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                         className="group cursor-pointer hover:bg-slate-50 transition-colors"
                         onClick={() => router.push(`${basePath}/${row.id}`)}
                       >
-                        {/* Número */}
-                        <td className="px-3 py-2.5">
-                          <span className="text-xs font-mono text-slate-500">{row.numero ?? '—'}</span>
+                        {/* Ranking */}
+                        <td className="px-2 py-2.5 text-center">
+                          {rankBadge ? (
+                            <span className={cn('inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-xs font-bold', rankBadge.cls)}>
+                              {rankBadge.ico} #{rankNum}
+                            </span>
+                          ) : tieneImpacto ? (
+                            <span className="text-xs font-mono text-slate-400">#{rankNum}</span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
                           {row.es_borrador && (
-                            <Badge variant="outline" className="ml-1 border-slate-300 py-0 text-[10px] text-slate-400">
-                              Borrador
+                            <Badge variant="outline" className="mt-0.5 border-slate-300 py-0 text-[10px] text-slate-400 block">
+                              Draft
                             </Badge>
                           )}
                         </td>
@@ -301,26 +318,12 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           ) : <span className="text-slate-300">—</span>}
                         </td>
 
-                        {/* Tipo */}
-                        <td className="px-3 py-2.5">
-                          {row.tipo_solucion
-                            ? <span className="text-xs text-slate-500">{TIPOS_SOLUCION[row.tipo_solucion]?.label ?? row.tipo_solucion}</span>
-                            : <span className="text-slate-300">—</span>}
-                        </td>
-
-                        {/* Proceso */}
-                        <td className="px-3 py-2.5">
-                          <span className="text-xs text-slate-500 capitalize">
-                            {row.proceso_interno?.replace(/_/g, ' ').toLowerCase() ?? '—'}
-                          </span>
-                        </td>
-
                         {/* Responsable */}
                         <td className="px-3 py-2.5">
                           <AvatarIniciales nombre={row.responsable} />
                         </td>
 
-                        {/* Prioridad */}
+                        {/* Prioridad — asignada por admin */}
                         <td className="px-3 py-2.5">
                           {row.prioridad ? (
                             <span className={cn(
@@ -330,7 +333,11 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             )}>
                               P{row.prioridad}
                             </span>
-                          ) : <span className="text-slate-300">—</span>}
+                          ) : (
+                            <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">
+                              —
+                            </span>
+                          )}
                         </td>
 
                         {/* Estado */}
@@ -343,26 +350,43 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           </span>
                         </td>
 
-                        {/* Días en estado */}
-                        <td className="px-3 py-2.5 text-center">
-                          <span className={cn('text-xs', diasColor)}>
-                            {row.dias_en_estado_actual ?? '—'}
-                          </span>
-                        </td>
-
                         {/* Avance */}
                         <td className="px-3 py-2.5">
                           <div className="flex items-center gap-1.5">
-                            <Progress value={row.porcentaje_avance} className="h-1.5 w-16" />
+                            <Progress value={row.porcentaje_avance} className="h-1.5 w-14" />
                             <span className="text-xs text-slate-400">{row.porcentaje_avance}%</span>
                           </div>
                         </td>
 
-                        {/* Impacto */}
+                        {/* HH anual */}
                         <td className="px-3 py-2.5 text-right">
-                          {row.ahorro_anual_cop
-                            ? <span className="text-xs font-semibold text-emerald-600">{formatCOP(row.ahorro_anual_cop)}</span>
+                          {(row.ahorro_anual_cop ?? 0) > 0
+                            ? <span className="text-xs font-medium text-emerald-600">{formatCOP(row.ahorro_anual_cop)}</span>
                             : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+
+                        {/* Cualitativos anual */}
+                        <td className="px-3 py-2.5 text-right">
+                          {((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
+                            ? <span className="text-xs font-medium text-blue-600">{formatCOP((row as any).total_beneficios_cualitativos_anual)}</span>
+                            : <span className="text-xs text-slate-300">—</span>}
+                        </td>
+
+                        {/* Total impacto */}
+                        <td className="px-3 py-2.5 text-right">
+                          {tieneImpacto ? (
+                            <div className="flex flex-col items-end gap-0.5">
+                              <span className="text-sm font-extrabold text-emerald-700">
+                                {formatCOP((row as any).impacto_economico_total_anual
+                                  ?? ((row.ahorro_anual_cop ?? 0) + ((row as any).total_beneficios_cualitativos_anual ?? 0)))}
+                              </span>
+                              <span className="text-[10px] text-slate-400">
+                                HH + Cual/año
+                              </span>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-slate-300">Sin cálculo</span>
+                          )}
                         </td>
 
                         {/* Acciones */}

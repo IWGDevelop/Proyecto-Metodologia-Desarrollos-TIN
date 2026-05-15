@@ -13,6 +13,7 @@ import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
 import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
+import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -78,6 +79,13 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <AsignarPrioridadBtn
+            requerimientoId={id}
+            prioridadActual={req.prioridad}
+            impactoHH={req.ahorro_anual_cop}
+            impactoCualitativos={req.total_beneficios_cualitativos_anual}
+            impactoTotal={req.impacto_economico_total_anual}
+          />
           <CambiarEstadoBtn
             requerimientoId={id}
             estadoActual={req.estado}
