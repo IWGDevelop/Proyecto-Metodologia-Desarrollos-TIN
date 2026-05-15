@@ -61,7 +61,7 @@ export async function fetchRequerimientosAdmin(
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
     const nullsFirst = sort.direction === 'asc'
     const isImpacto = ['impacto_economico_total_anual', 'ahorro_anual_cop',
-                       'total_beneficios_cualitativos_anual'].includes(col)
+                       'total_beneficios_cualitativos_anual', 'horas_estimadas_desarrollo'].includes(col)
     query = query.order(col, { ascending: sort.direction === 'asc', nullsFirst: isImpacto ? false : nullsFirst })
 
     // Paginación

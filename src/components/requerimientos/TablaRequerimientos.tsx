@@ -247,6 +247,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     <ColHeader label="P"            column="prioridad"             sort={sort} onSort={handleSort} className="w-12" />
                     <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-32" />
                     <ColHeader label="Avance"       sort={sort} onSort={handleSort} className="w-20" />
+                    <ColHeader label="Hs. dev. est." column="horas_estimadas_desarrollo" sort={sort} onSort={handleSort} className="w-24 text-right" />
                     <ColHeader label="HH anual"     column="ahorro_anual_cop"                    sort={sort} onSort={handleSort} className="w-28 text-right" />
                     <ColHeader label="Cualitativos" column="total_beneficios_cualitativos_anual" sort={sort} onSort={handleSort} className="w-28 text-right" />
                     <ColHeader label="Total impacto" column="impacto_economico_total_anual"      sort={sort} onSort={handleSort} className="w-32 text-right" />
@@ -356,6 +357,17 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             <Progress value={row.porcentaje_avance} className="h-1.5 w-14" />
                             <span className="text-xs text-slate-400">{row.porcentaje_avance}%</span>
                           </div>
+                        </td>
+
+                        {/* Horas desarrollo estimadas */}
+                        <td className="px-3 py-2.5 text-right">
+                          {(row as any).horas_estimadas_desarrollo
+                            ? (
+                              <span className="text-xs font-semibold text-indigo-600">
+                                {((row as any).horas_estimadas_desarrollo as number).toFixed(1)} h
+                              </span>
+                            )
+                            : <span className="text-xs text-slate-300">—</span>}
                         </td>
 
                         {/* HH anual */}
