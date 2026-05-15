@@ -38,7 +38,7 @@ export function ReporteContraste({ datos, isLoading }: Props) {
   const num = (v: number | null | undefined) => v ?? 0
 
   // Totales estimado vs real
-  const totEstimadoAnual = conReal.reduce((s, r) => s + num(r.impacto_economico_total_anual) + num(r.ahorro_anual_cop), 0)
+  const totEstimadoAnual = conReal.reduce((s, r) => s + (num(r.impacto_economico_total_anual) || num(r.ahorro_anual_cop)), 0)
   const totRealAnual     = conReal.reduce((s, r) => s + num(r.impacto_economico_total_anual_real), 0)
   const totHorasEst      = conReal.reduce((s, r) => s + num(r.horas_ahorradas_mes), 0)
   const totHorasReal     = conReal.reduce((s, r) => s + num(r.horas_ahorradas_mes_real), 0)
