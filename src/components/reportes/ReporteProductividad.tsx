@@ -12,19 +12,20 @@ import { exportarReporte } from '@/lib/exportar'
 import { ESTADOS, PROCESOS_INTERNOS } from '@/lib/constants'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
-const ESTADO_COLORS: Partial<Record<Estado, string>> = {
-  SIN_GESTION:     '#94a3b8',
-  ANALISIS:        '#3b82f6',
-  EN_DESARROLLO:   '#6366f1',
-  PRUEBAS_USUARIO: '#f59e0b',
-  STAND_BY:        '#f97316',
-  ENTREGADO:       '#22c55e',
-  CERRADO:         '#6b7280',
+const ESTADO_COLORS: Record<string, string> = {
+  SIN_GESTION:          '#94a3b8',
+  ANALISIS:             '#3b82f6',
+  EN_DEFINICION_USUARIO:'#a855f7',
+  EN_DESARROLLO:        '#6366f1',
+  PRUEBAS_USUARIO:      '#f59e0b',
+  STAND_BY:             '#f97316',
+  ENTREGADO:            '#22c55e',
+  CERRADO:              '#6b7280',
 }
 
-const ESTADOS_KANBAN: Estado[] = [
-  'SIN_GESTION', 'ANALISIS', 'EN_DESARROLLO',
-  'PRUEBAS_USUARIO', 'STAND_BY', 'ENTREGADO',
+const ESTADOS_KANBAN: string[] = [
+  'SIN_GESTION', 'ANALISIS', 'EN_DEFINICION_USUARIO',
+  'EN_DESARROLLO', 'PRUEBAS_USUARIO', 'STAND_BY', 'ENTREGADO',
 ]
 
 interface Props {

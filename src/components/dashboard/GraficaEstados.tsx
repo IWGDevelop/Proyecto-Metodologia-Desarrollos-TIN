@@ -4,14 +4,15 @@ import { GraficaEstadosChart } from './GraficaEstadosChart'
 import { ESTADOS } from '@/lib/constants'
 import type { Estado } from '@/lib/supabase/types'
 
-const ESTADO_COLORS: Record<Estado, string> = {
-  SIN_GESTION:     '#94a3b8',
-  ANALISIS:        '#3b82f6',
-  EN_DESARROLLO:   '#6366f1',
-  PRUEBAS_USUARIO: '#f59e0b',
-  STAND_BY:        '#f97316',
-  ENTREGADO:       '#22c55e',
-  CERRADO:         '#6b7280',
+const ESTADO_COLORS: Record<string, string> = {
+  SIN_GESTION:          '#94a3b8',
+  ANALISIS:             '#3b82f6',
+  EN_DEFINICION_USUARIO:'#a855f7',
+  EN_DESARROLLO:        '#6366f1',
+  PRUEBAS_USUARIO:      '#f59e0b',
+  STAND_BY:             '#f97316',
+  ENTREGADO:            '#22c55e',
+  CERRADO:              '#6b7280',
 }
 
 async function getEstadosData() {

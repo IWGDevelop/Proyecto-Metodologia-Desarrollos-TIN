@@ -5,35 +5,36 @@ import { useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
 import { fetchKanbanAdmin } from '@/actions/kanban-admin'
-import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
+import { getEstadosKanban } from '@/actions/estados-kanban'
+import type { MetricaRequerimiento, EstadoKanban } from '@/lib/supabase/types'
 
-export const COLUMNAS_KANBAN: Estado[] = [
-  'SIN_GESTION', 'ANALISIS', 'EN_DESARROLLO',
-  'PRUEBAS_USUARIO', 'STAND_BY', 'ENTREGADO',
-]
-
-export type KanbanData = Record<Estado, MetricaRequerimiento[]>
+export type KanbanData = Record<string, MetricaRequerimiento[]>
 
 async function fetchKanbanBrowser(): Promise<KanbanData> {
   const supabase = createClient()
   const { data, error } = await supabase
     .from('v_metricas_requerimientos')
     .select('*')
-    .not('estado', 'in', '("CERRADO")')
     .eq('es_borrador', false)
     .order('prioridad', { ascending: true, nullsFirst: false })
 
   if (error) throw error
 
-  const base: KanbanData = {
-    SIN_GESTION: [], ANALISIS: [], EN_DESARROLLO: [],
-    PRUEBAS_USUARIO: [], STAND_BY: [], ENTREGADO: [], CERRADO: [],
-  }
+  const result: KanbanData = {}
   for (const r of (data ?? []) as MetricaRequerimiento[]) {
-    const estado = r.estado as Estado
-    if (estado in base) base[estado].push(r)
+    const estado = r.estado as string
+    if (!result[estado]) result[estado] = []
+    result[estado].push(r)
   }
-  return base
+  return result
+}
+
+export function useEstadosKanban() {
+  return useQuery<EstadoKanban[]>({
+    queryKey: ['estados-kanban'],
+    queryFn: getEstadosKanban,
+    staleTime: 120_000,
+  })
 }
 
 export function useKanban(isAdmin = false) {

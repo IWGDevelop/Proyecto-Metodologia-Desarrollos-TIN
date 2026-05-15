@@ -109,7 +109,7 @@ export async function guardarBorrador(
 
 export async function cambiarEstado(
   id: string,
-  estado: Requerimiento['estado'],
+  estado: string,
   observacion?: string
 ) {
   const supabase = await createClient()

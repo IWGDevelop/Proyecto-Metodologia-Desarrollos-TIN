@@ -50,11 +50,25 @@ export interface Notificacion {
 export type Estado =
   | 'SIN_GESTION'
   | 'ANALISIS'
+  | 'EN_DEFINICION_USUARIO'
   | 'EN_DESARROLLO'
   | 'PRUEBAS_USUARIO'
   | 'STAND_BY'
   | 'ENTREGADO'
   | 'CERRADO'
+  | (string & {})   // permite estados personalizados dinámicos
+
+export interface EstadoKanban {
+  id: string
+  nombre: string
+  label: string
+  color_key: string
+  icono: string
+  orden: number
+  activo: boolean
+  es_final: boolean
+  created_at: string
+}
 
 export type Alcance = 'IWF' | 'ILT' | 'IWG'
 export type TipoSolicitud = 'NUEVO_DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'INFORME'

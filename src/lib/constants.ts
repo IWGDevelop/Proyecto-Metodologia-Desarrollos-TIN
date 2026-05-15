@@ -16,9 +16,26 @@ export const SLA_DIAS: Record<number, number> = {
 
 export const HORAS_LABORALES_MES = 192
 
-// ─── Estados ─────────────────────────────────────────────────────────────────
+// ─── Paleta de colores para estados dinámicos ────────────────────────────────
+export const COLOR_PALETTE: Record<string, { bg: string; text: string; border: string }> = {
+  slate:  { bg: 'bg-slate-100',  text: 'text-slate-700',  border: 'border-slate-300'  },
+  blue:   { bg: 'bg-blue-100',   text: 'text-blue-700',   border: 'border-blue-300'   },
+  purple: { bg: 'bg-purple-100', text: 'text-purple-700', border: 'border-purple-300' },
+  violet: { bg: 'bg-violet-100', text: 'text-violet-700', border: 'border-violet-300' },
+  indigo: { bg: 'bg-indigo-100', text: 'text-indigo-700', border: 'border-indigo-300' },
+  amber:  { bg: 'bg-amber-100',  text: 'text-amber-700',  border: 'border-amber-300'  },
+  orange: { bg: 'bg-orange-100', text: 'text-orange-700', border: 'border-orange-300' },
+  green:  { bg: 'bg-green-100',  text: 'text-green-700',  border: 'border-green-300'  },
+  teal:   { bg: 'bg-teal-100',   text: 'text-teal-700',   border: 'border-teal-300'   },
+  red:    { bg: 'bg-red-100',    text: 'text-red-700',    border: 'border-red-300'    },
+  pink:   { bg: 'bg-pink-100',   text: 'text-pink-700',   border: 'border-pink-300'   },
+  gray:   { bg: 'bg-gray-100',   text: 'text-gray-500',   border: 'border-gray-300'   },
+  cyan:   { bg: 'bg-cyan-100',   text: 'text-cyan-700',   border: 'border-cyan-300'   },
+}
+
+// ─── Estados (fallback estático para compatibilidad) ──────────────────────────
 export const ESTADOS: Record<
-  Estado,
+  string,
   {
     label: string
     descripcion: string
@@ -46,6 +63,15 @@ export const ESTADOS: Record<
     textColor: 'text-blue-700',
     borderColor: 'border-blue-300',
     icon: 'Search',
+  },
+  EN_DEFINICION_USUARIO: {
+    label: 'En definición de usuario',
+    descripcion: 'Se está definiendo y validando con los usuarios',
+    color: 'purple',
+    bgColor: 'bg-purple-100',
+    textColor: 'text-purple-700',
+    borderColor: 'border-purple-300',
+    icon: 'Users',
   },
   EN_DESARROLLO: {
     label: 'En desarrollo',

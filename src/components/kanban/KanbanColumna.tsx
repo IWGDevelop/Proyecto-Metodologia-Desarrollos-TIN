@@ -2,37 +2,27 @@
 
 import { useDroppable } from '@dnd-kit/core'
 import { AlertTriangle } from 'lucide-react'
-import { ESTADOS } from '@/lib/constants'
+import { COLOR_PALETTE } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import { KanbanCard } from './KanbanCard'
-import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
+import type { MetricaRequerimiento, EstadoKanban } from '@/lib/supabase/types'
 
-const ICONOS_ESTADO: Record<Estado, string> = {
-  SIN_GESTION:     '📥',
-  ANALISIS:        '🔍',
-  EN_DESARROLLO:   '⚡',
-  PRUEBAS_USUARIO: '🧪',
-  STAND_BY:        '⏸',
-  ENTREGADO:       '✅',
-  CERRADO:         '🔒',
-}
-
-const WIP_LIMITS: Partial<Record<Estado, { limit: number; color: string; msg: string }>> = {
-  EN_DESARROLLO:   { limit: 5, color: 'text-orange-600 bg-orange-50 border-orange-200', msg: '⚠ Límite recomendado' },
-  PRUEBAS_USUARIO: { limit: 4, color: 'text-yellow-700 bg-yellow-50 border-yellow-200', msg: '⚠ Límite recomendado' },
+const WIP_LIMITS: Record<string, number> = {
+  EN_DESARROLLO:   5,
+  PRUEBAS_USUARIO: 4,
 }
 
 interface Props {
-  estado: Estado
+  estadoConfig: EstadoKanban
   cards: MetricaRequerimiento[]
   onCardClick: (card: MetricaRequerimiento) => void
 }
 
-export function KanbanColumna({ estado, cards, onCardClick }: Props) {
-  const { setNodeRef, isOver } = useDroppable({ id: estado })
-  const cfg = ESTADOS[estado]
-  const wip = WIP_LIMITS[estado]
-  const wipSuperado = wip && cards.length > wip.limit
+export function KanbanColumna({ estadoConfig, cards, onCardClick }: Props) {
+  const { setNodeRef, isOver } = useDroppable({ id: estadoConfig.nombre })
+  const colores = COLOR_PALETTE[estadoConfig.color_key] ?? COLOR_PALETTE['slate']
+  const wipLimit = WIP_LIMITS[estadoConfig.nombre]
+  const wipSuperado = wipLimit !== undefined && cards.length > wipLimit
 
   return (
     <div className="flex w-[288px] shrink-0 flex-col rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
@@ -40,22 +30,21 @@ export function KanbanColumna({ estado, cards, onCardClick }: Props) {
       <div className="px-3 pt-3 pb-2 bg-white border-b border-slate-100">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <span className="text-base">{ICONOS_ESTADO[estado]}</span>
-            <span className="text-sm font-semibold text-slate-700">{cfg.label}</span>
+            <span className="text-base">{estadoConfig.icono}</span>
+            <span className="text-sm font-semibold text-slate-700">{estadoConfig.label}</span>
           </div>
           <span className={cn(
             'flex h-5 min-w-5 items-center justify-center rounded-full px-1.5 text-xs font-bold',
-            cfg.bgColor, cfg.textColor
+            colores.bg, colores.text
           )}>
             {cards.length}
           </span>
         </div>
 
-        {/* WIP indicator */}
-        {wipSuperado && wip && (
-          <div className={cn('mt-2 flex items-center gap-1.5 rounded-lg border px-2 py-1 text-xs font-medium', wip.color)}>
+        {wipSuperado && wipLimit && (
+          <div className="mt-2 flex items-center gap-1.5 rounded-lg border border-orange-200 bg-orange-50 px-2 py-1 text-xs font-medium text-orange-600">
             <AlertTriangle size={11} />
-            {wip.msg} ({cards.length}/{wip.limit})
+            ⚠ Límite recomendado ({cards.length}/{wipLimit})
           </div>
         )}
       </div>
@@ -64,8 +53,7 @@ export function KanbanColumna({ estado, cards, onCardClick }: Props) {
       <div
         ref={setNodeRef}
         className={cn(
-          'flex flex-1 flex-col gap-2.5 overflow-y-auto p-2.5 transition-colors',
-          'min-h-[120px]',
+          'flex flex-1 flex-col gap-2.5 overflow-y-auto p-2.5 transition-colors min-h-[120px]',
           isOver && 'bg-blue-50 ring-2 ring-inset ring-blue-300'
         )}
       >
@@ -74,15 +62,11 @@ export function KanbanColumna({ estado, cards, onCardClick }: Props) {
             'flex h-20 items-center justify-center rounded-xl border-2 border-dashed text-xs text-slate-400',
             isOver ? 'border-blue-400 bg-blue-50 text-blue-500' : 'border-slate-200'
           )}>
-            {isOver ? 'Soltar aquí' : 'Sin requerimientos aquí'}
+            {isOver ? 'Soltar aquí' : 'Sin requerimientos'}
           </div>
         ) : (
           cards.map(card => (
-            <KanbanCard
-              key={card.id}
-              card={card}
-              onCardClick={onCardClick}
-            />
+            <KanbanCard key={card.id} card={card} onCardClick={onCardClick} />
           ))
         )}
       </div>
