@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { Menu, Bell, LogOut, User, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { signOutAction } from '@/actions/auth'
@@ -23,7 +23,15 @@ function AvatarLetras({ nombre }: { nombre: string }) {
 }
 
 export function TopbarUsuario({ perfil, onMenuClick }: Props) {
-  const [menuOpen, setMenuOpen] = useState(false)
+  const [menuOpen, setMenuOpen]      = useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  const handleSignOut = () => {
+    startTransition(async () => {
+      await signOutAction()
+      window.location.href = '/login'
+    })
+  }
   const [notiCount, setNotiCount] = useState(0)
 
   useEffect(() => {
@@ -114,14 +122,13 @@ export function TopbarUsuario({ perfil, onMenuClick }: Props) {
                 >
                   <User size={14} /> Mi perfil
                 </Link>
-                <form action={signOutAction}>
-                  <button
-                    type="submit"
-                    className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                  >
-                    <LogOut size={14} /> Cerrar sesión
-                  </button>
-                </form>
+                <button
+                  onClick={handleSignOut}
+                  disabled={isPending}
+                  className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                >
+                  <LogOut size={14} /> {isPending ? 'Cerrando...' : 'Cerrar sesión'}
+                </button>
               </div>
             </>
           )}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useTransition } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Plus, ChevronDown, LogOut, User, Users, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -49,9 +49,17 @@ interface Props {
 export function Topbar({ onMenuClick, perfil }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
-  const [connected, setConnected] = useState<boolean | null>(null)
-  const [menuOpen, setMenuOpen]   = useState(false)
+  const [connected, setConnected]   = useState<boolean | null>(null)
+  const [menuOpen, setMenuOpen]     = useState(false)
+  const [isPending, startTransition] = useTransition()
   const title = getPageTitle(pathname)
+
+  const handleSignOut = () => {
+    startTransition(async () => {
+      await signOutAction()
+      window.location.href = '/login'
+    })
+  }
 
   useEffect(() => {
     const checkConnection = async () => {
@@ -143,14 +151,13 @@ export function Topbar({ onMenuClick, perfil }: Props) {
                     <Users size={14} /> Gestión de usuarios
                   </Link>
                   <div className="border-t border-slate-100 mt-1 pt-1">
-                    <form action={signOutAction}>
-                      <button
-                        type="submit"
-                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                      >
-                        <LogOut size={14} /> Cerrar sesión
-                      </button>
-                    </form>
+                    <button
+                      onClick={handleSignOut}
+                      disabled={isPending}
+                      className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50 disabled:opacity-50"
+                    >
+                      <LogOut size={14} /> {isPending ? 'Cerrando...' : 'Cerrar sesión'}
+                    </button>
                   </div>
                 </div>
               </>
