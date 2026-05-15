@@ -250,6 +250,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             perfilesDisponibles={perfilesDisponibles}
             isAdmin
             currentUserId={perfilAdmin?.id}
+            horasEstimadasDesarrollo={(req as any).horas_estimadas_desarrollo ?? null}
           />
         </TabsContent>
 

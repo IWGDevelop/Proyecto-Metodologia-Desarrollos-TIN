@@ -33,6 +33,24 @@ export const COLOR_PALETTE: Record<string, { bg: string; text: string; border: s
   cyan:   { bg: 'bg-cyan-100',   text: 'text-cyan-700',   border: 'border-cyan-300'   },
 }
 
+// ─── Categorías de tareas técnicas ───────────────────────────────────────────
+export const CATEGORIAS_TAREA = [
+  { value: 'DESARROLLO',     label: 'Desarrollo',     bg: 'bg-blue-100',   text: 'text-blue-700'   },
+  { value: 'TESTING',        label: 'Testing',        bg: 'bg-amber-100',  text: 'text-amber-700'  },
+  { value: 'DOCUMENTAL',     label: 'Documental',     bg: 'bg-purple-100', text: 'text-purple-700' },
+  { value: 'ADMINISTRATIVO', label: 'Administrativo', bg: 'bg-slate-100',  text: 'text-slate-600'  },
+  { value: 'OTRO',           label: 'Otro',           bg: 'bg-gray-100',   text: 'text-gray-600'   },
+] as const
+
+// ─── Cargos del equipo TIN ────────────────────────────────────────────────────
+export const CARGOS_TIN = [
+  { value: 'AUXILIAR_TIN',             label: 'Auxiliar TIN'              },
+  { value: 'ING_DESARROLLO',           label: 'Ing. de Desarrollo'        },
+  { value: 'ANALISTA_TIN',             label: 'Analista TIN'              },
+  { value: 'COORDINADOR_TIN',          label: 'Coordinador TIN'           },
+  { value: 'DIRECTOR_CORPORATIVO_TIN', label: 'Director Corporativo TIN'  },
+] as const
+
 // ─── Estados (fallback estático para compatibilidad) ──────────────────────────
 export const ESTADOS: Record<
   string,

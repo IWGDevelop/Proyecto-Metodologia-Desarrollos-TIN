@@ -5,7 +5,7 @@ import { toast } from 'sonner'
 import {
   Plus, Trash2, UserPlus, UserMinus, Pencil, Check, X,
   Brain, Cpu, ChevronDown, ChevronUp, Clock, Calendar,
-  User, AlertTriangle, Save,
+  User, AlertTriangle, Save, TrendingUp, TrendingDown,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,11 +18,12 @@ import {
 } from '@/components/ui/dialog'
 import {
   crearTarea, actualizarTarea, eliminarTarea, toggleTarea, actualizarRama,
-  agregarRegistroHoras, eliminarRegistroHoras,
+  agregarRegistroHoras, eliminarRegistroHoras, guardarHorasEstimadasDesarrollo,
 } from '@/actions/tareas'
+import { CATEGORIAS_TAREA, CARGOS_TIN } from '@/lib/constants'
 import { asignarDesarrollador, desasignarDesarrollador } from '@/actions/desarrolladores-req'
 import { formatFechaRelativa, cn } from '@/lib/utils'
-import type { TareaTecnica, RequerimientoDesarrollador, Perfil, RegistroHorasTarea } from '@/lib/supabase/types'
+import type { TareaTecnica, RequerimientoDesarrollador, Perfil, RegistroHorasTarea, CategoriaTarea, CargoTIN } from '@/lib/supabase/types'
 
 function formatFecha(str: string | null) {
   if (!str) return '—'
@@ -105,6 +106,8 @@ function TareaRow({
   const [editDesc, setEditDesc]               = useState(tarea.descripcion ?? '')
   const [editResponsable, setEditResponsable] = useState(tarea.responsable_id ?? '')
   const [editFecha, setEditFecha]             = useState(tarea.fecha_compromiso ?? '')
+  const [editCategoria, setEditCategoria]     = useState<CategoriaTarea | ''>(tarea.categoria ?? '')
+  const [editCargo, setEditCargo]             = useState<CargoTIN | ''>(tarea.cargo_responsable ?? '')
 
   // Horas form
   const [horaFecha, setHoraFecha] = useState(() => new Date().toISOString().split('T')[0])
@@ -126,17 +129,21 @@ function TareaRow({
     if (!editTitulo.trim()) { toast.error('El título es obligatorio'); return }
     startT(async () => {
       const res = await actualizarTarea(tarea.id, {
-        titulo:          editTitulo.trim(),
-        descripcion:     editDesc.trim() || null,
-        responsable_id:  editResponsable || null,
+        titulo:           editTitulo.trim(),
+        descripcion:      editDesc.trim() || null,
+        responsable_id:   editResponsable || null,
         fecha_compromiso: editFecha || null,
+        categoria:        (editCategoria as CategoriaTarea) || null,
+        cargo_responsable:(editCargo as CargoTIN) || null,
       })
       if (res.ok) {
         onTareaActualizada(tarea.id, {
-          titulo: editTitulo.trim(),
-          descripcion: editDesc.trim() || null,
-          responsable_id: editResponsable || null,
+          titulo:           editTitulo.trim(),
+          descripcion:      editDesc.trim() || null,
+          responsable_id:   editResponsable || null,
           fecha_compromiso: editFecha || null,
+          categoria:        (editCategoria as CategoriaTarea) || null,
+          cargo_responsable:(editCargo as CargoTIN) || null,
         })
         setEditando(false)
         toast.success('Tarea actualizada')
@@ -217,7 +224,9 @@ function TareaRow({
             <p className={cn('text-sm font-medium leading-snug', tarea.completada && 'text-slate-400 line-through')}>
               {tarea.titulo}
             </p>
-            <div className="mt-0.5 flex flex-wrap items-center gap-2">
+            <div className="mt-0.5 flex flex-wrap items-center gap-1.5">
+              <CategoriaBadge cat={tarea.categoria} />
+              <CargoBadge cargo={tarea.cargo_responsable} />
               {responsable && (
                 <span className="flex items-center gap-1 text-xs text-slate-500">
                   <User size={10} /> {responsable.nombre_completo}
@@ -289,6 +298,32 @@ function TareaRow({
                   className="text-sm resize-none"
                 />
                 <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-500">Categoría</label>
+                    <select
+                      value={editCategoria}
+                      onChange={e => setEditCategoria(e.target.value as CategoriaTarea | '')}
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+                    >
+                      <option value="">Sin categoría</option>
+                      {CATEGORIAS_TAREA.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-xs text-slate-500">Cargo responsable</label>
+                    <select
+                      value={editCargo}
+                      onChange={e => setEditCargo(e.target.value as CargoTIN | '')}
+                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+                    >
+                      <option value="">Sin cargo</option>
+                      {CARGOS_TIN.map(c => (
+                        <option key={c.value} value={c.value}>{c.label}</option>
+                      ))}
+                    </select>
+                  </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-500">Responsable</label>
                     <select
@@ -470,12 +505,36 @@ interface Props {
   perfilesDisponibles: Perfil[]
   isAdmin: boolean
   currentUserId?: string
+  horasEstimadasDesarrollo?: number | null
+}
+
+function CategoriaBadge({ cat }: { cat: CategoriaTarea | null }) {
+  if (!cat) return null
+  const cfg = CATEGORIAS_TAREA.find(c => c.value === cat)
+  if (!cfg) return null
+  return (
+    <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-semibold', cfg.bg, cfg.text)}>
+      {cfg.label}
+    </span>
+  )
+}
+
+function CargoBadge({ cargo }: { cargo: CargoTIN | null }) {
+  if (!cargo) return null
+  const cfg = CARGOS_TIN.find(c => c.value === cargo)
+  if (!cfg) return null
+  return (
+    <span className="rounded-full bg-indigo-50 px-1.5 py-0.5 text-[10px] font-medium text-indigo-600">
+      {cfg.label}
+    </span>
+  )
 }
 
 /* ── Componente principal ────────────────────────────────────────────────── */
 export function TabDesarrollo({
   requerimientoId, rama: ramaInicial, tareas: tareasIniciales,
   desarrolladores: devIniciales, perfilesDisponibles, isAdmin, currentUserId,
+  horasEstimadasDesarrollo,
 }: Props) {
   const [isPending, startTransition] = useTransition()
 
@@ -483,12 +542,18 @@ export function TabDesarrollo({
   const [devs, setDevs]     = useState<RequerimientoDesarrollador[]>(devIniciales)
   const [rama, setRama]     = useState<'TIN' | 'IA' | null>(ramaInicial)
 
+  // Horas estimadas de desarrollo
+  const [horasEst, setHorasEst]             = useState<number>(horasEstimadasDesarrollo ?? 0)
+  const [savingHoras, setSavingHoras]       = useState(false)
+
   // Nueva tarea
   const [showNewTarea, setShowNewTarea]       = useState(false)
   const [newTitulo, setNewTitulo]             = useState('')
   const [newDesc, setNewDesc]                 = useState('')
   const [newResponsable, setNewResponsable]   = useState('')
   const [newFechaComp, setNewFechaComp]       = useState('')
+  const [newCategoria, setNewCategoria]       = useState<CategoriaTarea | ''>('')
+  const [newCargo, setNewCargo]               = useState<CargoTIN | ''>('')
 
   // Asignar dev
   const [selectedDev, setSelectedDev] = useState('')
@@ -496,6 +561,29 @@ export function TabDesarrollo({
   const totalTareas      = tareas.length
   const tareasCompletadas = tareas.filter(t => t.completada).length
   const progreso         = totalTareas > 0 ? Math.round((tareasCompletadas / totalTareas) * 100) : 0
+
+  // Horas reales de desarrollo = suma de registros de tareas con categoria DESARROLLO
+  const horasDesarrolloReal = tareas
+    .filter(t => t.categoria === 'DESARROLLO')
+    .flatMap(t => t.registros_horas ?? [])
+    .reduce((s, r) => s + r.horas, 0)
+
+  // Resumen de horas por categoría
+  const horasPorCategoria = CATEGORIAS_TAREA.map(cat => ({
+    ...cat,
+    horas: tareas
+      .filter(t => t.categoria === cat.value)
+      .flatMap(t => t.registros_horas ?? [])
+      .reduce((s, r) => s + r.horas, 0),
+  })).filter(c => c.horas > 0)
+
+  const handleGuardarHorasEst = async () => {
+    setSavingHoras(true)
+    const res = await guardarHorasEstimadasDesarrollo(requerimientoId, horasEst || null)
+    setSavingHoras(false)
+    if (res.ok) toast.success('Horas estimadas guardadas')
+    else toast.error(res.error ?? 'Error al guardar')
+  }
   const asignadosIds     = new Set(devs.map(d => d.perfil_id))
   const disponibles      = perfilesDisponibles.filter(p => !asignadosIds.has(p.id))
 
@@ -545,18 +633,21 @@ export function TabDesarrollo({
     if (!newTitulo.trim()) return
     startTransition(async () => {
       const res = await crearTarea({
-        requerimiento_id: requerimientoId,
-        titulo:           newTitulo.trim(),
-        descripcion:      newDesc.trim() || undefined,
-        responsable_id:   newResponsable || null,
-        fecha_compromiso: newFechaComp || null,
-        created_by:       currentUserId,
+        requerimiento_id:  requerimientoId,
+        titulo:            newTitulo.trim(),
+        descripcion:       newDesc.trim() || undefined,
+        responsable_id:    newResponsable || null,
+        fecha_compromiso:  newFechaComp || null,
+        categoria:         (newCategoria as CategoriaTarea) || null,
+        cargo_responsable: (newCargo as CargoTIN) || null,
+        created_by:        currentUserId,
       })
       if (!res.ok) {
         toast.error(res.error ?? 'Error al crear tarea')
       } else {
         setTareas(prev => [...prev, res.tarea!])
         setNewTitulo(''); setNewDesc(''); setNewResponsable(''); setNewFechaComp('')
+        setNewCategoria(''); setNewCargo('')
         setShowNewTarea(false)
         toast.success('Tarea creada')
       }
@@ -670,6 +761,85 @@ export function TabDesarrollo({
         )}
       </div>
 
+      {/* ── HORAS DE DESARROLLO ──────────────────────────────────────────── */}
+      {isAdmin && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Horas de desarrollo estimadas vs reales
+          </p>
+
+          {/* Panel comparativo */}
+          <div className="grid grid-cols-3 gap-3">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+              <p className="text-xs text-slate-500">Estimadas (admin)</p>
+              <div className="mt-1 flex items-center gap-2">
+                <input
+                  type="number" min={0} step={0.5}
+                  value={horasEst || ''}
+                  onChange={e => setHorasEst(parseFloat(e.target.value) || 0)}
+                  placeholder="0"
+                  className="w-20 rounded-md border border-blue-200 bg-white px-2 py-1 text-lg font-bold text-blue-700 outline-none focus:border-blue-400"
+                />
+                <span className="text-sm text-slate-500">h</span>
+              </div>
+              {horasEst !== (horasEstimadasDesarrollo ?? 0) && (
+                <button
+                  onClick={handleGuardarHorasEst}
+                  disabled={savingHoras}
+                  className="mt-2 flex items-center gap-1 rounded-lg bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+                >
+                  <Save size={11} /> {savingHoras ? 'Guardando...' : 'Guardar'}
+                </button>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 p-3">
+              <p className="text-xs text-slate-500">Reales (tareas Desarrollo)</p>
+              <p className="mt-1 text-lg font-bold text-emerald-700">
+                {horasDesarrolloReal.toFixed(1)} h
+              </p>
+              <p className="text-[10px] text-slate-400">
+                Suma automática de registros de horas en tareas con categoría Desarrollo
+              </p>
+            </div>
+
+            <div className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">Diferencia</p>
+              {horasEst > 0 || horasDesarrolloReal > 0 ? (() => {
+                const delta = horasDesarrolloReal - horasEst
+                const pct   = horasEst > 0 ? ((delta / horasEst) * 100).toFixed(1) : null
+                return (
+                  <div className="mt-1">
+                    <p className={cn('text-lg font-bold', delta > 0 ? 'text-red-600' : delta < 0 ? 'text-emerald-600' : 'text-slate-500')}>
+                      {delta > 0 ? '+' : ''}{delta.toFixed(1)} h
+                    </p>
+                    {pct && (
+                      <p className={cn('text-xs font-medium flex items-center gap-0.5', delta > 0 ? 'text-red-500' : 'text-emerald-500')}>
+                        {delta > 0 ? <TrendingUp size={11}/> : <TrendingDown size={11}/>}
+                        {pct}% vs estimado
+                      </p>
+                    )}
+                  </div>
+                )
+              })() : (
+                <p className="mt-1 text-sm text-slate-400">—</p>
+              )}
+            </div>
+          </div>
+
+          {/* Desglose por categoría */}
+          {horasPorCategoria.length > 0 && (
+            <div className="flex flex-wrap gap-2">
+              {horasPorCategoria.map(c => (
+                <span key={c.value} className={cn('rounded-full px-2.5 py-1 text-xs font-medium', c.bg, c.text)}>
+                  {c.label}: {c.horas.toFixed(1)} h
+                </span>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* ── TAREAS TÉCNICAS ──────────────────────────────────────────────── */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         <div className="flex items-center justify-between mb-3">
@@ -737,6 +907,32 @@ export function TabDesarrollo({
             />
             <div className="grid grid-cols-2 gap-2">
               <div className="space-y-1">
+                <label className="text-xs text-slate-500">Categoría</label>
+                <select
+                  value={newCategoria}
+                  onChange={e => setNewCategoria(e.target.value as CategoriaTarea | '')}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="">Sin categoría</option>
+                  {CATEGORIAS_TAREA.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs text-slate-500">Cargo responsable</label>
+                <select
+                  value={newCargo}
+                  onChange={e => setNewCargo(e.target.value as CargoTIN | '')}
+                  className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+                >
+                  <option value="">Sin cargo</option>
+                  {CARGOS_TIN.map(c => (
+                    <option key={c.value} value={c.value}>{c.label}</option>
+                  ))}
+                </select>
+              </div>
+              <div className="space-y-1">
                 <label className="text-xs text-slate-500">Responsable</label>
                 <select
                   value={newResponsable}
@@ -763,7 +959,7 @@ export function TabDesarrollo({
               <Button size="sm" onClick={handleCrearTarea} disabled={!newTitulo.trim() || isPending} className="bg-blue-600 hover:bg-blue-700">
                 Agregar tarea
               </Button>
-              <Button size="sm" variant="outline" onClick={() => { setShowNewTarea(false); setNewTitulo(''); setNewDesc(''); setNewResponsable(''); setNewFechaComp('') }}>
+              <Button size="sm" variant="outline" onClick={() => { setShowNewTarea(false); setNewTitulo(''); setNewDesc(''); setNewResponsable(''); setNewFechaComp(''); setNewCategoria(''); setNewCargo('') }}>
                 Cancelar
               </Button>
             </div>

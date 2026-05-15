@@ -24,6 +24,9 @@ export interface RegistroHorasTarea {
   created_at: string
 }
 
+export type CategoriaTarea = 'DESARROLLO' | 'TESTING' | 'DOCUMENTAL' | 'ADMINISTRATIVO' | 'OTRO'
+export type CargoTIN = 'AUXILIAR_TIN' | 'ING_DESARROLLO' | 'ANALISTA_TIN' | 'COORDINADOR_TIN' | 'DIRECTOR_CORPORATIVO_TIN'
+
 export interface TareaTecnica {
   id: string
   requerimiento_id: string
@@ -31,6 +34,8 @@ export interface TareaTecnica {
   descripcion: string | null
   responsable_id: string | null
   fecha_compromiso: string | null
+  categoria: CategoriaTarea | null
+  cargo_responsable: CargoTIN | null
   completada: boolean
   completada_por: string | null
   completada_at: string | null
@@ -169,6 +174,8 @@ export interface Requerimiento {
   // Campos de migración: cuantificación económica de beneficios cualitativos
   total_beneficios_cualitativos_anual: number | null
   impacto_economico_total_anual: number | null
+  // Estimación de horas de desarrollo TIN
+  horas_estimadas_desarrollo: number | null
   // Impacto REAL (registrado al finalizar el requerimiento)
   horas_ahorradas_mes_real: number | null
   ahorro_mensual_cop_real: number | null

@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import type { TareaTecnica, RegistroHorasTarea } from '@/lib/supabase/types'
+import type { TareaTecnica, RegistroHorasTarea, CategoriaTarea, CargoTIN } from '@/lib/supabase/types'
 
 export async function getTareas(requerimientoId: string): Promise<TareaTecnica[]> {
   const supabase = createAdminClient()
@@ -22,12 +22,31 @@ export async function getTareas(requerimientoId: string): Promise<TareaTecnica[]
   }))
 }
 
+export async function guardarHorasEstimadasDesarrollo(
+  requerimientoId: string,
+  horas: number | null
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('requerimientos')
+      .update({ horas_estimadas_desarrollo: horas })
+      .eq('id', requerimientoId)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
 export async function crearTarea(data: {
   requerimiento_id: string
   titulo: string
   descripcion?: string
   responsable_id?: string | null
   fecha_compromiso?: string | null
+  categoria?: CategoriaTarea | null
+  cargo_responsable?: CargoTIN | null
   created_by?: string
 }): Promise<{ ok: boolean; error?: string; tarea?: TareaTecnica }> {
   try {
@@ -51,6 +70,8 @@ export async function crearTarea(data: {
         descripcion:       data.descripcion ?? null,
         responsable_id:    data.responsable_id ?? null,
         fecha_compromiso:  data.fecha_compromiso ?? null,
+        categoria:         data.categoria ?? null,
+        cargo_responsable: data.cargo_responsable ?? null,
       })
       .select()
       .single()
@@ -67,6 +88,8 @@ export async function actualizarTarea(id: string, data: Partial<{
   descripcion: string | null
   responsable_id: string | null
   fecha_compromiso: string | null
+  categoria: CategoriaTarea | null
+  cargo_responsable: CargoTIN | null
   orden: number
 }>): Promise<{ ok: boolean; error?: string }> {
   try {
