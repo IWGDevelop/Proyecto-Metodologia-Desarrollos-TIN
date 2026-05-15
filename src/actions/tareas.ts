@@ -2,31 +2,37 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
-import type { TareaTecnica } from '@/lib/supabase/types'
+import type { TareaTecnica, RegistroHorasTarea } from '@/lib/supabase/types'
 
 export async function getTareas(requerimientoId: string): Promise<TareaTecnica[]> {
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('tareas_tecnicas')
-    .select('*, perfil_completada:completada_por(id, nombre_completo, email)')
+    .select('*, perfil_completada:completada_por(id, nombre_completo, email), registros_horas_tarea(*)')
     .eq('requerimiento_id', requerimientoId)
     .order('orden', { ascending: true })
     .order('created_at', { ascending: true })
 
   if (error) return []
-  return data ?? []
+  return (data ?? []).map((t: any) => ({
+    ...t,
+    registros_horas: (t.registros_horas_tarea ?? []).sort(
+      (a: RegistroHorasTarea, b: RegistroHorasTarea) => a.fecha.localeCompare(b.fecha)
+    ),
+  }))
 }
 
 export async function crearTarea(data: {
   requerimiento_id: string
   titulo: string
   descripcion?: string
+  responsable_id?: string | null
+  fecha_compromiso?: string | null
   created_by?: string
 }): Promise<{ ok: boolean; error?: string; tarea?: TareaTecnica }> {
   try {
     const supabase = createAdminClient()
 
-    // Get max orden
     const { data: last } = await (supabase as any)
       .from('tareas_tecnicas')
       .select('orden')
@@ -39,12 +45,18 @@ export async function crearTarea(data: {
 
     const { data: tarea, error } = await (supabase as any)
       .from('tareas_tecnicas')
-      .insert({ ...data, orden, descripcion: data.descripcion ?? null })
+      .insert({
+        ...data,
+        orden,
+        descripcion:       data.descripcion ?? null,
+        responsable_id:    data.responsable_id ?? null,
+        fecha_compromiso:  data.fecha_compromiso ?? null,
+      })
       .select()
       .single()
 
     if (error) return { ok: false, error: error.message }
-    return { ok: true, tarea }
+    return { ok: true, tarea: { ...tarea, registros_horas: [] } }
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'Error al crear tarea' }
   }
@@ -53,6 +65,8 @@ export async function crearTarea(data: {
 export async function actualizarTarea(id: string, data: Partial<{
   titulo: string
   descripcion: string | null
+  responsable_id: string | null
+  fecha_compromiso: string | null
   orden: number
 }>): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -89,7 +103,7 @@ export async function toggleTarea(id: string, completada: boolean): Promise<{ ok
       .update({
         completada,
         completada_por: completada ? (user?.id ?? null) : null,
-        completada_at: completada ? new Date().toISOString() : null,
+        completada_at:  completada ? new Date().toISOString() : null,
       })
       .eq('id', id)
 
@@ -97,6 +111,40 @@ export async function toggleTarea(id: string, completada: boolean): Promise<{ ok
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e?.message }
+  }
+}
+
+export async function agregarRegistroHoras(
+  tareaId: string,
+  payload: { fecha: string; horas: number; notas?: string }
+): Promise<{ ok: boolean; error?: string; registro?: RegistroHorasTarea }> {
+  try {
+    const supabase = createAdminClient()
+    const { data, error } = await (supabase as any)
+      .from('registros_horas_tarea')
+      .insert({
+        tarea_id: tareaId,
+        fecha:    payload.fecha,
+        horas:    payload.horas,
+        notas:    payload.notas?.trim() || null,
+      })
+      .select()
+      .single()
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, registro: data }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function eliminarRegistroHoras(id: string): Promise<{ ok: boolean }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('registros_horas_tarea').delete().eq('id', id)
+    return { ok: !error }
+  } catch {
+    return { ok: false }
   }
 }
 

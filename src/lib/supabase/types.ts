@@ -15,11 +15,22 @@ export interface Perfil {
   updated_at: string
 }
 
+export interface RegistroHorasTarea {
+  id: string
+  tarea_id: string
+  fecha: string
+  horas: number
+  notas: string | null
+  created_at: string
+}
+
 export interface TareaTecnica {
   id: string
   requerimiento_id: string
   titulo: string
   descripcion: string | null
+  responsable_id: string | null
+  fecha_compromiso: string | null
   completada: boolean
   completada_por: string | null
   completada_at: string | null
@@ -28,6 +39,7 @@ export interface TareaTecnica {
   created_at: string
   updated_at: string
   perfil_completada?: Perfil
+  registros_horas: RegistroHorasTarea[]
 }
 
 export interface RequerimientoDesarrollador {
