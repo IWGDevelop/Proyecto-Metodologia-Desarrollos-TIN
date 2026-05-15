@@ -22,7 +22,7 @@ const NAV_ITEMS = [
   { href: '/admin/kanban',                  label: 'Kanban',         Icon: Kanban },
   { href: '/admin/reportes',               label: 'Reportes',       Icon: BarChart2 },
   { href: '/admin/usuarios',               label: 'Usuarios',       Icon: Users },
-  { href: '/admin/configuracion/estados',  label: 'Configuración',  Icon: Settings2 },
+  { href: '/admin/configuracion',          label: 'Configuración',  Icon: Settings2 },
 ]
 
 interface Props {
