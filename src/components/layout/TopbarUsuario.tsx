@@ -1,9 +1,9 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
 import { Menu, Bell, LogOut, User, ChevronDown } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
+import { signOutAction } from '@/actions/auth'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
 import Link from 'next/link'
@@ -23,7 +23,6 @@ function AvatarLetras({ nombre }: { nombre: string }) {
 }
 
 export function TopbarUsuario({ perfil, onMenuClick }: Props) {
-  const router = useRouter()
   const [menuOpen, setMenuOpen] = useState(false)
   const [notiCount, setNotiCount] = useState(0)
 
@@ -57,12 +56,6 @@ export function TopbarUsuario({ perfil, onMenuClick }: Props) {
 
     return () => { supabase.removeChannel(channel) }
   }, [perfil.id])
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
@@ -121,12 +114,14 @@ export function TopbarUsuario({ perfil, onMenuClick }: Props) {
                 >
                   <User size={14} /> Mi perfil
                 </Link>
-                <button
-                  onClick={handleSignOut}
-                  className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                >
-                  <LogOut size={14} /> Cerrar sesión
-                </button>
+                <form action={signOutAction}>
+                  <button
+                    type="submit"
+                    className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                  >
+                    <LogOut size={14} /> Cerrar sesión
+                  </button>
+                </form>
               </div>
             </>
           )}

@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation'
 import { Menu, Plus, ChevronDown, LogOut, User, Users, Shield } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { createClient } from '@/lib/supabase/client'
+import { signOutAction } from '@/actions/auth'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
 import Link from 'next/link'
@@ -64,12 +65,6 @@ export function Topbar({ onMenuClick, perfil }: Props) {
     }
     checkConnection()
   }, [])
-
-  const handleSignOut = async () => {
-    const supabase = createClient()
-    await supabase.auth.signOut()
-    window.location.href = '/login'
-  }
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 shadow-sm">
@@ -148,12 +143,14 @@ export function Topbar({ onMenuClick, perfil }: Props) {
                     <Users size={14} /> Gestión de usuarios
                   </Link>
                   <div className="border-t border-slate-100 mt-1 pt-1">
-                    <button
-                      onClick={handleSignOut}
-                      className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
-                    >
-                      <LogOut size={14} /> Cerrar sesión
-                    </button>
+                    <form action={signOutAction}>
+                      <button
+                        type="submit"
+                        className="flex w-full items-center gap-2.5 px-4 py-2 text-sm text-red-600 hover:bg-red-50"
+                      >
+                        <LogOut size={14} /> Cerrar sesión
+                      </button>
+                    </form>
                   </div>
                 </div>
               </>
