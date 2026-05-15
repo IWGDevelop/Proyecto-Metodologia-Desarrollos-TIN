@@ -6,6 +6,7 @@ import { GraficaProcesos, GraficaProcesosSkeleton } from '@/components/dashboard
 import { TopImpacto, TopImpactoSkeleton } from '@/components/dashboard/TopImpacto'
 import { AlertasCriticas, AlertasCriticasSkeleton } from '@/components/dashboard/AlertasCriticas'
 import { ActividadReciente, ActividadRecienteSkeleton } from '@/components/dashboard/ActividadReciente'
+import { HorasDesarrollo, HorasDesarrolloSkeleton } from '@/components/dashboard/HorasDesarrollo'
 
 export const dynamic = 'force-dynamic'
 
@@ -24,6 +25,10 @@ export default function DashboardPage() {
 
       <Suspense fallback={<KPICardsSkeleton />}>
         <KPICards />
+      </Suspense>
+
+      <Suspense fallback={<HorasDesarrolloSkeleton />}>
+        <HorasDesarrollo />
       </Suspense>
 
       <Suspense fallback={<ImpactoEconomicoSkeleton />}>
