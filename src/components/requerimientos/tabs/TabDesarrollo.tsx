@@ -1,12 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useRef } from 'react'
 import { toast } from 'sonner'
 import {
   Plus, Trash2, UserPlus, UserMinus, Pencil, Check, X,
   Brain, Cpu, ChevronDown, ChevronUp, Clock, Calendar,
   User, AlertTriangle, Save, TrendingUp, TrendingDown,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Search,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -49,6 +49,91 @@ function Avatar({ nombre, size = 7 }: { nombre: string; size?: number }) {
   return (
     <div className={`flex h-${size} w-${size} shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-700`}>
       {initials}
+    </div>
+  )
+}
+
+/* ── Combobox de búsqueda de perfil ──────────────────────────────────────── */
+function BuscadorPerfil({
+  perfiles, value, onChange, placeholder, className,
+}: {
+  perfiles: Perfil[]
+  value: string        // perfil.id
+  onChange: (id: string) => void
+  placeholder: string
+  className?: string
+}) {
+  const [query, setQuery] = useState('')
+  const [open, setOpen]   = useState(false)
+  const inputRef          = useRef<HTMLInputElement>(null)
+
+  const selected = perfiles.find(p => p.id === value)
+
+  const filtered = query.trim().length > 0
+    ? perfiles
+        .filter(p =>
+          p.nombre_completo.toLowerCase().includes(query.toLowerCase()) ||
+          p.email.toLowerCase().includes(query.toLowerCase())
+        )
+        .slice(0, 8)
+    : []
+
+  return (
+    <div className={cn('relative', className)}>
+      {selected ? (
+        /* Chip del seleccionado */
+        <div className="flex items-center gap-2 rounded-md border border-slate-200 bg-white px-2.5 py-1.5">
+          <Avatar nombre={selected.nombre_completo} size={6} />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-slate-700 leading-tight truncate">{selected.nombre_completo}</p>
+            <p className="text-xs text-slate-400 truncate">{selected.email}</p>
+          </div>
+          <button type="button" onClick={() => onChange('')}
+            className="shrink-0 rounded p-0.5 text-slate-300 hover:bg-slate-100 hover:text-red-400">
+            <X size={13} />
+          </button>
+        </div>
+      ) : (
+        <>
+          <div className="relative">
+            <Search size={13} className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+            <input
+              ref={inputRef}
+              type="text"
+              value={query}
+              autoComplete="off"
+              onChange={e => { setQuery(e.target.value); setOpen(true) }}
+              onFocus={() => setOpen(true)}
+              onBlur={() => setTimeout(() => setOpen(false), 150)}
+              placeholder={placeholder}
+              className="w-full rounded-md border border-slate-200 bg-white py-1.5 pl-8 pr-3 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-200"
+            />
+          </div>
+          {open && (
+            <div className="absolute left-0 right-0 top-full z-50 mt-1 max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white shadow-lg">
+              {filtered.length > 0
+                ? filtered.map(p => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onMouseDown={() => { onChange(p.id); setQuery(''); setOpen(false) }}
+                      className="flex w-full items-center gap-2.5 px-3 py-2 text-left hover:bg-blue-50"
+                    >
+                      <Avatar nombre={p.nombre_completo} size={6} />
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-slate-700">{p.nombre_completo}</p>
+                        <p className="text-xs text-slate-400 truncate">{p.email}</p>
+                      </div>
+                    </button>
+                  ))
+                : query.trim().length > 0 && (
+                    <p className="px-3 py-2.5 text-sm text-slate-400">Sin resultados para "{query}"</p>
+                  )
+              }
+            </div>
+          )}
+        </>
+      )}
     </div>
   )
 }
@@ -479,16 +564,12 @@ function TareaRow({
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-500">Responsable</label>
-                    <select
+                    <BuscadorPerfil
+                      perfiles={perfiles}
                       value={editResponsable}
-                      onChange={e => setEditResponsable(e.target.value)}
-                      className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
-                    >
-                      <option value="">Sin responsable</option>
-                      {perfiles.map(p => (
-                        <option key={p.id} value={p.id}>{p.nombre_completo}</option>
-                      ))}
-                    </select>
+                      onChange={setEditResponsable}
+                      placeholder="Buscar por nombre o correo..."
+                    />
                   </div>
                   <div className="space-y-1">
                     <label className="text-xs text-slate-500">Fecha compromiso</label>
@@ -903,17 +984,14 @@ export function TabDesarrollo({
         {devs.length === 0 && <p className="mb-3 text-sm text-slate-400 italic">Sin desarrolladores asignados</p>}
         {isAdmin && disponibles.length > 0 && (
           <div className="flex gap-2">
-            <Select value={selectedDev} onValueChange={(v: string | null) => setSelectedDev(v ?? '')}>
-              <SelectTrigger className="flex-1 text-sm">
-                <SelectValue placeholder="Seleccionar desarrollador..." />
-              </SelectTrigger>
-              <SelectContent>
-                {disponibles.map(p => (
-                  <SelectItem key={p.id} value={p.id}>{p.nombre_completo}{p.cargo ? ` — ${p.cargo}` : ''}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <Button size="sm" onClick={handleAsignar} disabled={!selectedDev || isPending} className="gap-1.5">
+            <BuscadorPerfil
+              perfiles={disponibles}
+              value={selectedDev}
+              onChange={setSelectedDev}
+              placeholder="Buscar desarrollador por nombre o correo..."
+              className="flex-1"
+            />
+            <Button size="sm" onClick={handleAsignar} disabled={!selectedDev || isPending} className="gap-1.5 shrink-0">
               <UserPlus size={14} /> Asignar
             </Button>
           </div>
@@ -1093,16 +1171,12 @@ export function TabDesarrollo({
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-500">Responsable</label>
-                <select
+                <BuscadorPerfil
+                  perfiles={perfilesDisponibles}
                   value={newResponsable}
-                  onChange={e => setNewResponsable(e.target.value)}
-                  className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
-                >
-                  <option value="">Sin responsable</option>
-                  {perfilesDisponibles.map(p => (
-                    <option key={p.id} value={p.id}>{p.nombre_completo}</option>
-                  ))}
-                </select>
+                  onChange={setNewResponsable}
+                  placeholder="Buscar por nombre o correo..."
+                />
               </div>
               <div className="space-y-1">
                 <label className="text-xs text-slate-500">Fecha compromiso</label>
