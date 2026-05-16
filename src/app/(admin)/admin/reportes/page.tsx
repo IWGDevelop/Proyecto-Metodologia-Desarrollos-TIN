@@ -12,6 +12,7 @@ import { ReportePruebas } from '@/components/reportes/ReportePruebas'
 import { ReporteStandBy } from '@/components/reportes/ReporteStandBy'
 import { ReporteProductividad } from '@/components/reportes/ReporteProductividad'
 import { ReporteContraste } from '@/components/reportes/ReporteContraste'
+import { ReporteIncumplimiento } from '@/components/reportes/ReporteIncumplimiento'
 import { useReportesData, FILTROS_INIT, type FiltrosReportes as TFiltros } from '@/hooks/useReportesData'
 import { exportarReporteCompleto } from '@/lib/exportar'
 import { ESTADOS, PRIORIDADES, SLA_DIAS } from '@/lib/constants'
@@ -127,6 +128,8 @@ export default function AdminReportesPage() {
         <section><ReporteStandBy datos={datos} isLoading={isLoading} /></section>
         <div className="border-t border-slate-200" />
         <section><ReporteProductividad datos={datos} isLoading={isLoading} /></section>
+        <div className="border-t border-slate-200" />
+        <section><ReporteIncumplimiento /></section>
       </div>
     </div>
   )
