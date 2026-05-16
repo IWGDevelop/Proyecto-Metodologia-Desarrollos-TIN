@@ -11,6 +11,7 @@ import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
 import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
+import { TabPenalizaciones } from '@/components/requerimientos/tabs/TabPenalizaciones'
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
@@ -114,6 +115,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             )}
           </TabsTrigger>
           <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
+          <TabsTrigger value="penalizaciones">Penalizaciones</TabsTrigger>
           <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
           <TabsTrigger value="anexos">Anexos</TabsTrigger>
         </TabsList>
@@ -260,6 +262,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
         <TabsContent value="reuniones" className="mt-4">
           <TabReuniones requerimientoId={id} isAdmin={perfilAdmin?.rol === 'ADMIN_TIN'} />
+        </TabsContent>
+
+        <TabsContent value="penalizaciones" className="mt-4">
+          <TabPenalizaciones requerimientoId={id} isAdmin={perfilAdmin?.rol === 'ADMIN_TIN'} />
         </TabsContent>
 
         <TabsContent value="comentarios" className="mt-4">
