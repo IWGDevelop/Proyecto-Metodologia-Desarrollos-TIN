@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ESTADOS, PRIORIDADES } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, getEstadoCfg } from '@/lib/constants'
 import { formatFecha, formatCOP, cn } from '@/lib/utils'
 import type { Requerimiento, Perfil, Estado } from '@/lib/supabase/types'
 
@@ -25,7 +25,7 @@ const FILTROS_ESTADO = [
 ]
 
 function CardRequerimiento({ req, esPropietario }: { req: Requerimiento; esPropietario: boolean }) {
-  const estadoCfg    = ESTADOS[req.estado as Estado]
+  const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const impacto      = (req as any).impacto_economico_total_anual ?? req.ahorro_anual_cop
 

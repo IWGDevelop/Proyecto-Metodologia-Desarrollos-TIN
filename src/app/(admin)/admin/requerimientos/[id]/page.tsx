@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, ArrowLeft, Clock, DollarSign, TrendingUp } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, getEstadoCfg } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
@@ -40,7 +40,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
   if (error || !req) notFound()
 
-  const estadoCfg    = ESTADOS[req.estado as Estado]
+  const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const tipoLabel    = TIPOS_SOLICITUD.find(t => t.value === req.tipo_solicitud)?.label
   const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === req.proceso_interno)?.label
@@ -221,8 +221,8 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             ) : (
               <ol className="space-y-0 divide-y divide-slate-50">
                 {historial.map(h => {
-                  const antCfg  = h.estado_anterior ? ESTADOS[h.estado_anterior as Estado] : null
-                  const nuevCfg = ESTADOS[h.estado_nuevo as Estado]
+                  const antCfg  = h.estado_anterior ? getEstadoCfg(h.estado_anterior) : null
+                  const nuevCfg = getEstadoCfg(h.estado_nuevo)
                   return (
                     <li key={h.id} className="flex gap-3 py-3">
                       <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 ring-2 ring-blue-100" />

@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ESTADOS } from '@/lib/constants'
+import { ESTADOS, getEstadoCfg } from '@/lib/constants'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -41,7 +41,7 @@ export function CambiarEstadoDialog({
     startTransition(async () => {
       try {
         await cambiarEstado(requerimientoId, nuevoEstado, observacion)
-        toast.success(`Estado cambiado a "${ESTADOS[nuevoEstado].label}"`)
+        toast.success(`Estado cambiado a "${getEstadoCfg(nuevoEstado).label}"`)
         onOpenChange(false)
         setObservacion('')
         onSuccess?.()
@@ -63,10 +63,10 @@ export function CambiarEstadoDialog({
             <Label className="text-xs text-slate-500">Estado actual</Label>
             <div className={cn(
               'inline-flex rounded-full px-3 py-1 text-xs font-medium',
-              ESTADOS[estadoActual].bgColor,
-              ESTADOS[estadoActual].textColor
+              getEstadoCfg(estadoActual).bgColor,
+              getEstadoCfg(estadoActual).textColor
             )}>
-              {ESTADOS[estadoActual].label}
+              {getEstadoCfg(estadoActual).label}
             </div>
           </div>
 

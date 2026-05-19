@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFechaRelativa } from '@/lib/utils'
-import { ESTADOS } from '@/lib/constants'
+import { getEstadoCfg } from '@/lib/constants'
 import { ArrowRight, Activity } from 'lucide-react'
 import Link from 'next/link'
 import type { Estado } from '@/lib/supabase/types'
@@ -32,7 +32,7 @@ async function getActividad() {
 
 function BadgeEstado({ estado }: { estado: Estado | null }) {
   if (!estado) return <span className="text-xs text-slate-400">—</span>
-  const cfg = ESTADOS[estado]
+  const cfg = getEstadoCfg(estado)
   return (
     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${cfg.bgColor} ${cfg.textColor}`}>
       {cfg.label}

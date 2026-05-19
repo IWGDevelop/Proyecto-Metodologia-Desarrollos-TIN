@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExternalLink, Pencil, ArrowRight, DollarSign } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, getEstadoCfg } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import type { MetricaRequerimiento, HistorialEstado, Estado } from '@/lib/supabase/types'
 
@@ -40,7 +40,7 @@ export function KanbanCardDetail({ card, open, onOpenChange }: Props) {
 
   if (!card) return null
 
-  const estadoCfg = ESTADOS[card.estado as Estado]
+  const estadoCfg = getEstadoCfg(card.estado)
   const prioridadCfg = card.prioridad ? PRIORIDADES[card.prioridad] : null
   const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === card.proceso_interno)?.label
 
@@ -120,8 +120,8 @@ export function KanbanCardDetail({ card, open, onOpenChange }: Props) {
             ) : (
               <ol className="space-y-1.5">
                 {historial.map(h => {
-                  const antCfg = h.estado_anterior ? ESTADOS[h.estado_anterior as Estado] : null
-                  const nuevCfg = ESTADOS[h.estado_nuevo as Estado]
+                  const antCfg = h.estado_anterior ? getEstadoCfg(h.estado_anterior) : null
+                  const nuevCfg = getEstadoCfg(h.estado_nuevo)
                   return (
                     <li key={h.id} className="flex items-start gap-2 rounded-lg bg-slate-50 px-3 py-2 text-xs">
                       <div className="flex flex-wrap items-center gap-1">

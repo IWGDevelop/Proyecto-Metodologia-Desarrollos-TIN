@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, DollarSign, Clock, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, getEstadoCfg } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
@@ -33,7 +33,7 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
 
   if (error || !req) notFound()
 
-  const estadoCfg = ESTADOS[req.estado as Estado]
+  const estadoCfg = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === req.proceso_interno)?.label
   const actividades = (req.actividades_impacto ?? []) as ActividadImpacto[]

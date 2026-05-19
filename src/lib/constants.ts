@@ -138,6 +138,24 @@ export const ESTADOS: Record<
   },
 }
 
+// Fallback para estados dinámicos del Kanban que no están en ESTADOS
+const ESTADO_FALLBACK = {
+  label:       '',
+  descripcion: '',
+  color:       'slate',
+  bgColor:     'bg-slate-100',
+  textColor:   'text-slate-600',
+  borderColor: 'border-slate-200',
+  icon:        'Circle',
+}
+
+export function getEstadoCfg(estado: string) {
+  const cfg = ESTADOS[estado]
+  if (cfg) return cfg
+  // Estado dinámico: mostrar el nombre legible como fallback
+  return { ...ESTADO_FALLBACK, label: estado.replace(/_/g, ' ') }
+}
+
 // ─── Prioridades ─────────────────────────────────────────────────────────────
 export const PRIORIDADES: Record<
   number,
