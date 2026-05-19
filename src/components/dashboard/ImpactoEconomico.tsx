@@ -4,6 +4,7 @@ import { formatCOP } from '@/lib/utils'
 import { DollarSign, Calendar, Clock, ClipboardCheck, TrendingUp } from 'lucide-react'
 
 async function getImpactoData() {
+  try {
   const supabase = await createClient()
 
   const [{ data: impacto }, { count: totalReq }, { data: reqs }] = await Promise.all([
@@ -31,6 +32,9 @@ async function getImpactoData() {
   )
 
   return { ...totales, total: totalReq ?? 0 }
+  } catch {
+    return { ahorro_mensual: 0, ahorro_anual_hh: 0, cualitativos: 0, impacto_total: 0, horas_mes: 0, con_impacto: 0, total: 0 }
+  }
 }
 
 export async function ImpactoEconomico() {

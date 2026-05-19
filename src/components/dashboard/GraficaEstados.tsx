@@ -16,6 +16,7 @@ const ESTADO_COLORS: Record<string, string> = {
 }
 
 async function getEstadosData() {
+  try {
   const supabase = await createClient()
   const { data } = await supabase
     .from('requerimientos')
@@ -35,6 +36,9 @@ async function getEstadosData() {
     pct: total > 0 ? Math.round(((conteo[estado] ?? 0) / total) * 100) : 0,
     color: ESTADO_COLORS[estado as Estado],
   }))
+  } catch {
+    return []
+  }
 }
 
 export async function GraficaEstados() {

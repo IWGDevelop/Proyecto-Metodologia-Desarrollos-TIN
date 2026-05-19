@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils'
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
 async function getKPIData() {
+  try {
   const supabase = await createClient()
   const hoy = new Date()
   const inicioMes = new Date(hoy.getFullYear(), hoy.getMonth(), 1).toISOString().split('T')[0]
@@ -20,7 +21,7 @@ async function getKPIData() {
     { count: enDesarrollo },
     { count: standBy },
     { count: entregadosMes },
-    { data: slaData },
+    slaResult,
     { data: standByData },
   ] = await Promise.all([
     supabase.from('requerimientos').select('*', { count: 'exact', head: true })
@@ -35,7 +36,8 @@ async function getKPIData() {
       .eq('es_borrador', false)
       .gte('fecha_salida_vivo', inicioMes)
       .lte('fecha_salida_vivo', finMes),
-    supabase.from('v_metricas_requerimientos')
+    // La vista puede estar desactualizada — capturar error sin romper el componente
+    (supabase.from('v_metricas_requerimientos') as any)
       .select('cumple_sla')
       .not('cumple_sla', 'is', null),
     supabase.from('requerimientos')
@@ -44,13 +46,15 @@ async function getKPIData() {
       .eq('es_borrador', false),
   ])
 
+  const slaData = (slaResult as any)?.data ?? null
+
   const totalSLA = slaData?.length ?? 0
-  const cumpleSLA = slaData?.filter(r => r.cumple_sla === true).length ?? 0
+  const cumpleSLA = slaData?.filter((r: any) => r.cumple_sla === true).length ?? 0
   const pctSLA = totalSLA > 0 ? Math.round((cumpleSLA / totalSLA) * 100) : 0
 
   const diasBloqueoPromedio = standByData?.length
     ? Math.round(
-        standByData.reduce((sum, r) => {
+        standByData.reduce((sum: number, r: any) => {
           const dias = Math.floor(
             (Date.now() - new Date(r.updated_at).getTime()) / 86_400_000
           )
@@ -67,6 +71,12 @@ async function getKPIData() {
     entregadosMes: entregadosMes ?? 0,
     pctSLA,
     diasBloqueoPromedio,
+  }
+  } catch {
+    return {
+      totalActivos: 0, sinGestion: 0, enDesarrollo: 0,
+      standBy: 0, entregadosMes: 0, pctSLA: 0, diasBloqueoPromedio: 0,
+    }
   }
 }
 
