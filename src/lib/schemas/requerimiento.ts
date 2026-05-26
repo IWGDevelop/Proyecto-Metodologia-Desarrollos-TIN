@@ -5,7 +5,6 @@ import { z } from 'zod'
 export const paso1Schema = z.object({
   fecha_solicitud: z.string().min(1, 'La fecha es requerida'),
   tipo_solicitud: z.enum(['NUEVO_DESARROLLO', 'MEJORA', 'INTEGRACION', 'INFORME'] as const),
-  origen_requerimiento: z.enum(['LISTA_MEJORAS_PENDIENTES', 'TIN_NOVA', 'DESARROLLO_EXTERNO'] as const).nullable().optional(),
 })
 
 export const paso2Schema = z.object({

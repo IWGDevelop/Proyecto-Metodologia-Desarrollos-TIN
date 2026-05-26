@@ -15,6 +15,7 @@ import { TabPenalizaciones } from '@/components/requerimientos/tabs/TabPenalizac
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
+import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -81,6 +82,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <AsignarOrigenBtn
+            requerimientoId={id}
+            origenActual={req.origen_requerimiento ?? null}
+          />
           <AsignarPrioridadBtn
             requerimientoId={id}
             prioridadActual={req.prioridad}
