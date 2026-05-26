@@ -47,6 +47,7 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
     return {
       actividad: act.actividad,
       cargo_ejecuta: act.cargo_ejecuta,
+      salario_cargo: act.salario_cargo ?? null,
       frecuencia: act.frecuencia,
       tiempo_sin_mejora: act.tiempo_sin_mejora,
       tiempo_sin_mejora_unidad: act.tiempo_sin_mejora_unidad,

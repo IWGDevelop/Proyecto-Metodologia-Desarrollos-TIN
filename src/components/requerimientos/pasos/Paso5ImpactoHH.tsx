@@ -75,24 +75,31 @@ export function Paso5ImpactoHH({ form }: Props) {
   const { register, watch, setValue, control } = form
   const { fields, append, remove } = useFieldArray({ control, name: 'actividades' })
 
-  const actividades     = watch('actividades') ?? []
-  const salario         = watch('salario_promedio_cargo') ?? 0
-  const horasLaborales  = watch('horas_laborales_mes') ?? 192
-  const beneficios      = watch('beneficios') ?? []
+  const actividades    = watch('actividades') ?? []
+  const salarioGlobal  = watch('salario_promedio_cargo') ?? 0
+  const horasLaborales = watch('horas_laborales_mes') ?? 192
+  const beneficios     = watch('beneficios') ?? []
 
-  // ─── Cálculos horas hombre ────────────────────────────────────────────────
-  const totalHorasMes = actividades.reduce((sum, act) => {
-    try { return sum + calcularActividad(act).horas_mes } catch { return sum }
-  }, 0)
-  const totalHorasAnio    = totalHorasMes * 12
-  const valorHoraHombre   = salario && horasLaborales ? salario / horasLaborales : 0
-  const ahorroMensualHH   = totalHorasMes * valorHoraHombre
-  const ahorroAnualHH     = ahorroMensualHH * 12
+  // ─── Cálculo por actividad con salario individual o global ───────────────
+  const calcActividad = (act: typeof actividades[0]) => {
+    let horas_mes = 0
+    try { horas_mes = calcularActividad(act).horas_mes } catch {}
+    const salario    = (act.salario_cargo && act.salario_cargo > 0) ? act.salario_cargo : salarioGlobal
+    const valorHora  = salario && horasLaborales ? salario / horasLaborales : 0
+    const ahorroMes  = horas_mes * valorHora
+    return { horas_mes, valorHora, ahorroMes, usaSalarioPropio: !!(act.salario_cargo && act.salario_cargo > 0) }
+  }
+
+  const totalHorasMes    = actividades.reduce((s, a) => s + calcActividad(a).horas_mes, 0)
+  const totalHorasAnio   = totalHorasMes * 12
+  const ahorroMensualHH  = actividades.reduce((s, a) => s + calcActividad(a).ahorroMes, 0)
+  const ahorroAnualHH    = ahorroMensualHH * 12
+  const valorHoraGlobal  = salarioGlobal && horasLaborales ? salarioGlobal / horasLaborales : 0
 
   // ─── Cálculos cualitativos ────────────────────────────────────────────────
-  const beneficiosMarcados = beneficios.filter(b => b.marcado)
+  const beneficiosMarcados     = beneficios.filter(b => b.marcado)
   const totalAnualCualitativos = calcTotalCualitativos(beneficios)
-  const impactoTotal = ahorroAnualHH + totalAnualCualitativos
+  const impactoTotal           = ahorroAnualHH + totalAnualCualitativos
 
   const sumPorPeriodicidad = (p: string) =>
     beneficiosMarcados
@@ -155,9 +162,8 @@ export function Paso5ImpactoHH({ form }: Props) {
         ) : (
           <div className="space-y-3">
             {fields.map((field, i) => {
-              const act = actividades[i]
-              let horasMes = 0
-              try { horasMes = calcularActividad(act).horas_mes } catch {}
+              const act  = actividades[i]
+              const calc = calcActividad(act)
 
               return (
                 <div key={field.id} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -175,6 +181,19 @@ export function Paso5ImpactoHH({ form }: Props) {
                     <div>
                       <Label className="text-xs">Cargo que ejecuta</Label>
                       <Input placeholder="Ej: Coordinador Operativo" {...register(`actividades.${i}.cargo_ejecuta`)} />
+                    </div>
+                    <div>
+                      <Label className="text-xs">
+                        Salario del cargo (COP)
+                        <span className="ml-1 font-normal text-slate-400">
+                          {calc.usaSalarioPropio ? '— propio' : salarioGlobal > 0 ? '— usa global' : '— sin salario'}
+                        </span>
+                      </Label>
+                      <InputCOP
+                        value={watch(`actividades.${i}.salario_cargo`)}
+                        onChange={v => setValue(`actividades.${i}.salario_cargo`, v || undefined)}
+                        placeholder={salarioGlobal > 0 ? new Intl.NumberFormat('es-CO').format(salarioGlobal) : 'Salario global'}
+                      />
                     </div>
                     <div>
                       <Label className="text-xs">Frecuencia</Label>
@@ -222,9 +241,21 @@ export function Paso5ImpactoHH({ form }: Props) {
                         </Select>
                       </div>
                     </div>
-                    <div className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-700">
-                      <span className="font-medium">Horas ahorradas / mes: </span>
-                      <span className="text-base font-bold">{horasMes.toFixed(2)} h</span>
+
+                    {/* Resultado por actividad */}
+                    <div className="sm:col-span-2 grid grid-cols-3 gap-2">
+                      <div className="rounded-lg bg-slate-50 p-2.5 text-xs text-slate-600">
+                        <p className="text-slate-400">Valor hora</p>
+                        <p className="font-bold">{formatCOP(calc.valorHora)}</p>
+                      </div>
+                      <div className="rounded-lg bg-emerald-50 p-2.5 text-xs text-emerald-700">
+                        <p className="text-emerald-500">Horas / mes</p>
+                        <p className="font-bold">{calc.horas_mes.toFixed(2)} h</p>
+                      </div>
+                      <div className={cn('rounded-lg p-2.5 text-xs', calc.ahorroMes > 0 ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-50 text-slate-400')}>
+                        <p className={calc.ahorroMes > 0 ? 'text-emerald-600' : ''}>Ahorro / mes</p>
+                        <p className="font-bold">{calc.ahorroMes > 0 ? formatCOP(calc.ahorroMes) : '—'}</p>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -250,9 +281,10 @@ export function Paso5ImpactoHH({ form }: Props) {
         <h3 className="text-sm font-semibold text-slate-700">Valorización económica</h3>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-3 rounded-xl border border-slate-200 p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Valor de la hora hombre</p>
+            <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Salario global (por defecto)</p>
+            <p className="text-xs text-slate-400">Se aplica a las actividades que no tengan salario propio definido.</p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Salario mensual promedio del cargo (COP)</Label>
+              <Label className="text-xs">Salario mensual por defecto (COP)</Label>
               <Input type="number" min="0" placeholder="Ej: 3500000"
                 {...register('salario_promedio_cargo', { valueAsNumber: true })} />
             </div>
@@ -261,9 +293,9 @@ export function Paso5ImpactoHH({ form }: Props) {
               <Input type="number" min="1" placeholder="192"
                 {...register('horas_laborales_mes', { valueAsNumber: true })} />
             </div>
-            <div className="rounded-lg bg-emerald-50 p-3">
-              <p className="text-xs text-slate-500">Valor hora hombre calculado</p>
-              <p className="text-lg font-bold text-emerald-700">{formatCOP(valorHoraHombre)}</p>
+            <div className="rounded-lg bg-slate-50 p-3">
+              <p className="text-xs text-slate-500">Valor hora global calculado</p>
+              <p className="text-lg font-bold text-slate-700">{formatCOP(valorHoraGlobal)}</p>
             </div>
           </div>
           <div className="space-y-3 rounded-xl border border-slate-200 p-4">
@@ -274,8 +306,8 @@ export function Paso5ImpactoHH({ form }: Props) {
                 <span className="font-medium text-blue-600">{totalHorasMes.toFixed(1)} h</span>
               </div>
               <div className="flex justify-between text-slate-500">
-                <span>× Valor hora hombre</span>
-                <span className="font-medium">{formatCOP(valorHoraHombre)}</span>
+                <span>Ahorro por actividades</span>
+                <span className="text-xs text-slate-400">(salario individual o global)</span>
               </div>
               <div className="border-t border-slate-200 pt-2" />
               <div className="flex justify-between">
@@ -498,9 +530,9 @@ export function Paso5ImpactoHH({ form }: Props) {
           <p className="mb-2 text-xs font-medium text-emerald-300">── Ahorro en horas hombre ──</p>
           <div className="grid grid-cols-3 gap-2">
             {[
-              { icon: Clock,      label: 'Horas ahorradas/mes', valor: `${totalHorasMes.toFixed(1)} h` },
-              { icon: DollarSign, label: 'Ahorro HH mensual',   valor: formatCOP(ahorroMensualHH) },
-              { icon: TrendingUp, label: 'Ahorro HH anual',     valor: formatCOP(ahorroAnualHH) },
+              { icon: Clock,      label: 'Horas / mes',    valor: `${totalHorasMes.toFixed(1)} h` },
+              { icon: DollarSign, label: 'Ahorro mensual', valor: formatCOP(ahorroMensualHH) },
+              { icon: TrendingUp, label: 'Ahorro anual',   valor: formatCOP(ahorroAnualHH) },
             ].map(({ icon: Icon, label, valor }) => (
               <div key={label} className="rounded-lg bg-white/10 p-2.5">
                 <Icon size={13} className="mb-1 text-emerald-300" />

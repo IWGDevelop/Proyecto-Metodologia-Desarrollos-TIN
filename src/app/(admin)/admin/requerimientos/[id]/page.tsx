@@ -171,7 +171,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                 <table className="w-full text-sm">
                   <thead className="bg-slate-50">
                     <tr>
-                      {['Actividad', 'Cargo que ejecuta', 'Frecuencia', 'Horas/mes'].map(h => (
+                      {['Actividad', 'Cargo que ejecuta', 'Salario cargo', 'Frecuencia', 'Horas/mes'].map(h => (
                         <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400">{h}</th>
                       ))}
                     </tr>
@@ -181,6 +181,11 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                       <tr key={i}>
                         <td className="px-4 py-2.5 text-slate-700">{act.actividad}</td>
                         <td className="px-4 py-2.5 text-slate-600 text-xs">{act.cargo_ejecuta ?? '—'}</td>
+                        <td className="px-4 py-2.5 text-xs">
+                          {act.salario_cargo
+                            ? <span className="font-medium text-blue-600">{formatCOP(act.salario_cargo)}</span>
+                            : <span className="text-slate-400">Global</span>}
+                        </td>
                         <td className="px-4 py-2.5 text-slate-500 text-xs">{act.frecuencia ?? '—'}</td>
                         <td className="px-4 py-2.5 font-semibold text-emerald-600">{(act.horas_mes ?? 0).toFixed(2)} h</td>
                       </tr>

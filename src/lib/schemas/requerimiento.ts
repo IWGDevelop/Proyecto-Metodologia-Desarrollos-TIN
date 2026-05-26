@@ -48,6 +48,7 @@ export const paso4Schema = z.object({
 export const actividadSchema = z.object({
   actividad: z.string().min(1),
   cargo_ejecuta: z.string().min(1),
+  salario_cargo: z.number().min(0).optional(),   // si se omite usa el salario global
   frecuencia: z.enum(['DIARIA', 'SEMANAL', 'QUINCENAL', 'MENSUAL'] as const),
   tiempo_sin_mejora: z.number().min(0),
   tiempo_sin_mejora_unidad: z.enum(['MINUTOS', 'HORAS'] as const),
