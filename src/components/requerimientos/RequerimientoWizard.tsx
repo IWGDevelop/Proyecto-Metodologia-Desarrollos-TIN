@@ -222,14 +222,22 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   // ─── Cálculos globales ────────────────────────────────────────────────────
-  const actividades = form.watch('actividades') ?? []
+  const actividades  = form.watch('actividades') ?? []
+  const salario      = form.watch('salario_promedio_cargo') ?? 0
+  const horasLab     = form.watch('horas_laborales_mes') ?? 160
+
   const totalHorasMes = actividades.reduce((sum, act) => {
     try { return sum + calcularActividad(act).horas_mes } catch { return sum }
   }, 0)
-  const salario = form.watch('salario_promedio_cargo') ?? 0
-  const horasLab = form.watch('horas_laborales_mes') ?? 160
-  const valorHora = salario && horasLab ? salario / horasLab : 0
-  const ahorroMensual = totalHorasMes * valorHora
+
+  // Ahorro usando salario propio de cada actividad o el global como fallback
+  const ahorroMensual = actividades.reduce((sum, act) => {
+    let horas_mes = 0
+    try { horas_mes = calcularActividad(act).horas_mes } catch {}
+    const salarioAct = (act.salario_cargo && act.salario_cargo > 0) ? act.salario_cargo : salario
+    const valorHoraAct = salarioAct && horasLab ? salarioAct / horasLab : 0
+    return sum + horas_mes * valorHoraAct
+  }, 0)
   const ahorroAnual = ahorroMensual * 12
 
   // ─── Navegación entre pasos ───────────────────────────────────────────────
