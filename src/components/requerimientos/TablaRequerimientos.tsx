@@ -23,7 +23,7 @@ import {
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
 } from '@/hooks/useRequerimientos'
 import { eliminarRequerimiento } from '@/actions/requerimientos'
-import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
@@ -246,6 +246,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     <ColHeader label="Responsable"  sort={sort} onSort={handleSort} className="w-32" />
                     <ColHeader label="P"            column="prioridad"             sort={sort} onSort={handleSort} className="w-12" />
                     <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-32" />
+                    <ColHeader label="Origen"       column="origen_requerimiento"  sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Avance"       sort={sort} onSort={handleSort} className="w-20" />
                     <ColHeader label="Hs. dev. est." column="horas_estimadas_desarrollo" sort={sort} onSort={handleSort} className="w-24 text-right" />
                     <ColHeader label="HH anual"     column="ahorro_anual_cop"                    sort={sort} onSort={handleSort} className="w-28 text-right" />
@@ -349,6 +350,18 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}>
                             {estadoCfg.label}
                           </span>
+                        </td>
+
+                        {/* Origen */}
+                        <td className="px-3 py-2.5">
+                          {(row as any).origen_requerimiento ? (() => {
+                            const cfg = ORIGENES_REQUERIMIENTO.find(o => o.value === (row as any).origen_requerimiento)
+                            return cfg ? (
+                              <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>
+                                {cfg.label}
+                              </span>
+                            ) : <span className="text-xs text-slate-300">—</span>
+                          })() : <span className="text-xs text-slate-300">—</span>}
                         </td>
 
                         {/* Avance */}
