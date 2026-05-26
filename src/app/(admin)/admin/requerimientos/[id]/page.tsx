@@ -195,14 +195,15 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               </div>
             </div>
           )}
-          {req.ahorro_anual_cop && (
+          {/* Impacto HH */}
+          {(req.horas_ahorradas_mes ?? 0) > 0 && (
             <div className="rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
-              <p className="mb-3 text-sm font-semibold text-emerald-200">Impacto económico</p>
+              <p className="mb-3 text-sm font-semibold text-emerald-200">Impacto en horas hombre</p>
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
                 {[
-                  { icon: Clock, label: 'Horas ahorradas / mes', valor: `${req.horas_ahorradas_mes?.toFixed(1) ?? 0} h` },
-                  { icon: DollarSign, label: 'Ahorro mensual', valor: formatCOP(req.ahorro_mensual_cop) },
-                  { icon: TrendingUp, label: 'Ahorro anual', valor: formatCOP(req.ahorro_anual_cop) },
+                  { icon: Clock,      label: 'Horas ahorradas / mes', valor: `${req.horas_ahorradas_mes?.toFixed(1) ?? 0} h` },
+                  { icon: DollarSign, label: 'Ahorro mensual',        valor: formatCOP(req.ahorro_mensual_cop) },
+                  { icon: TrendingUp, label: 'Ahorro anual HH',       valor: formatCOP(req.ahorro_anual_cop) },
                 ].map(({ icon: Icon, label, valor }) => (
                   <div key={label} className="rounded-lg bg-white/10 p-3">
                     <Icon size={14} className="mb-1 text-emerald-300" />
@@ -213,16 +214,72 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               </div>
             </div>
           )}
+
+          {/* Beneficios cualitativos con valores */}
           {beneficios.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">Beneficios cualitativos</p>
-              <ul className="space-y-1">
-                {beneficios.map((b, i) => (
-                  <li key={i} className="flex items-start gap-2 text-sm text-slate-700">
-                    <span className="text-emerald-500">✓</span> {b.descripcion}
-                  </li>
-                ))}
-              </ul>
+            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
+              <p className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
+                Beneficios cualitativos
+              </p>
+              <div className="divide-y divide-slate-50">
+                {beneficios.map((b, i) => {
+                  const ben = b as any
+                  return (
+                    <div key={i} className="flex items-start justify-between gap-4 px-4 py-3">
+                      <div className="flex items-start gap-2 min-w-0">
+                        {ben.icono && <span className="mt-0.5 text-base shrink-0">{ben.icono}</span>}
+                        <div className="min-w-0">
+                          {ben.nombre && <p className="text-xs font-semibold text-slate-700">{ben.nombre}</p>}
+                          {b.descripcion && <p className="text-xs text-slate-500 mt-0.5">{b.descripcion}</p>}
+                          {ben.justificacion && (
+                            <p className="mt-1 text-xs text-slate-400 italic">"{ben.justificacion}"</p>
+                          )}
+                        </div>
+                      </div>
+                      {(ben.valor_anual_calculado ?? 0) > 0 && (
+                        <div className="shrink-0 text-right">
+                          <p className="text-[10px] text-slate-400">{ben.periodicidad === 'MENSUAL' ? 'mensual ×12' : ben.periodicidad === 'UNICO' ? 'único' : 'anual'}</p>
+                          <p className="text-sm font-bold text-blue-600">{formatCOP(ben.valor_anual_calculado)}</p>
+                          <p className="text-[10px] text-slate-400">/ año</p>
+                        </div>
+                      )}
+                    </div>
+                  )
+                })}
+              </div>
+              {(req.total_beneficios_cualitativos_anual ?? 0) > 0 && (
+                <div className="flex items-center justify-between border-t border-slate-200 bg-blue-50 px-4 py-3">
+                  <span className="text-sm font-semibold text-slate-700">Total cualitativos / año</span>
+                  <span className="text-lg font-extrabold text-blue-700">{formatCOP(req.total_beneficios_cualitativos_anual)}</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Total combinado */}
+          {((req.ahorro_anual_cop ?? 0) > 0 || (req.total_beneficios_cualitativos_anual ?? 0) > 0) && (
+            <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
+              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">Resumen impacto total proyectado</p>
+              <div className="space-y-1.5 text-sm">
+                {(req.ahorro_anual_cop ?? 0) > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Ahorro en horas hombre (anual)</span>
+                    <span className="font-semibold text-emerald-700">{formatCOP(req.ahorro_anual_cop)}</span>
+                  </div>
+                )}
+                {(req.total_beneficios_cualitativos_anual ?? 0) > 0 && (
+                  <div className="flex justify-between text-slate-600">
+                    <span>Beneficios cualitativos (anual)</span>
+                    <span className="font-semibold text-blue-600">{formatCOP(req.total_beneficios_cualitativos_anual)}</span>
+                  </div>
+                )}
+                <div className="flex justify-between border-t border-emerald-200 pt-2">
+                  <span className="font-bold text-slate-800">Impacto económico total / año</span>
+                  <span className="text-xl font-extrabold text-emerald-700">
+                    {formatCOP((req.ahorro_anual_cop ?? 0) + (req.total_beneficios_cualitativos_anual ?? 0))}
+                  </span>
+                </div>
+              </div>
             </div>
           )}
         </TabsContent>
