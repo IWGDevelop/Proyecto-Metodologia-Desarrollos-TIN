@@ -107,6 +107,8 @@ export interface ProcesoCargo {
 
 export interface ActividadImpacto {
   actividad: string
+  cargo_ejecuta?: string | null
+  frecuencia?: string | null
   horas_mes: number
   porcentaje_automatizable: number
 }
