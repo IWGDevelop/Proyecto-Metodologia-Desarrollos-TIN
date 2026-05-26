@@ -272,6 +272,15 @@ export const TIPOS_SOLICITUD = [
   { value: 'INFORME',          label: 'Informe' },
 ] as const
 
+// ─── Origen del requerimiento ─────────────────────────────────────────────────
+export const ORIGENES_REQUERIMIENTO = [
+  { value: 'LISTA_MEJORAS_PENDIENTES', label: 'Lista de mejoras pendientes', color: 'border-amber-300 bg-amber-50', iconColor: 'text-amber-600' },
+  { value: 'TIN_NOVA',                 label: 'TIN Nova',                    color: 'border-violet-300 bg-violet-50', iconColor: 'text-violet-600' },
+  { value: 'DESARROLLO_EXTERNO',       label: 'Desarrollo externo',           color: 'border-cyan-300 bg-cyan-50',   iconColor: 'text-cyan-600' },
+] as const
+
+export type OrigenRequerimiento = typeof ORIGENES_REQUERIMIENTO[number]['value']
+
 // ─── Opciones de impacta ──────────────────────────────────────────────────────
 export const OPCIONES_IMPACTA = [
   { value: 'FUNCIONARIOS', label: 'Solo funcionarios' },

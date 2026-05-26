@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, ArrowLeft, Clock, DollarSign, TrendingUp } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, getEstadoCfg } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, ORIGENES_REQUERIMIENTO, getEstadoCfg } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
@@ -43,6 +43,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const tipoLabel    = TIPOS_SOLICITUD.find(t => t.value === req.tipo_solicitud)?.label
+  const origenLabel  = ORIGENES_REQUERIMIENTO.find(o => o.value === req.origen_requerimiento)?.label
   const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === req.proceso_interno)?.label
   const actividades  = (req.actividades_impacto ?? []) as (ActividadImpacto & { horas_mes?: number })[]
   const beneficios   = (req.beneficios_cualitativos ?? []) as BeneficioCualitativo[]
@@ -127,6 +128,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               <dl className="space-y-2 text-sm">
                 <div className="flex justify-between"><dt className="text-slate-500">Fecha solicitud</dt><dd>{formatFecha(req.fecha_solicitud)}</dd></div>
                 <div className="flex justify-between"><dt className="text-slate-500">Tipo</dt><dd>{tipoLabel}</dd></div>
+                {origenLabel && <div className="flex justify-between"><dt className="text-slate-500">Origen</dt><dd className="font-medium text-violet-700">{origenLabel}</dd></div>}
                 <div className="flex justify-between"><dt className="text-slate-500">Empresa</dt><dd>{req.empresa ?? req.alcance}</dd></div>
                 <div className="flex justify-between"><dt className="text-slate-500">Sucursal</dt><dd>{req.sucursal}</dd></div>
               </dl>

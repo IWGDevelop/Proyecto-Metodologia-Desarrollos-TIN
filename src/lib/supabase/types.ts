@@ -91,6 +91,7 @@ export interface EstadoKanban {
 
 export type Alcance = 'IWF' | 'ILT' | 'IWG'
 export type TipoSolicitud = 'NUEVO_DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'INFORME'
+export type OrigenRequerimiento = 'LISTA_MEJORAS_PENDIENTES' | 'TIN_NOVA' | 'DESARROLLO_EXTERNO'
 export type TipoSolucion = 'DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'SUPERSET' | 'POR_DEFINIR'
 export type ProcesoInterno =
   | 'FINANCIERO' | 'OPERACIONES' | 'COMERCIAL' | 'CARGA'
@@ -136,6 +137,7 @@ export interface Requerimiento {
   fecha_envio_solicitud: string | null
   fecha_solicitud: string | null
   tipo_solicitud: TipoSolicitud | null
+  origen_requerimiento: OrigenRequerimiento | null
   empresa: string | null
   sucursal: string | null
   proceso_igsi: string | null
