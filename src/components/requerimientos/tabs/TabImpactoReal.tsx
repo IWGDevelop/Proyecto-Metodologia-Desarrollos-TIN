@@ -32,7 +32,7 @@ export function TabImpactoReal({ req, onSaved }: Props) {
   const [isPending, startT] = useTransition()
 
   // Cálculos automáticos
-  const horasLaboralesMes = req.horas_laborales_mes || 192
+  const horasLaboralesMes = req.horas_laborales_mes || 160
   const ahorroPct         = 1 // se ahorra el total de horas registradas (valores reales)
   const ahorroMensual     = Math.round(horasMes * (valorHora || (req.valor_hora_hombre ?? 0)))
   const ahorroAnual       = ahorroMensual * 12

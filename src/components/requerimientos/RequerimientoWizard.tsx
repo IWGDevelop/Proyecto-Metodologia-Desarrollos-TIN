@@ -105,7 +105,7 @@ function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahor
     ventajas_beneficios: data.ventajas_beneficios,
     actividades_impacto,
     salario_promedio_cargo: data.salario_promedio_cargo,
-    horas_laborales_mes: data.horas_laborales_mes ?? 192,
+    horas_laborales_mes: data.horas_laborales_mes ?? 160,
     valor_hora_hombre: data.salario_promedio_cargo && data.horas_laborales_mes
       ? data.salario_promedio_cargo / data.horas_laborales_mes : undefined,
     horas_ahorradas_mes: totalHorasMes,
@@ -165,7 +165,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
           procesos_cargos: (requerimiento.procesos_cargos as any[]) ?? [],
           ventajas_beneficios: requerimiento.ventajas_beneficios ?? '',
           salario_promedio_cargo: requerimiento.salario_promedio_cargo ?? undefined,
-          horas_laborales_mes: requerimiento.horas_laborales_mes ?? 192,
+          horas_laborales_mes: requerimiento.horas_laborales_mes ?? 160,
           beneficios: (() => {
             const saved = (requerimiento.beneficios_cualitativos as any[]) ?? []
             return BENEFICIOS_CONFIG.map(cfg => {
@@ -227,7 +227,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
     try { return sum + calcularActividad(act).horas_mes } catch { return sum }
   }, 0)
   const salario = form.watch('salario_promedio_cargo') ?? 0
-  const horasLab = form.watch('horas_laborales_mes') ?? 192
+  const horasLab = form.watch('horas_laborales_mes') ?? 160
   const valorHora = salario && horasLab ? salario / horasLab : 0
   const ahorroMensual = totalHorasMes * valorHora
   const ahorroAnual = ahorroMensual * 12

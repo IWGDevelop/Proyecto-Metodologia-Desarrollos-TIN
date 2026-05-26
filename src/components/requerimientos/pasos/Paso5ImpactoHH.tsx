@@ -77,7 +77,7 @@ export function Paso5ImpactoHH({ form }: Props) {
 
   const actividades    = watch('actividades') ?? []
   const salarioGlobal  = watch('salario_promedio_cargo') ?? 0
-  const horasLaborales = watch('horas_laborales_mes') ?? 192
+  const horasLaborales = watch('horas_laborales_mes') ?? 160
   const beneficios     = watch('beneficios') ?? []
 
   // ─── Cálculo por actividad con salario individual o global ───────────────
@@ -290,7 +290,7 @@ export function Paso5ImpactoHH({ form }: Props) {
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs">Horas laborales al mes</Label>
-              <Input type="number" min="1" placeholder="192"
+              <Input type="number" min="1" placeholder="160"
                 {...register('horas_laborales_mes', { valueAsNumber: true })} />
             </div>
             <div className="rounded-lg bg-slate-50 p-3">

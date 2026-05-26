@@ -57,7 +57,7 @@ export function Paso6Revision({ form, confirmado, onConfirmadoChange }: Props) {
   const totalHorasMes = (data.actividades ?? []).reduce((sum, act) => {
     try { return sum + calcularActividad(act).horas_mes } catch { return sum }
   }, 0)
-  const valorHora   = (data.salario_promedio_cargo ?? 0) / (data.horas_laborales_mes ?? 192)
+  const valorHora   = (data.salario_promedio_cargo ?? 0) / (data.horas_laborales_mes ?? 160)
   const ahorroMensualHH = totalHorasMes * valorHora
   const ahorroAnualHH   = ahorroMensualHH * 12
 

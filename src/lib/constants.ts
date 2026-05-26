@@ -14,7 +14,7 @@ export const SLA_DIAS: Record<number, number> = {
   4: 60,
 }
 
-export const HORAS_LABORALES_MES = 192
+export const HORAS_LABORALES_MES = 160
 
 // ─── Paleta de colores para estados dinámicos ────────────────────────────────
 export const COLOR_PALETTE: Record<string, { bg: string; text: string; border: string }> = {

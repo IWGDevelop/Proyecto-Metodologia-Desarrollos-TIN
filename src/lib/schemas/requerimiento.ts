@@ -75,7 +75,7 @@ export type BeneficioItem = z.infer<typeof beneficioSchema>
 export const paso5Schema = z.object({
   actividades: z.array(actividadSchema).default([]),
   salario_promedio_cargo: z.number().optional(),
-  horas_laborales_mes: z.number().default(192),
+  horas_laborales_mes: z.number().default(160),
   beneficios: z.array(beneficioSchema).default([]),
 })
 
@@ -150,7 +150,7 @@ export function defaultWizardValues(): Partial<WizardData> {
     tipos_cliente: [],
     procesos_cargos: [],
     actividades: [],
-    horas_laborales_mes: 192,
+    horas_laborales_mes: 160,
     beneficios: BENEFICIOS_CONFIG.map(b => ({
       ...b,
       marcado: false,
