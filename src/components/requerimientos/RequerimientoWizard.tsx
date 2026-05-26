@@ -164,6 +164,16 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
           tipos_cliente: requerimiento.tipos_cliente ?? [],
           procesos_cargos: (requerimiento.procesos_cargos as any[]) ?? [],
           ventajas_beneficios: requerimiento.ventajas_beneficios ?? '',
+          actividades: ((requerimiento.actividades_impacto as any[]) ?? []).map((act: any) => ({
+            actividad:               act.actividad ?? '',
+            cargo_ejecuta:           act.cargo_ejecuta ?? '',
+            salario_cargo:           act.salario_cargo ?? undefined,
+            frecuencia:              (act.frecuencia ?? 'DIARIA') as 'DIARIA'|'SEMANAL'|'QUINCENAL'|'MENSUAL',
+            tiempo_sin_mejora:       act.tiempo_sin_mejora ?? 0,
+            tiempo_sin_mejora_unidad:(act.tiempo_sin_mejora_unidad ?? 'MINUTOS') as 'MINUTOS'|'HORAS',
+            tiempo_con_mejora:       act.tiempo_con_mejora ?? 0,
+            tiempo_con_mejora_unidad:(act.tiempo_con_mejora_unidad ?? 'MINUTOS') as 'MINUTOS'|'HORAS',
+          })),
           salario_promedio_cargo: requerimiento.salario_promedio_cargo ?? undefined,
           horas_laborales_mes: requerimiento.horas_laborales_mes ?? 160,
           beneficios: (() => {
