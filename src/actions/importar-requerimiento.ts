@@ -107,6 +107,15 @@ export interface ImportarResult {
   error?: string
 }
 
+export interface ImportarLoteResult {
+  ok: boolean
+  importados: { requerimientoId: string; nombre: string; tareasCreadas: number; desarrolladoresAsignados: number; warnings: string[] }[]
+  totalImportados: number
+  totalTareas: number
+  totalDesarrolladores: number
+  errores: { indice: number; nombre: string; error: string }[]
+}
+
 /* ── Validación básica ──────────────────────────────────────────────────── */
 
 function validar(payload: ImportarPayload): string[] {
@@ -274,5 +283,38 @@ export async function importarRequerimiento(payload: ImportarPayload): Promise<I
     return { ok: true, requerimientoId, tareasCreadas, desarrolladoresAsignados, warnings }
   } catch (e: any) {
     return { ok: false, error: e.message ?? 'Error inesperado' }
+  }
+}
+
+/* ── Importación en lote ─────────────────────────────────────────────────── */
+
+export async function importarLote(payloads: ImportarPayload[]): Promise<ImportarLoteResult> {
+  const importados: ImportarLoteResult['importados'] = []
+  const errores:    ImportarLoteResult['errores']    = []
+
+  for (let i = 0; i < payloads.length; i++) {
+    const p = payloads[i]
+    const nombre = p.requerimiento?.nombre_desarrollo ?? `Requerimiento #${i + 1}`
+    const res = await importarRequerimiento(p)
+    if (res.ok && res.requerimientoId) {
+      importados.push({
+        requerimientoId:         res.requerimientoId,
+        nombre,
+        tareasCreadas:           res.tareasCreadas ?? 0,
+        desarrolladoresAsignados: res.desarrolladoresAsignados ?? 0,
+        warnings:                res.warnings ?? [],
+      })
+    } else {
+      errores.push({ indice: i, nombre, error: res.error ?? 'Error desconocido' })
+    }
+  }
+
+  return {
+    ok:                   importados.length > 0,
+    importados,
+    totalImportados:      importados.length,
+    totalTareas:          importados.reduce((s, r) => s + r.tareasCreadas, 0),
+    totalDesarrolladores: importados.reduce((s, r) => s + r.desarrolladoresAsignados, 0),
+    errores,
   }
 }

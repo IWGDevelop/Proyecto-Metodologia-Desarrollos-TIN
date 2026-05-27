@@ -1,19 +1,18 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { useRouter } from 'next/navigation'
 import {
   Upload, CheckCircle2, AlertTriangle, ArrowRight,
   Download, Copy, RefreshCw, ExternalLink,
-  FileJson, ClipboardList, Users, Layers,
+  FileJson, ClipboardList, Users, Layers, XCircle,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
-import { importarRequerimiento } from '@/actions/importar-requerimiento'
-import type { ImportarPayload } from '@/actions/importar-requerimiento'
+import { importarRequerimiento, importarLote } from '@/actions/importar-requerimiento'
+import type { ImportarPayload, ImportarLoteResult } from '@/actions/importar-requerimiento'
 
-/* ── Plantilla de ejemplo ────────────────────────────────────────────────── */
-const PLANTILLA: ImportarPayload = {
+/* ── Plantilla individual ────────────────────────────────────────────────── */
+const PLANTILLA_INDIVIDUAL: ImportarPayload = {
   requerimiento: {
     alcance:           'IWF',
     identificacion:    'Descripción breve del requerimiento',
@@ -76,6 +75,31 @@ const PLANTILLA: ImportarPayload = {
   desarrolladores: ['dev@tin.com'],
 }
 
+const PLANTILLA_LOTE: ImportarPayload[] = [
+  {
+    requerimiento: {
+      alcance: 'IWF',
+      identificacion: 'REQ-001',
+      nombre_desarrollo: 'Primer requerimiento del lote',
+      tipo_solicitud: 'NUEVO_DESARROLLO',
+      estado: 'EN_DESARROLLO',
+      prioridad: 1,
+    },
+    tareas: [{ titulo: 'Análisis', categoria: 'DESARROLLO' }],
+  },
+  {
+    requerimiento: {
+      alcance: 'ILT',
+      identificacion: 'REQ-002',
+      nombre_desarrollo: 'Segundo requerimiento del lote',
+      tipo_solicitud: 'MEJORA',
+      estado: 'ANALISIS',
+      prioridad: 2,
+    },
+    tareas: [{ titulo: 'Revisión', categoria: 'TESTING' }],
+  },
+]
+
 /* ── Valores válidos para referencia ─────────────────────────────────────── */
 const REFERENCIA = {
   alcance:           ['IWF', 'ILT', 'IWG'],
@@ -89,7 +113,17 @@ const REFERENCIA = {
   cargo_responsable: ['AUXILIAR_TIN', 'ING_DESARROLLO', 'ANALISTA_TIN', 'COORDINADOR_TIN', 'DIRECTOR_CORPORATIVO_TIN'],
 }
 
-/* ── Preview card ────────────────────────────────────────────────────────── */
+/* ── Helpers de validación ───────────────────────────────────────────────── */
+function validarPayload(obj: any, idx?: number): string | null {
+  const prefix = idx !== undefined ? `[${idx}] ` : ''
+  if (!obj.requerimiento) return `${prefix}Falta el campo "requerimiento"`
+  if (!obj.requerimiento.alcance) return `${prefix}requerimiento.alcance es obligatorio (IWF | ILT | IWG)`
+  if (!obj.requerimiento.nombre_desarrollo) return `${prefix}requerimiento.nombre_desarrollo es obligatorio`
+  if (!obj.requerimiento.identificacion) return `${prefix}requerimiento.identificacion es obligatorio`
+  return null
+}
+
+/* ── Preview individual ──────────────────────────────────────────────────── */
 function PreviewCard({ payload }: { payload: ImportarPayload }) {
   const r = payload.requerimiento
   return (
@@ -141,7 +175,54 @@ function PreviewCard({ payload }: { payload: ImportarPayload }) {
   )
 }
 
-/* ── Resultado ───────────────────────────────────────────────────────────── */
+/* ── Preview lote ────────────────────────────────────────────────────────── */
+function PreviewLoteCard({ payloads }: { payloads: ImportarPayload[] }) {
+  const totalTareas       = payloads.reduce((s, p) => s + (p.tareas?.length ?? 0), 0)
+  const totalDesarrolladrs = payloads.reduce((s, p) => s + (p.desarrolladores?.length ?? 0), 0)
+  return (
+    <div className="rounded-xl border border-blue-200 bg-blue-50/50 p-4 space-y-4">
+      <div className="flex items-center gap-2">
+        <CheckCircle2 size={16} className="text-blue-500" />
+        <p className="text-sm font-semibold text-blue-700">
+          JSON válido — {payloads.length} requerimientos en el lote
+        </p>
+      </div>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: 'Requerimientos', valor: payloads.length, color: 'text-blue-600' },
+          { label: 'Tareas totales', valor: totalTareas, color: 'text-indigo-600' },
+          { label: 'Desarrolladores', valor: totalDesarrolladrs, color: 'text-purple-600' },
+        ].map(({ label, valor, color }) => (
+          <div key={label} className="rounded-lg bg-white border border-blue-100 px-3 py-2 text-center">
+            <p className={cn('text-2xl font-bold', color)}>{valor}</p>
+            <p className="text-xs text-slate-400">{label}</p>
+          </div>
+        ))}
+      </div>
+      <div className="space-y-1.5 max-h-52 overflow-y-auto pr-1">
+        {payloads.map((p, i) => {
+          const r = p.requerimiento
+          return (
+            <div key={i} className="flex items-center gap-2 rounded-lg border border-blue-100 bg-white px-3 py-2">
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-bold text-blue-600">
+                {i + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-medium text-slate-700">{r.nombre_desarrollo}</p>
+                <p className="text-[10px] text-slate-400">{r.identificacion} · {r.alcance}</p>
+              </div>
+              <div className="flex gap-1.5 shrink-0 text-[10px] text-slate-400">
+                <span>{p.tareas?.length ?? 0} tareas</span>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
+/* ── Resultado individual ────────────────────────────────────────────────── */
 function ResultadoCard({
   requerimientoId, tareasCreadas, desarrolladoresAsignados, warnings,
 }: {
@@ -186,30 +267,121 @@ function ResultadoCard({
   )
 }
 
+/* ── Resultado lote ──────────────────────────────────────────────────────── */
+function ResultadoLoteCard({ resultado }: { resultado: ImportarLoteResult }) {
+  return (
+    <div className="space-y-4">
+      {/* Resumen */}
+      <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-5 space-y-3">
+        <div className="flex items-center gap-2">
+          <CheckCircle2 size={20} className="text-emerald-500" />
+          <p className="text-base font-bold text-emerald-700">
+            Importación en lote completada
+          </p>
+        </div>
+        <div className="grid grid-cols-4 gap-2">
+          {[
+            { label: 'Importados', valor: resultado.totalImportados, color: 'text-emerald-600' },
+            { label: 'Tareas creadas', valor: resultado.totalTareas, color: 'text-blue-600' },
+            { label: 'Desarrolladores', valor: resultado.totalDesarrolladores, color: 'text-purple-600' },
+            { label: 'Errores', valor: resultado.errores.length, color: resultado.errores.length > 0 ? 'text-red-500' : 'text-slate-400' },
+          ].map(({ label, valor, color }) => (
+            <div key={label} className="rounded-lg bg-white border border-emerald-100 px-3 py-2 text-center">
+              <p className={cn('text-2xl font-bold', color)}>{valor}</p>
+              <p className="text-xs text-slate-400">{label}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Importados */}
+      {resultado.importados.length > 0 && (
+        <div className="rounded-xl border border-slate-200 bg-white p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
+            Requerimientos creados
+          </p>
+          <div className="space-y-1.5 max-h-64 overflow-y-auto pr-1">
+            {resultado.importados.map((imp) => (
+              <div key={imp.requerimientoId} className="flex items-center gap-2 rounded-lg border border-slate-100 px-3 py-2">
+                <CheckCircle2 size={13} className="text-emerald-500 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="truncate text-xs font-medium text-slate-700">{imp.nombre}</p>
+                  {imp.warnings.length > 0 && (
+                    <p className="text-[10px] text-amber-600">{imp.warnings.length} advertencia(s)</p>
+                  )}
+                </div>
+                <div className="flex gap-2 text-[10px] text-slate-400 shrink-0">
+                  <span>{imp.tareasCreadas} tareas</span>
+                </div>
+                <a
+                  href={`/admin/requerimientos/${imp.requerimientoId}`}
+                  className="ml-1 shrink-0 text-blue-500 hover:text-blue-700"
+                  title="Abrir"
+                >
+                  <ExternalLink size={13} />
+                </a>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Errores */}
+      {resultado.errores.length > 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-4 space-y-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-red-400 flex items-center gap-1.5">
+            <XCircle size={12} /> Errores ({resultado.errores.length})
+          </p>
+          <div className="space-y-1.5">
+            {resultado.errores.map((err) => (
+              <div key={err.indice} className="rounded-lg border border-red-100 bg-white px-3 py-2">
+                <p className="text-xs font-medium text-slate-700">{err.nombre}</p>
+                <p className="text-xs text-red-500 mt-0.5">{err.error}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Componente principal ────────────────────────────────────────────────── */
 export function ImportadorRequerimiento() {
-  const router = useRouter()
-  const [jsonText, setJsonText]       = useState('')
-  const [parsed, setParsed]           = useState<ImportarPayload | null>(null)
-  const [parseError, setParseError]   = useState<string | null>(null)
-  const [resultado, setResultado]     = useState<{
+  const [jsonText, setJsonText]     = useState('')
+  const [parsed, setParsed]         = useState<ImportarPayload | ImportarPayload[] | null>(null)
+  const [parseError, setParseError] = useState<string | null>(null)
+  const [resultadoSingle, setResultadoSingle] = useState<{
     requerimientoId: string; tareasCreadas: number
     desarrolladoresAsignados: number; warnings: string[]
   } | null>(null)
+  const [resultadoLote, setResultadoLote] = useState<ImportarLoteResult | null>(null)
   const [isPending, startT] = useTransition()
+
+  const esLote = Array.isArray(parsed)
 
   const handleParsear = () => {
     setParseError(null)
     setParsed(null)
-    setResultado(null)
+    setResultadoSingle(null)
+    setResultadoLote(null)
     try {
       const obj = JSON.parse(jsonText)
-      if (!obj.requerimiento) throw new Error('El JSON debe tener un campo "requerimiento"')
-      if (!obj.requerimiento.alcance) throw new Error('requerimiento.alcance es obligatorio (IWF | ILT | IWG)')
-      if (!obj.requerimiento.nombre_desarrollo) throw new Error('requerimiento.nombre_desarrollo es obligatorio')
-      if (!obj.requerimiento.identificacion) throw new Error('requerimiento.identificacion es obligatorio')
-      setParsed(obj as ImportarPayload)
-      toast.success('JSON válido — revisa la vista previa')
+
+      if (Array.isArray(obj)) {
+        if (obj.length === 0) throw new Error('El array no puede estar vacío')
+        obj.forEach((item, i) => {
+          const err = validarPayload(item, i)
+          if (err) throw new Error(err)
+        })
+        setParsed(obj as ImportarPayload[])
+        toast.success(`JSON válido — ${obj.length} requerimiento(s) en el lote`)
+      } else {
+        const err = validarPayload(obj)
+        if (err) throw new Error(err)
+        setParsed(obj as ImportarPayload)
+        toast.success('JSON válido — revisa la vista previa')
+      }
     } catch (e: any) {
       setParseError(e.message)
       toast.error('Error en el JSON')
@@ -219,46 +391,81 @@ export function ImportadorRequerimiento() {
   const handleImportar = () => {
     if (!parsed) return
     startT(async () => {
-      const res = await importarRequerimiento(parsed)
-      if (res.ok && res.requerimientoId) {
-        setResultado({
-          requerimientoId: res.requerimientoId,
-          tareasCreadas: res.tareasCreadas ?? 0,
-          desarrolladoresAsignados: res.desarrolladoresAsignados ?? 0,
-          warnings: res.warnings ?? [],
-        })
-        toast.success('Importado correctamente')
+      if (Array.isArray(parsed)) {
+        const res = await importarLote(parsed)
+        setResultadoLote(res)
+        if (res.totalImportados > 0) {
+          toast.success(`${res.totalImportados} requerimiento(s) importados`)
+        }
+        if (res.errores.length > 0) {
+          toast.error(`${res.errores.length} error(es) durante la importación`)
+        }
       } else {
-        toast.error(res.error ?? 'Error al importar')
+        const res = await importarRequerimiento(parsed)
+        if (res.ok && res.requerimientoId) {
+          setResultadoSingle({
+            requerimientoId: res.requerimientoId,
+            tareasCreadas: res.tareasCreadas ?? 0,
+            desarrolladoresAsignados: res.desarrolladoresAsignados ?? 0,
+            warnings: res.warnings ?? [],
+          })
+          toast.success('Importado correctamente')
+        } else {
+          toast.error(res.error ?? 'Error al importar')
+        }
       }
     })
   }
 
-  const handleDescargarPlantilla = () => {
-    const blob = new Blob([JSON.stringify(PLANTILLA, null, 2)], { type: 'application/json' })
+  const cargarPlantilla = (lote: boolean) => {
+    const tpl = lote ? PLANTILLA_LOTE : PLANTILLA_INDIVIDUAL
+    const txt = JSON.stringify(tpl, null, 2)
+    setJsonText(txt)
+    setParsed(null)
+    setParseError(null)
+    setResultadoSingle(null)
+    setResultadoLote(null)
+    toast.success(lote ? 'Plantilla de lote cargada al editor' : 'Plantilla individual cargada al editor')
+  }
+
+  const handleDescargarPlantilla = (lote: boolean) => {
+    const tpl = lote ? PLANTILLA_LOTE : PLANTILLA_INDIVIDUAL
+    const blob = new Blob([JSON.stringify(tpl, null, 2)], { type: 'application/json' })
     const url  = URL.createObjectURL(blob)
     const a    = document.createElement('a')
-    a.href = url; a.download = 'plantilla_requerimiento.json'; a.click()
+    a.href = url
+    a.download = lote ? 'plantilla_lote_requerimientos.json' : 'plantilla_requerimiento.json'
+    a.click()
     URL.revokeObjectURL(url)
   }
 
-  const handleCopiarPlantilla = () => {
-    navigator.clipboard.writeText(JSON.stringify(PLANTILLA, null, 2))
-    setJsonText(JSON.stringify(PLANTILLA, null, 2))
-    toast.success('Plantilla copiada al editor')
-  }
-
   const handleReset = () => {
-    setJsonText(''); setParsed(null); setParseError(null); setResultado(null)
+    setJsonText('')
+    setParsed(null)
+    setParseError(null)
+    setResultadoSingle(null)
+    setResultadoLote(null)
   }
 
-  if (resultado) {
+  if (resultadoSingle) {
     return (
       <div className="max-w-2xl mx-auto space-y-4">
-        <ResultadoCard {...resultado} />
+        <ResultadoCard {...resultadoSingle} />
         <button onClick={handleReset}
           className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
           <RefreshCw size={13} /> Importar otro requerimiento
+        </button>
+      </div>
+    )
+  }
+
+  if (resultadoLote) {
+    return (
+      <div className="max-w-2xl mx-auto space-y-4">
+        <ResultadoLoteCard resultado={resultadoLote} />
+        <button onClick={handleReset}
+          className="flex items-center gap-1.5 text-sm text-slate-500 hover:text-slate-700">
+          <RefreshCw size={13} /> Importar otro lote
         </button>
       </div>
     )
@@ -268,24 +475,28 @@ export function ImportadorRequerimiento() {
     <div className="grid gap-6 lg:grid-cols-[1fr_340px]">
       {/* ── Panel izquierdo: editor JSON ─────────────────────────────── */}
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <p className="text-sm font-semibold text-slate-700">JSON del requerimiento</p>
-          <div className="flex gap-2">
-            <button onClick={handleCopiarPlantilla}
+          <div className="flex gap-2 flex-wrap">
+            <button onClick={() => cargarPlantilla(false)}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600">
-              <Copy size={12} /> Cargar plantilla
+              <Copy size={12} /> Plantilla individual
             </button>
-            <button onClick={handleDescargarPlantilla}
+            <button onClick={() => cargarPlantilla(true)}
+              className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-indigo-300 hover:bg-indigo-50 hover:text-indigo-600">
+              <Layers size={12} /> Plantilla lote
+            </button>
+            <button onClick={() => handleDescargarPlantilla(false)}
               className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:border-slate-300">
-              <Download size={12} /> Descargar plantilla
+              <Download size={12} /> Descargar
             </button>
           </div>
         </div>
 
         <textarea
           value={jsonText}
-          onChange={e => { setJsonText(e.target.value); setParsed(null); setParseError(null); setResultado(null) }}
-          placeholder={'{\n  "requerimiento": {\n    "alcance": "IWF",\n    "identificacion": "...",\n    "nombre_desarrollo": "..."\n  }\n}'}
+          onChange={e => { setJsonText(e.target.value); setParsed(null); setParseError(null) }}
+          placeholder={'// Individual:\n{\n  "requerimiento": { "alcance": "IWF", ... }\n}\n\n// Lote (array):\n[\n  { "requerimiento": { ... } },\n  { "requerimiento": { ... } }\n]'}
           rows={22}
           spellCheck={false}
           className={cn(
@@ -322,6 +533,8 @@ export function ImportadorRequerimiento() {
             >
               {isPending ? (
                 <><div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" /> Importando...</>
+              ) : esLote ? (
+                <><Upload size={15} /> Importar {(parsed as ImportarPayload[]).length} requerimientos <ArrowRight size={14} /></>
               ) : (
                 <><Upload size={15} /> Importar requerimiento <ArrowRight size={14} /></>
               )}
@@ -329,7 +542,8 @@ export function ImportadorRequerimiento() {
           )}
         </div>
 
-        {parsed && <PreviewCard payload={parsed} />}
+        {parsed && !Array.isArray(parsed) && <PreviewCard payload={parsed} />}
+        {parsed && Array.isArray(parsed) && <PreviewLoteCard payloads={parsed} />}
       </div>
 
       {/* ── Panel derecho: referencia ─────────────────────────────────── */}
@@ -348,6 +562,20 @@ export function ImportadorRequerimiento() {
               </div>
             </div>
           ))}
+        </div>
+
+        <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 space-y-2 text-xs text-slate-600">
+          <p className="font-semibold text-slate-700">Formatos aceptados</p>
+          <div className="space-y-1.5 text-[11px] text-slate-500">
+            <div className="rounded-md bg-white border border-slate-200 px-2 py-1.5">
+              <p className="font-mono font-semibold text-slate-600">Individual</p>
+              <p className="font-mono text-slate-400">{'{ "requerimiento": {...} }'}</p>
+            </div>
+            <div className="rounded-md bg-white border border-indigo-200 px-2 py-1.5">
+              <p className="font-mono font-semibold text-indigo-600">Lote (array)</p>
+              <p className="font-mono text-slate-400">{'[{ "requerimiento": {...} }, ...]'}</p>
+            </div>
+          </div>
         </div>
 
         <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-3 space-y-2 text-xs text-slate-600">
