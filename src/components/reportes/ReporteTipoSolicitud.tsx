@@ -130,7 +130,7 @@ export function ReporteTipoSolicitud({ datos, isLoading }: Props) {
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                 <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                 <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} allowDecimals={false} />
-                <Tooltip formatter={(v: unknown) => [v, 'Requerimientos']} />
+                <Tooltip formatter={(v: number) => [v, 'Requerimientos']} />
                 <Bar dataKey="cantidad" radius={[6, 6, 0, 0]} maxBarSize={48}>
                   {tiposConocidos.map((t, i) => (
                     <Cell key={i} fill={t.color} />
@@ -162,7 +162,7 @@ export function ReporteTipoSolicitud({ datos, isLoading }: Props) {
                 <Legend
                   formatter={(value) => <span className="text-xs text-slate-600">{value}</span>}
                 />
-                <Tooltip formatter={(v: unknown) => [v, 'Requerimientos']} />
+                <Tooltip formatter={(v: number) => [v, 'Requerimientos']} />
               </PieChart>
             </ResponsiveContainer>
           </div>
@@ -176,7 +176,7 @@ export function ReporteTipoSolicitud({ datos, isLoading }: Props) {
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
-                  <Tooltip formatter={(v: unknown) => [`${Number(v).toLocaleString('es-CO')} h`, 'Horas estimadas']} />
+                  <Tooltip formatter={(v: number) => [`${v.toLocaleString('es-CO')} h`, 'Horas estimadas']} />
                   <Bar dataKey="horas" radius={[6, 6, 0, 0]} maxBarSize={48}>
                     {tiposConocidos.filter(t => t.horas > 0).map((t, i) => (
                       <Cell key={i} fill={t.color} fillOpacity={0.8} />
@@ -197,7 +197,7 @@ export function ReporteTipoSolicitud({ datos, isLoading }: Props) {
                   <XAxis dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} axisLine={false} tickLine={false} />
                   <YAxis tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false}
                     tickFormatter={(v) => `$${(v / 1_000_000).toFixed(0)}M`} />
-                  <Tooltip formatter={(v: unknown) => [formatCOP(Number(v)), 'Impacto anual']} />
+                  <Tooltip formatter={(v: number) => [formatCOP(v), 'Impacto anual']} />
                   <Bar dataKey="impacto" radius={[6, 6, 0, 0]} maxBarSize={48}>
                     {tiposConocidos.filter(t => t.impacto > 0).map((t, i) => (
                       <Cell key={i} fill={t.color} fillOpacity={0.75} />
