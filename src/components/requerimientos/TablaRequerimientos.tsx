@@ -23,7 +23,7 @@ import {
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
 } from '@/hooks/useRequerimientos'
 import { eliminarRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
-import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
@@ -215,6 +215,14 @@ const OPCIONES_PRIORIDAD: OpcionEdit[] = [
 ]
 const OPCIONES_ORIGEN: OpcionEdit[] = ORIGENES_REQUERIMIENTO.map(o => ({ value: o.value, label: o.label }))
 const OPCIONES_PROCESO: OpcionEdit[] = PROCESOS_INTERNOS.map(p => ({ value: p.value, label: p.label }))
+const OPCIONES_TIPO_SOLICITUD: OpcionEdit[] = Object.entries(TIPOS_SOLICITUD).map(([v, cfg]) => ({ value: v, label: cfg.label }))
+
+const TIPO_SOLICITUD_BADGE: Record<string, string> = {
+  NUEVO_DESARROLLO: 'bg-blue-100 text-blue-700 border-blue-200',
+  MEJORA:           'bg-violet-100 text-violet-700 border-violet-200',
+  INTEGRACION:      'bg-cyan-100 text-cyan-700 border-cyan-200',
+  INFORME:          'bg-amber-100 text-amber-700 border-amber-200',
+}
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 interface Props {
@@ -302,8 +310,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     <ColHeader label="Rank"    sort={sort} onSort={handleSort} className="w-14 text-center" />
                     <ColHeader label="Nombre"  sort={sort} onSort={handleSort} className="min-w-[260px]" />
                     <ColHeader label="Alcance" column="alcance" sort={sort} onSort={handleSort} className="w-24" />
-                    <ColHeader label="Proceso" sort={sort} onSort={handleSort} className="w-36" />
-                    <ColHeader label="P"       column="prioridad" sort={sort} onSort={handleSort} className="w-14" />
+                    <ColHeader label="Proceso"   sort={sort} onSort={handleSort} className="w-36" />
+                    <ColHeader label="Tipo"     column="tipo_solicitud" sort={sort} onSort={handleSort} className="w-32" />
+                    <ColHeader label="P"        column="prioridad" sort={sort} onSort={handleSort} className="w-14" />
                     <ColHeader label="Estado"  column="estado"    sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Origen"  column="origen_requerimiento" sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Avance"  sort={sort} onSort={handleSort} className="w-20" />
@@ -387,6 +396,21 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             renderBadge={(v) => v ? (
                               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
+                              </span>
+                            ) : null}
+                          />
+                        </td>
+
+                        {/* Tipo solicitud — editable */}
+                        <td className="px-3 py-2.5">
+                          <CeldaEditable
+                            rowId={row.id}
+                            valor={row.tipo_solicitud}
+                            opciones={OPCIONES_TIPO_SOLICITUD}
+                            onGuardar={(id, v) => guardarCampo(id, 'tipo_solicitud', v)}
+                            renderBadge={(v) => v ? (
+                              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[v] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>
+                                {TIPOS_SOLICITUD[v as keyof typeof TIPOS_SOLICITUD]?.label ?? v}
                               </span>
                             ) : null}
                           />
