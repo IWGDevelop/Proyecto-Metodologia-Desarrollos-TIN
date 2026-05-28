@@ -215,7 +215,7 @@ const OPCIONES_PRIORIDAD: OpcionEdit[] = [
 ]
 const OPCIONES_ORIGEN: OpcionEdit[] = ORIGENES_REQUERIMIENTO.map(o => ({ value: o.value, label: o.label }))
 const OPCIONES_PROCESO: OpcionEdit[] = PROCESOS_INTERNOS.map(p => ({ value: p.value, label: p.label }))
-const OPCIONES_TIPO_SOLICITUD: OpcionEdit[] = Object.entries(TIPOS_SOLICITUD).map(([v, cfg]) => ({ value: v, label: cfg.label }))
+const OPCIONES_TIPO_SOLICITUD: OpcionEdit[] = TIPOS_SOLICITUD.map(t => ({ value: t.value, label: t.label }))
 
 const TIPO_SOLICITUD_BADGE: Record<string, string> = {
   NUEVO_DESARROLLO: 'bg-blue-100 text-blue-700 border-blue-200',
@@ -410,7 +410,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             onGuardar={(id, v) => guardarCampo(id, 'tipo_solicitud', v)}
                             renderBadge={(v) => v ? (
                               <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[v] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>
-                                {TIPOS_SOLICITUD[v as keyof typeof TIPOS_SOLICITUD]?.label ?? v}
+                                {TIPOS_SOLICITUD.find(t => t.value === v)?.label ?? v}
                               </span>
                             ) : null}
                           />
