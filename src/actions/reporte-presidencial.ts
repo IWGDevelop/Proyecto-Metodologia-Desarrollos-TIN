@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
+import { ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD, PRIORIDADES } from '@/lib/constants'
 
 export interface ReporteEstado {
   estado: string
@@ -32,6 +32,23 @@ export interface ReporteOrigen {
   porcentaje: number
 }
 
+export interface ReporteTipoSolicitud {
+  tipo: string
+  label: string
+  cantidad: number
+  porcentaje: number
+}
+
+export interface ReportePrioridad {
+  prioridad: number
+  label: string
+  cantidad: number
+  porcentaje: number
+  color: string
+  bgColor: string
+  textColor: string
+}
+
 export interface ReportePresidencial {
   totalRequerimientos: number
   totalBorradores: number
@@ -44,6 +61,8 @@ export interface ReportePresidencial {
   porProceso: ReporteProceso[]
   porAlcance: ReporteAlcance[]
   porOrigen: ReporteOrigen[]
+  porTipoSolicitud: ReporteTipoSolicitud[]
+  porPrioridad: ReportePrioridad[]
   topImpacto: { id: string; nombre: string; impacto: number; proceso: string | null; alcance: string | null }[]
   generadoEn: string
 }
@@ -67,8 +86,8 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
     .from('v_metricas_requerimientos')
     .select(`
       id, identificacion, nombre_desarrollo,
-      estado, es_borrador, alcance,
-      proceso_interno, origen_requerimiento,
+      estado, es_borrador, alcance, prioridad,
+      proceso_interno, origen_requerimiento, tipo_solicitud,
       horas_estimadas_desarrollo,
       impacto_economico_total_anual,
       impacto_economico_total_anual_real,
@@ -152,6 +171,42 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
       porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
     }))
 
+  /* ── Por tipo de solicitud ── */
+  const tipoMap = new Map<string, number>()
+  activos.forEach((r: any) => {
+    const k = r.tipo_solicitud ?? 'SIN_TIPO'
+    tipoMap.set(k, (tipoMap.get(k) ?? 0) + 1)
+  })
+  const porTipoSolicitud: ReporteTipoSolicitud[] = TIPOS_SOLICITUD
+    .map(t => ({
+      tipo:       t.value,
+      label:      t.label,
+      cantidad:   tipoMap.get(t.value) ?? 0,
+      porcentaje: total > 0 ? Math.round(((tipoMap.get(t.value) ?? 0) / total) * 100) : 0,
+    }))
+    .filter(t => t.cantidad > 0)
+    .sort((a, b) => b.cantidad - a.cantidad)
+
+  /* ── Por prioridad ── */
+  const prioridadMap = new Map<number, number>()
+  activos.forEach((r: any) => {
+    if (r.prioridad) prioridadMap.set(r.prioridad, (prioridadMap.get(r.prioridad) ?? 0) + 1)
+  })
+  const porPrioridad: ReportePrioridad[] = [1, 2, 3, 4]
+    .filter(p => prioridadMap.has(p))
+    .map(p => {
+      const cfg = PRIORIDADES[p]
+      return {
+        prioridad:   p,
+        label:       cfg.label,
+        cantidad:    prioridadMap.get(p) ?? 0,
+        porcentaje:  total > 0 ? Math.round(((prioridadMap.get(p) ?? 0) / total) * 100) : 0,
+        color:       cfg.color,
+        bgColor:     cfg.bgColor,
+        textColor:   cfg.textColor,
+      }
+    })
+
   /* ── Top 10 por impacto ── */
   const topImpacto = activos
     .filter((r: any) => (r.impacto_economico_total_anual ?? 0) > 0)
@@ -177,6 +232,8 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
     porProceso,
     porAlcance,
     porOrigen,
+    porTipoSolicitud,
+    porPrioridad,
     topImpacto,
     generadoEn: new Date().toISOString(),
   }

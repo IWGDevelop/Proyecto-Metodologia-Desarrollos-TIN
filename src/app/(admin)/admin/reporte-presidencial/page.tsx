@@ -2,7 +2,7 @@ import { fetchReportePresidencial } from '@/actions/reporte-presidencial'
 import { cn } from '@/lib/utils'
 import {
   TrendingUp, Clock, AlertCircle, BarChart3,
-  Building2, Layers, MapPin, Target,
+  Building2, Layers, MapPin, Target, Tag, ShieldAlert,
 } from 'lucide-react'
 
 /* ── Formateadores ────────────────────────────────────────────────────────── */
@@ -87,6 +87,20 @@ const ESTADO_BAR: Record<string, string> = {
   STAND_BY:              'bg-orange-400',
   ENTREGADO:             'bg-emerald-500',
   CERRADO:               'bg-teal-500',
+}
+
+const TIPO_BAR: Record<string, string> = {
+  NUEVO_DESARROLLO: 'bg-blue-500',
+  MEJORA:           'bg-violet-500',
+  INTEGRACION:      'bg-cyan-500',
+  INFORME:          'bg-amber-500',
+}
+
+const TIPO_BADGE: Record<string, string> = {
+  NUEVO_DESARROLLO: 'bg-blue-100 text-blue-700 border-blue-200',
+  MEJORA:           'bg-violet-100 text-violet-700 border-violet-200',
+  INTEGRACION:      'bg-cyan-100 text-cyan-700 border-cyan-200',
+  INFORME:          'bg-amber-100 text-amber-700 border-amber-200',
 }
 
 const ORIGEN_BAR: Record<string, string> = {
@@ -214,7 +228,70 @@ export default async function ReportePresidencialPage() {
         </Seccion>
       </div>
 
-      {/* ── Fila 3: Por proceso ── */}
+      {/* ── Fila 3: Tipo solicitud + Prioridad ── */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* Tipo de solicitud */}
+        <Seccion titulo="Requerimientos por tipo de solicitud" icono={Tag}>
+          <div className="space-y-3">
+            {r.porTipoSolicitud.length > 0 ? r.porTipoSolicitud.map(t => (
+              <div key={t.tipo} className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <span className={cn(
+                    'inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium',
+                    TIPO_BADGE[t.tipo] ?? 'bg-slate-100 text-slate-600 border-slate-200'
+                  )}>
+                    {t.label}
+                  </span>
+                  <span className="text-xs font-bold text-slate-700">{t.cantidad} ({t.porcentaje}%)</span>
+                </div>
+                <div className="h-2 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={cn('h-full rounded-full transition-all', TIPO_BAR[t.tipo] ?? 'bg-slate-400')}
+                    style={{ width: `${t.porcentaje}%` }}
+                  />
+                </div>
+              </div>
+            )) : (
+              <p className="text-xs italic text-slate-400">Sin datos de tipo de solicitud</p>
+            )}
+          </div>
+        </Seccion>
+
+        {/* Prioridad */}
+        <Seccion titulo="Distribución por prioridad" icono={ShieldAlert}>
+          {r.porPrioridad.length > 0 ? (
+            <div className="space-y-3">
+              {r.porPrioridad.map(p => (
+                <BarraHorizontal
+                  key={p.prioridad}
+                  label={`P${p.prioridad} — ${p.label}`}
+                  valor={p.cantidad}
+                  max={Math.max(...r.porPrioridad.map(x => x.cantidad), 1)}
+                  display={`${p.cantidad} (${p.porcentaje}%)`}
+                  colorBar={
+                    p.prioridad === 1 ? 'bg-red-500' :
+                    p.prioridad === 2 ? 'bg-orange-400' :
+                    p.prioridad === 3 ? 'bg-yellow-400' :
+                    'bg-green-400'
+                  }
+                />
+              ))}
+              <div className="mt-3 grid grid-cols-4 gap-2 border-t border-slate-100 pt-3">
+                {r.porPrioridad.map(p => (
+                  <div key={p.prioridad} className={cn('rounded-xl border p-2.5 text-center', p.bgColor, p.textColor.replace('text-', 'border-').replace('700', '200').replace('600', '200'))}>
+                    <p className={cn('text-lg font-extrabold', p.textColor)}>{p.cantidad}</p>
+                    <p className={cn('text-[11px] font-medium', p.textColor)}>P{p.prioridad} {p.label}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : (
+            <p className="text-xs italic text-slate-400">Sin datos de prioridad asignada</p>
+          )}
+        </Seccion>
+      </div>
+
+      {/* ── Fila 4: Por proceso ── */}
       <Seccion titulo="Requerimientos por proceso interno" icono={MapPin}>
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
@@ -260,7 +337,7 @@ export default async function ReportePresidencialPage() {
         </div>
       </Seccion>
 
-      {/* ── Fila 4: Origen + Impacto por proceso ── */}
+      {/* ── Fila 5: Origen + Impacto por proceso ── */}
       <div className="grid gap-4 lg:grid-cols-2">
         <Seccion titulo="Requerimientos por origen" icono={Target}>
           <div className="space-y-3">
