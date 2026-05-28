@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   X,
+  Star,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -21,6 +22,7 @@ const NAV_ITEMS = [
   { href: '/admin/requerimientos',          label: 'Requerimientos', Icon: ClipboardList },
   { href: '/admin/kanban',                  label: 'Kanban',         Icon: Kanban },
   { href: '/admin/reportes',               label: 'Reportes',       Icon: BarChart2 },
+  { href: '/admin/reporte-presidencial',   label: 'Rep. Presidencial', Icon: Star },
   { href: '/admin/usuarios',               label: 'Usuarios',       Icon: Users },
   { href: '/admin/configuracion',          label: 'Configuración',  Icon: Settings2 },
 ]
