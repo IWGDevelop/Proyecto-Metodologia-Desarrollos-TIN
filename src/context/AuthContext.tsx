@@ -9,6 +9,7 @@ interface AuthContextType {
   user: User | null
   perfil: Perfil | null
   isAdmin: boolean
+  isPresidencia: boolean
   isLoading: boolean
   signOut: () => Promise<void>
   refreshPerfil: () => Promise<void>
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   perfil: null,
   isAdmin: false,
+  isPresidencia: false,
   isLoading: true,
   signOut: async () => {},
   refreshPerfil: async () => {},
@@ -82,6 +84,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       perfil,
       isAdmin: perfil?.rol === 'ADMIN_TIN',
+      isPresidencia: perfil?.rol === 'PRESIDENCIA',
       isLoading,
       signOut,
       refreshPerfil,

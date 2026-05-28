@@ -14,7 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Pencil, Shield, User, RefreshCw } from 'lucide-react'
+import { Plus, Pencil, Shield, User, RefreshCw, Star } from 'lucide-react'
 import { formatFecha } from '@/lib/utils'
 import { PROCESOS_INTERNOS } from '@/lib/constants'
 import type { Perfil } from '@/lib/supabase/types'
@@ -25,7 +25,7 @@ const createSchema = z.object({
   cargo: z.string().optional(),
   proceso_interno: z.string().optional(),
   empresa: z.string().optional(),
-  rol: z.enum(['USUARIO', 'ADMIN_TIN'] as const),
+  rol: z.enum(['USUARIO', 'ADMIN_TIN', 'PRESIDENCIA'] as const),
   password: z.string().min(8, 'Mínimo 8 caracteres'),
 })
 type CreateForm = z.infer<typeof createSchema>
@@ -35,7 +35,7 @@ const editSchema = z.object({
   cargo: z.string().optional(),
   proceso_interno: z.string().optional(),
   empresa: z.string().optional(),
-  rol: z.enum(['USUARIO', 'ADMIN_TIN'] as const),
+  rol: z.enum(['USUARIO', 'ADMIN_TIN', 'PRESIDENCIA'] as const),
   activo: z.boolean(),
 })
 type EditForm = z.infer<typeof editSchema>
@@ -143,6 +143,10 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 gap-1">
                         <Shield size={10} /> ADMIN TIN
                       </Badge>
+                    ) : u.rol === 'PRESIDENCIA' ? (
+                      <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 gap-1">
+                        <Star size={10} /> PRESIDENCIA
+                      </Badge>
                     ) : (
                       <Badge variant="secondary" className="gap-1">
                         <User size={10} /> USUARIO
@@ -226,6 +230,7 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="USUARIO">Usuario</SelectItem>
+                    <SelectItem value="PRESIDENCIA">Presidencia</SelectItem>
                     <SelectItem value="ADMIN_TIN">Admin TIN</SelectItem>
                   </SelectContent>
                 </Select>
@@ -299,6 +304,7 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="USUARIO">Usuario</SelectItem>
+                      <SelectItem value="PRESIDENCIA">Presidencia</SelectItem>
                       <SelectItem value="ADMIN_TIN">Admin TIN</SelectItem>
                     </SelectContent>
                   </Select>

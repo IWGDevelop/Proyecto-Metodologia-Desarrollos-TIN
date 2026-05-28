@@ -9,7 +9,8 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const perfil = await getPerfil()
 
   // Profile missing (table not set up yet) — show shell anyway so admin can work
-  if (perfil && perfil.rol !== 'ADMIN_TIN') redirect('/mis-requerimientos')
+  const ROLES_CON_ACCESO: string[] = ['ADMIN_TIN', 'PRESIDENCIA']
+  if (perfil && !ROLES_CON_ACCESO.includes(perfil.rol)) redirect('/mis-requerimientos')
 
   // If no perfil but user exists, allow access with a dummy profile
   const perfilEfectivo = perfil ?? {

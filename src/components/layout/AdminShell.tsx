@@ -31,6 +31,7 @@ export function AdminShell({ children, perfil }: Props) {
         mobileOpen={mobileOpen}
         onMobileClose={() => setMobileOpen(false)}
         onCollapsedChange={setCollapsed}
+        rol={perfil.rol}
       />
 
       <div

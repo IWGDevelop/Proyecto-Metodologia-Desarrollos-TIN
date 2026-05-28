@@ -16,24 +16,33 @@ import {
   Star,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import type { RolUsuario } from '@/lib/supabase/types'
 
-const NAV_ITEMS = [
-  { href: '/admin/dashboard',               label: 'Dashboard',      Icon: LayoutDashboard },
-  { href: '/admin/requerimientos',          label: 'Requerimientos', Icon: ClipboardList },
-  { href: '/admin/kanban',                  label: 'Kanban',         Icon: Kanban },
-  { href: '/admin/reportes',               label: 'Reportes',       Icon: BarChart2 },
-  { href: '/admin/reporte-presidencial',   label: 'Rep. Presidencial', Icon: Star },
-  { href: '/admin/usuarios',               label: 'Usuarios',       Icon: Users },
-  { href: '/admin/configuracion',          label: 'Configuración',  Icon: Settings2 },
+const NAV_ITEMS_ADMIN = [
+  { href: '/admin/dashboard',             label: 'Dashboard',          Icon: LayoutDashboard },
+  { href: '/admin/requerimientos',        label: 'Requerimientos',     Icon: ClipboardList },
+  { href: '/admin/kanban',               label: 'Kanban',             Icon: Kanban },
+  { href: '/admin/reportes',             label: 'Reportes',           Icon: BarChart2 },
+  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial',  Icon: Star },
+  { href: '/admin/usuarios',             label: 'Usuarios',           Icon: Users },
+  { href: '/admin/configuracion',        label: 'Configuración',      Icon: Settings2 },
+]
+
+const NAV_ITEMS_PRESIDENCIA = [
+  { href: '/admin/dashboard',             label: 'Dashboard',         Icon: LayoutDashboard },
+  { href: '/admin/requerimientos',        label: 'Requerimientos',    Icon: ClipboardList },
+  { href: '/admin/reportes',             label: 'Reportes',          Icon: BarChart2 },
+  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial', Icon: Star },
 ]
 
 interface Props {
   mobileOpen: boolean
   onMobileClose: () => void
   onCollapsedChange?: (collapsed: boolean) => void
+  rol?: RolUsuario
 }
 
-export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange }: Props) {
+export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -53,6 +62,8 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange }: Props)
     })
   }
 
+  const navItems = rol === 'PRESIDENCIA' ? NAV_ITEMS_PRESIDENCIA : NAV_ITEMS_ADMIN
+
   const navContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
@@ -63,9 +74,16 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange }: Props)
         )}
       >
         {!collapsed && (
-          <span className="text-lg font-bold tracking-tight text-white">
-            IGSI <span className="text-blue-400">Dev</span>
-          </span>
+          <div className="flex flex-col">
+            <span className="text-lg font-bold tracking-tight text-white">
+              IGSI <span className="text-blue-400">Dev</span>
+            </span>
+            {rol === 'PRESIDENCIA' && (
+              <span className="text-[10px] font-semibold tracking-widest text-amber-400 uppercase">
+                Presidencia
+              </span>
+            )}
+          </div>
         )}
         <button
           onClick={toggleCollapsed}
@@ -78,7 +96,7 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange }: Props)
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
-        {NAV_ITEMS.map(({ href, label, Icon }) => {
+        {navItems.map(({ href, label, Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
           return (
             <Link

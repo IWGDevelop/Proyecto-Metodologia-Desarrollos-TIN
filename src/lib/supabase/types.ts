@@ -1,5 +1,5 @@
 // ─── Auth / Perfiles ─────────────────────────────────────────────────────────
-export type RolUsuario = 'ADMIN_TIN' | 'USUARIO'
+export type RolUsuario = 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA'
 
 export interface Perfil {
   id: string

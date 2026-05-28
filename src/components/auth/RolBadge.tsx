@@ -1,6 +1,6 @@
 'use client'
 
-import { Shield, User } from 'lucide-react'
+import { Shield, User, Star } from 'lucide-react'
 import { useAuth } from '@/hooks/useAuth'
 import { cn } from '@/lib/utils'
 
@@ -15,6 +15,17 @@ export function RolBadge({ className }: { className?: string }) {
         className
       )}>
         <Shield size={10} /> ADMIN TIN
+      </span>
+    )
+  }
+
+  if (perfil.rol === 'PRESIDENCIA') {
+    return (
+      <span className={cn(
+        'inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-xs font-bold text-amber-700',
+        className
+      )}>
+        <Star size={10} /> PRESIDENCIA
       </span>
     )
   }
