@@ -62,7 +62,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
           <p className="text-sm text-slate-500">Gestión de requerimientos de desarrollo</p>
         </div>
         <div className="flex items-center gap-2">
-          <ExportarExcel filtros={filtros} sort={sort} />
+          <ExportarExcel filtros={filtros} sort={sort} isAdmin />
           <Link href="/admin/requerimientos/importar">
             <Button size="sm" variant="outline" className="gap-1.5">
               <FileJson size={14} /> Importar JSON

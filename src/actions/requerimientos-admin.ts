@@ -26,6 +26,43 @@ export interface RequerimientosAdminResult {
 
 const PAGE_SIZE = 20
 
+export async function fetchTodosAdminParaExportar(
+  filtros: FiltrosAdmin,
+  sort: SortAdmin
+): Promise<MetricaRequerimiento[]> {
+  try {
+    const supabase = createAdminClient()
+
+    let query = (supabase as any)
+      .from('v_metricas_requerimientos')
+      .select('*')
+
+    if (filtros.search?.trim()) {
+      const q = filtros.search.trim()
+      query = query.or(
+        `identificacion.ilike.%${q}%,nombre_desarrollo.ilike.%${q}%,descripcion_situacion_actual.ilike.%${q}%`
+      )
+    }
+    if (filtros.estados?.length)            query = query.in('estado', filtros.estados)
+    if (filtros.alcance)                    query = query.eq('alcance', filtros.alcance)
+    if (filtros.prioridad)                  query = query.eq('prioridad', parseInt(filtros.prioridad))
+    if (filtros.proceso_interno)            query = query.eq('proceso_interno', filtros.proceso_interno)
+    if (filtros.tipo_solucion)              query = query.eq('tipo_solucion', filtros.tipo_solucion)
+    if (filtros.es_borrador !== undefined)  query = query.eq('es_borrador', filtros.es_borrador)
+
+    const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
+    const isImpacto = ['impacto_economico_total_anual', 'ahorro_anual_cop',
+                       'total_beneficios_cualitativos_anual', 'horas_estimadas_desarrollo'].includes(col)
+    query = query.order(col, { ascending: sort.direction === 'asc', nullsFirst: isImpacto ? false : sort.direction === 'asc' })
+
+    const { data, error } = await query
+    if (error) throw new Error(error.message)
+    return (data ?? []) as MetricaRequerimiento[]
+  } catch {
+    return []
+  }
+}
+
 export async function fetchRequerimientosAdmin(
   filtros: FiltrosAdmin,
   page: number,
