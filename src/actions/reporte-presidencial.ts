@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
 
 export interface ReporteEstado {
   estado: string
@@ -47,35 +48,16 @@ export interface ReportePresidencial {
   generadoEn: string
 }
 
-const ESTADO_LABELS: Record<string, string> = {
-  SIN_GESTION:          'Sin gestión',
-  ANALISIS:             'En análisis',
-  EN_DEFINICION_USUARIO:'En definición de usuario',
-  EN_DESARROLLO:        'En desarrollo',
-  PRUEBAS_USUARIO:      'Pruebas de usuario',
-  STAND_BY:             'Stand by',
-  ENTREGADO:            'Entregado',
-  CERRADO:              'Cerrado',
+function estadoLabel(estado: string) {
+  return ESTADOS[estado]?.label ?? estado.replace(/_/g, ' ')
 }
 
-const PROCESO_LABELS: Record<string, string> = {
-  FINANCIERO:       'Financiero',
-  OPERACIONES:      'Operaciones',
-  COMERCIAL:        'Comercial',
-  CARGA:            'Carga',
-  SISTEMAS_GESTION: 'Sistemas de gestión',
-  SERVICIO_CLIENTE: 'Servicio al cliente',
-  COMPRAS:          'Compras',
-  SEGUROS:          'Seguros',
-  DATOS:            'Datos',
-  TI:               'TI',
-  GENERAL:          'General',
+function procesoLabel(proceso: string) {
+  return PROCESOS_INTERNOS.find(p => p.value === proceso)?.label ?? proceso
 }
 
-const ORIGEN_LABELS: Record<string, string> = {
-  LISTA_MEJORAS_PENDIENTES: 'Lista de mejoras pendientes',
-  TIN_NOVA:                 'TIN Nova',
-  DESARROLLO_EXTERNO:       'Desarrollo externo',
+function origenLabel(origen: string) {
+  return (ORIGENES_REQUERIMIENTO as readonly { value: string; label: string }[]).find(o => o.value === origen)?.label ?? origen
 }
 
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
@@ -113,7 +95,7 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
     .sort((a, b) => b[1] - a[1])
     .map(([estado, cantidad]) => ({
       estado,
-      label: ESTADO_LABELS[estado] ?? estado,
+      label: estadoLabel(estado),
       cantidad,
       porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
     }))
@@ -134,7 +116,7 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
     .sort((a, b) => b[1].cantidad - a[1].cantidad)
     .map(([proceso, d]) => ({
       proceso,
-      label: PROCESO_LABELS[proceso] ?? proceso,
+      label: procesoLabel(proceso),
       cantidad: d.cantidad,
       horasEstimadas: d.horas,
       impactoAnual: d.impacto,
@@ -165,7 +147,7 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
     .sort((a, b) => b[1] - a[1])
     .map(([origen, cantidad]) => ({
       origen,
-      label: ORIGEN_LABELS[origen] ?? (origen === 'SIN_ORIGEN' ? 'Sin origen asignado' : origen),
+      label: origen === 'SIN_ORIGEN' ? 'Sin origen asignado' : origenLabel(origen),
       cantidad,
       porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
     }))
@@ -179,7 +161,7 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
       id: r.id,
       nombre: r.nombre_desarrollo ?? r.identificacion ?? '—',
       impacto: r.impacto_economico_total_anual ?? 0,
-      proceso: r.proceso_interno ? (PROCESO_LABELS[r.proceso_interno] ?? r.proceso_interno) : null,
+      proceso: r.proceso_interno ? procesoLabel(r.proceso_interno) : null,
       alcance: r.alcance ?? null,
     }))
 
