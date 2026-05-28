@@ -6,6 +6,7 @@ import {
   PauseCircle, CheckCircle2, Timer,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ESTADOS, getEstadoCfg } from '@/lib/constants'
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
 async function getKPIData() {
@@ -23,6 +24,7 @@ async function getKPIData() {
     { count: entregadosMes },
     slaResult,
     { data: standByData },
+    { data: estadosRaw },
   ] = await Promise.all([
     supabase.from('requerimientos').select('*', { count: 'exact', head: true })
       .neq('estado', 'CERRADO').eq('es_borrador', false),
@@ -36,13 +38,15 @@ async function getKPIData() {
       .eq('es_borrador', false)
       .gte('fecha_salida_vivo', inicioMes)
       .lte('fecha_salida_vivo', finMes),
-    // La vista puede estar desactualizada — capturar error sin romper el componente
     (supabase.from('v_metricas_requerimientos') as any)
       .select('cumple_sla')
       .not('cumple_sla', 'is', null),
     supabase.from('requerimientos')
       .select('updated_at')
       .eq('estado', 'STAND_BY')
+      .eq('es_borrador', false),
+    supabase.from('requerimientos')
+      .select('estado')
       .eq('es_borrador', false),
   ])
 
@@ -63,6 +67,15 @@ async function getKPIData() {
       )
     : 0
 
+  const conteoEstados: Record<string, number> = {}
+  for (const r of estadosRaw ?? []) {
+    conteoEstados[r.estado] = (conteoEstados[r.estado] ?? 0) + 1
+  }
+  // Incluir también estados dinámicos que no estén en ESTADOS
+  const estadosDinamicos = Object.entries(conteoEstados)
+    .filter(([k]) => !ESTADOS[k])
+    .map(([estado, count]) => ({ estado, count }))
+
   return {
     totalActivos: totalActivos ?? 0,
     sinGestion: sinGestion ?? 0,
@@ -71,11 +84,14 @@ async function getKPIData() {
     entregadosMes: entregadosMes ?? 0,
     pctSLA,
     diasBloqueoPromedio,
+    conteoEstados,
+    estadosDinamicos,
   }
   } catch {
     return {
       totalActivos: 0, sinGestion: 0, enDesarrollo: 0,
       standBy: 0, entregadosMes: 0, pctSLA: 0, diasBloqueoPromedio: 0,
+      conteoEstados: {}, estadosDinamicos: [],
     }
   }
 }
@@ -146,6 +162,7 @@ export async function KPICards() {
     : 'bg-red-500'
 
   return (
+    <div className="space-y-4">
     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
       {/* 1 — Total activos */}
       <KPICard
@@ -210,25 +227,77 @@ export async function KPICards() {
         </div>
       </KPICard>
     </div>
+
+    {/* ── Resumen por estado ── */}
+    <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Requerimientos por estado</p>
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
+        {Object.entries(ESTADOS).map(([key, cfg]) => {
+          const count = d.conteoEstados[key] ?? 0
+          return (
+            <div
+              key={key}
+              className={cn(
+                'flex flex-col items-center justify-center rounded-lg border px-3 py-3 text-center',
+                cfg.bgColor, cfg.borderColor
+              )}
+            >
+              <span className={cn('text-2xl font-extrabold', cfg.textColor)}>{count}</span>
+              <span className={cn('mt-1 text-[11px] font-medium leading-tight', cfg.textColor)}>
+                {cfg.label}
+              </span>
+            </div>
+          )
+        })}
+        {d.estadosDinamicos.map(({ estado, count }) => {
+          const cfg = getEstadoCfg(estado)
+          return (
+            <div
+              key={estado}
+              className={cn(
+                'flex flex-col items-center justify-center rounded-lg border px-3 py-3 text-center',
+                cfg.bgColor, cfg.borderColor
+              )}
+            >
+              <span className={cn('text-2xl font-extrabold', cfg.textColor)}>{count}</span>
+              <span className={cn('mt-1 text-[11px] font-medium leading-tight', cfg.textColor)}>
+                {cfg.label}
+              </span>
+            </div>
+          )
+        })}
+      </div>
+    </div>
+    </div>
   )
 }
 
 // ─── Skeleton ─────────────────────────────────────────────────────────────────
 export function KPICardsSkeleton() {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-      {Array.from({ length: 6 }).map((_, i) => (
-        <div key={i} className="rounded-xl border border-slate-200 bg-white p-5">
-          <div className="flex items-start justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-3 w-32" />
-              <Skeleton className="h-8 w-16" />
-              <Skeleton className="h-3 w-24" />
+    <div className="space-y-4">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => (
+          <div key={i} className="rounded-xl border border-slate-200 bg-white p-5">
+            <div className="flex items-start justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-3 w-32" />
+                <Skeleton className="h-8 w-16" />
+                <Skeleton className="h-3 w-24" />
+              </div>
+              <Skeleton className="h-10 w-10 rounded-lg" />
             </div>
-            <Skeleton className="h-10 w-10 rounded-lg" />
           </div>
+        ))}
+      </div>
+      <div className="rounded-xl border border-slate-200 bg-white p-5">
+        <Skeleton className="mb-3 h-3 w-40" />
+        <div className="grid grid-cols-4 gap-2 sm:grid-cols-8">
+          {Array.from({ length: 8 }).map((_, i) => (
+            <Skeleton key={i} className="h-16 rounded-lg" />
+          ))}
         </div>
-      ))}
+      </div>
     </div>
   )
 }
