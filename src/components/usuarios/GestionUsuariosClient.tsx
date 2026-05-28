@@ -82,7 +82,12 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
 
   const onEditar = async (data: EditForm) => {
     if (!editUser) return
-    const result = await actualizarPerfil(editUser.id, data)
+    const result = await actualizarPerfil(editUser.id, {
+      ...data,
+      empresa: data.empresa || null,
+      proceso_interno: data.proceso_interno || null,
+      cargo: data.cargo || null,
+    })
     if (!result.ok) {
       toast.error(result.error ?? 'Error al actualizar usuario')
       return
