@@ -74,7 +74,7 @@ export const ESTADOS: Record<
     icon: 'Clock',
   },
   ANALISIS: {
-    label: 'En análisis',
+    label: 'En estudio y evaluación técnica',
     descripcion: 'El equipo TIN está analizando el requerimiento',
     color: 'blue',
     bgColor: 'bg-blue-100',
