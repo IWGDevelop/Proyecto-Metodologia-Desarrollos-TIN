@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter, usePathname, useSearchParams } from 'next/navigation'
-import { useCallback, useState } from 'react'
+import { useCallback, useState, useTransition } from 'react'
 import {
   ChevronUp, ChevronDown, ChevronsUpDown,
   MoreHorizontal, Eye, Pencil, RefreshCw, Archive,
@@ -22,35 +22,84 @@ import {
   useRequerimientos, useInvalidateRequerimientos,
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
 } from '@/hooks/useRequerimientos'
-import { eliminarRequerimiento } from '@/actions/requerimientos'
+import { eliminarRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
 import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
-// ─── Avatar de iniciales ──────────────────────────────────────────────────────
-function AvatarIniciales({ nombre }: { nombre: string | null }) {
-  if (!nombre) return <span className="text-xs text-slate-400">—</span>
-  const iniciales = nombre.trim().split(/\s+/).map(n => n[0]).slice(0, 2).join('').toUpperCase()
+// ─── Celda editable inline ────────────────────────────────────────────────────
+interface OpcionEdit { value: string; label: string; badgeClass?: string }
+
+function CeldaEditable({
+  rowId, valor, opciones, onGuardar, renderBadge, placeholder = '—',
+}: {
+  rowId: string
+  valor: string | null | undefined
+  opciones: OpcionEdit[]
+  onGuardar: (id: string, v: string | null) => Promise<void>
+  renderBadge: (v: string | null | undefined) => React.ReactNode
+  placeholder?: string
+}) {
+  const [editando, setEditando] = useState(false)
+  const [guardando, setGuardando] = useState(false)
+
+  if (editando) {
+    return (
+      <select
+        autoFocus
+        defaultValue={valor ?? ''}
+        disabled={guardando}
+        className="rounded-md border border-blue-400 bg-white px-1.5 py-1 text-xs shadow-sm outline-none focus:ring-1 focus:ring-blue-400 cursor-pointer"
+        onChange={async (e) => {
+          const val = e.target.value || null
+          setGuardando(true)
+          try {
+            await onGuardar(rowId, val)
+          } finally {
+            setGuardando(false)
+            setEditando(false)
+          }
+        }}
+        onBlur={() => setEditando(false)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <option value="">— Sin asignar —</option>
+        {opciones.map(o => (
+          <option key={o.value} value={o.value}>{o.label}</option>
+        ))}
+      </select>
+    )
+  }
+
   return (
-    <div className="flex items-center gap-1.5 min-w-0">
-      <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
-        {iniciales}
-      </div>
-      <span className="truncate text-xs text-slate-600 max-w-[90px]">{nombre}</span>
+    <div
+      className="group/edit flex items-center gap-1 cursor-pointer"
+      onClick={(e) => { e.stopPropagation(); setEditando(true) }}
+      title="Clic para editar"
+    >
+      {renderBadge(valor) ?? <span className="text-xs text-slate-300">{placeholder}</span>}
+      <Pencil
+        size={10}
+        className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity"
+      />
     </div>
   )
+}
+
+// ─── Colores por campo ────────────────────────────────────────────────────────
+const ALCANCE_BADGE: Record<string, string> = {
+  IWF: 'border-blue-300 bg-blue-50 text-blue-700',
+  ILT: 'border-green-300 bg-green-50 text-green-700',
+  IWG: 'border-purple-300 bg-purple-50 text-purple-700',
 }
 
 // ─── Cabecera ordenable ───────────────────────────────────────────────────────
 function ColHeader({
   label, column, sort, onSort, className,
 }: {
-  label: string
-  column?: string
-  sort: SortConfig
-  onSort: (col: string) => void
-  className?: string
+  label: string; column?: string
+  sort: SortConfig; onSort: (col: string) => void; className?: string
 }) {
   if (!column) return <th className={cn('px-3 py-2.5 text-left text-xs font-medium text-slate-400', className)}>{label}</th>
   const active = sort.column === column
@@ -74,10 +123,7 @@ function ColHeader({
 
 // ─── Acciones por fila ────────────────────────────────────────────────────────
 function AccionesMenu({
-  row,
-  onCambiarEstado,
-  onEliminar,
-  basePath,
+  row, onCambiarEstado, onEliminar, basePath,
 }: {
   row: MetricaRequerimiento
   onCambiarEstado: (r: MetricaRequerimiento) => void
@@ -98,7 +144,7 @@ function AccionesMenu({
           <Eye size={13} className="mr-2" /> Ver detalle
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
-          <Pencil size={13} className="mr-2" /> Editar
+          <Pencil size={13} className="mr-2" /> Editar completo
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={() => onCambiarEstado(row)}>
@@ -114,14 +160,9 @@ function AccionesMenu({
 }
 
 // ─── Paginación ───────────────────────────────────────────────────────────────
-function Paginacion({
-  page, total, onPage,
-}: {
-  page: number; total: number; onPage: (p: number) => void
-}) {
+function Paginacion({ page, total, onPage }: { page: number; total: number; onPage: (p: number) => void }) {
   const totalPaginas = Math.ceil(total / PAGE_SIZE)
   if (totalPaginas <= 1) return null
-
   const paginas: (number | '...')[] = []
   if (totalPaginas <= 7) {
     for (let i = 1; i <= totalPaginas; i++) paginas.push(i)
@@ -132,12 +173,9 @@ function Paginacion({
     if (page < totalPaginas - 2) paginas.push('...')
     paginas.push(totalPaginas)
   }
-
   return (
     <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3">
-      <span className="text-xs text-slate-400">
-        Página {page} de {totalPaginas} · {total} resultados
-      </span>
+      <span className="text-xs text-slate-400">Página {page} de {totalPaginas} · {total} resultados</span>
       <div className="flex items-center gap-1">
         <Button variant="outline" size="icon" className="h-7 w-7" disabled={page === 1} onClick={() => onPage(page - 1)}>
           <ChevronLeft size={13} />
@@ -147,9 +185,7 @@ function Paginacion({
             <span key={`e${i}`} className="px-1 text-xs text-slate-400">…</span>
           ) : (
             <Button
-              key={p}
-              variant={page === p ? 'default' : 'outline'}
-              size="icon"
+              key={p} variant={page === p ? 'default' : 'outline'} size="icon"
               className={cn('h-7 w-7 text-xs', page === p && 'bg-blue-600')}
               onClick={() => onPage(p as number)}
             >
@@ -164,6 +200,21 @@ function Paginacion({
     </div>
   )
 }
+
+// ─── Opciones estáticas para selects ─────────────────────────────────────────
+const OPCIONES_ALCANCE: OpcionEdit[] = [
+  { value: 'IWF', label: 'IWF' },
+  { value: 'ILT', label: 'ILT' },
+  { value: 'IWG', label: 'IWG' },
+]
+const OPCIONES_PRIORIDAD: OpcionEdit[] = [
+  { value: '1', label: 'P1 — Crítica' },
+  { value: '2', label: 'P2 — Alta' },
+  { value: '3', label: 'P3 — Media' },
+  { value: '4', label: 'P4 — Baja' },
+]
+const OPCIONES_ORIGEN: OpcionEdit[] = ORIGENES_REQUERIMIENTO.map(o => ({ value: o.value, label: o.label }))
+const OPCIONES_PROCESO: OpcionEdit[] = PROCESOS_INTERNOS.map(p => ({ value: p.value, label: p.label }))
 
 // ─── Componente principal ─────────────────────────────────────────────────────
 interface Props {
@@ -202,7 +253,6 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
     const dir = sort.column === col && sort.direction === 'asc' ? 'desc' : 'asc'
     updateParams({ sort: col, dir, page: '1' })
   }
-
   const handlePage = (p: number) => updateParams({ page: String(p) })
 
   const handleEliminar = async () => {
@@ -220,6 +270,19 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
     }
   }
 
+  // Guardado inline genérico
+  const guardarCampo = async (id: string, campo: string, valor: string | null) => {
+    try {
+      let payload: Record<string, unknown> = { [campo]: valor }
+      if (campo === 'prioridad') payload = { prioridad: valor ? Number(valor) : null }
+      await actualizarRequerimiento(id, payload)
+      invalidar()
+      toast.success('Guardado')
+    } catch {
+      toast.error('Error al guardar')
+    }
+  }
+
   if (isLoading) return <TablaRequerimientosSkeleton />
 
   const rows = result?.data ?? []
@@ -229,45 +292,39 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
     <>
       <div className={cn('rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden', isFetching && 'opacity-70')}>
         {rows.length === 0 ? (
-          <EmptyState
-            title="Sin requerimientos"
-            description="No se encontraron requerimientos con los filtros aplicados."
-            className="py-20"
-          />
+          <EmptyState title="Sin requerimientos" description="No se encontraron requerimientos con los filtros aplicados." className="py-20" />
         ) : (
           <>
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead className="border-b border-slate-100 bg-slate-50">
                   <tr>
-                    <ColHeader label="Rank"         sort={sort} onSort={handleSort} className="w-14 text-center" />
-                    <ColHeader label="Nombre"       sort={sort} onSort={handleSort} className="min-w-[200px]" />
-                    <ColHeader label="Alcance"      sort={sort} onSort={handleSort} className="w-20" />
-                    <ColHeader label="Proceso"       sort={sort} onSort={handleSort} className="w-36" />
-                    <ColHeader label="P"            column="prioridad"             sort={sort} onSort={handleSort} className="w-12" />
-                    <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-32" />
-                    <ColHeader label="Origen"       column="origen_requerimiento"  sort={sort} onSort={handleSort} className="w-36" />
-                    <ColHeader label="Avance"       sort={sort} onSort={handleSort} className="w-20" />
-                    <ColHeader label="Hs. dev. est." column="horas_estimadas_desarrollo" sort={sort} onSort={handleSort} className="w-24 text-right" />
-                    <ColHeader label="HH anual"     column="ahorro_anual_cop"                    sort={sort} onSort={handleSort} className="w-28 text-right" />
+                    <ColHeader label="Rank"    sort={sort} onSort={handleSort} className="w-14 text-center" />
+                    <ColHeader label="Nombre"  sort={sort} onSort={handleSort} className="min-w-[260px]" />
+                    <ColHeader label="Alcance" column="alcance" sort={sort} onSort={handleSort} className="w-24" />
+                    <ColHeader label="Proceso" sort={sort} onSort={handleSort} className="w-36" />
+                    <ColHeader label="P"       column="prioridad" sort={sort} onSort={handleSort} className="w-14" />
+                    <ColHeader label="Estado"  column="estado"    sort={sort} onSort={handleSort} className="w-36" />
+                    <ColHeader label="Origen"  column="origen_requerimiento" sort={sort} onSort={handleSort} className="w-36" />
+                    <ColHeader label="Avance"  sort={sort} onSort={handleSort} className="w-20" />
+                    <ColHeader label="Hs. dev." column="horas_estimadas_desarrollo" sort={sort} onSort={handleSort} className="w-20 text-right" />
+                    <ColHeader label="HH anual" column="ahorro_anual_cop" sort={sort} onSort={handleSort} className="w-28 text-right" />
                     <ColHeader label="Cualitativos" column="total_beneficios_cualitativos_anual" sort={sort} onSort={handleSort} className="w-28 text-right" />
-                    <ColHeader label="Total impacto" column="impacto_economico_total_anual"      sort={sort} onSort={handleSort} className="w-32 text-right" />
+                    <ColHeader label="Total impacto" column="impacto_economico_total_anual" sort={sort} onSort={handleSort} className="w-32 text-right" />
                     <th className="w-10" />
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {rows.map((row, rowIdx) => {
                     const estadoCfg = ESTADOS[row.estado as Estado] ?? { label: row.estado, bgColor: 'bg-slate-100', textColor: 'text-slate-600' }
-                    const slaExcedido = row.cumple_sla === false
                     const rankNum = (page - 1) * PAGE_SIZE + rowIdx + 1
                     const tieneImpacto = (row.impacto_economico_total_anual ?? 0) > 0 ||
                                         (row.ahorro_anual_cop ?? 0) > 0 ||
                                         ((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
 
-                    // badge de ranking: top 3 con colores
                     const rankBadge = tieneImpacto
                       ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }
-                      : rankNum === 2 ? { cls: 'bg-slate-100 text-slate-600 border-slate-300', ico: '🥈' }
+                      : rankNum === 2 ? { cls: 'bg-slate-100 text-slate-600 border-slate-300',   ico: '🥈' }
                       : rankNum === 3 ? { cls: 'bg-orange-50 text-orange-600 border-orange-200', ico: '🥉' }
                       : null : null
 
@@ -289,85 +346,106 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             <span className="text-xs text-slate-300">—</span>
                           )}
                           {row.es_borrador && (
-                            <Badge variant="outline" className="mt-0.5 border-slate-300 py-0 text-[10px] text-slate-400 block">
-                              Draft
-                            </Badge>
+                            <Badge variant="outline" className="mt-0.5 border-slate-300 py-0 text-[10px] text-slate-400 block">Draft</Badge>
                           )}
                         </td>
 
-                        {/* Nombre */}
-                        <td className="px-3 py-2.5">
-                          <p className="font-medium text-slate-700 line-clamp-1 max-w-[300px]" title={row.identificacion}>
-                            {row.identificacion.length > 60
-                              ? row.identificacion.slice(0, 60) + '…'
-                              : row.identificacion}
+                        {/* Nombre — nombre_desarrollo completo como principal */}
+                        <td className="px-3 py-2.5 max-w-[340px]">
+                          <p className="font-semibold text-slate-800 leading-snug break-words">
+                            {row.nombre_desarrollo || row.identificacion}
                           </p>
                           {row.nombre_desarrollo && (
-                            <p className="text-xs text-slate-400 line-clamp-1">{row.nombre_desarrollo}</p>
+                            <p className="mt-0.5 text-[11px] text-slate-400 line-clamp-1" title={row.identificacion}>
+                              {row.identificacion}
+                            </p>
                           )}
                         </td>
 
-                        {/* Alcance */}
+                        {/* Alcance — editable */}
                         <td className="px-3 py-2.5">
-                          {row.alcance ? (
-                            <Badge variant="outline" className={cn('text-xs', {
-                              'border-blue-300 bg-blue-50 text-blue-700': row.alcance === 'IWF',
-                              'border-green-300 bg-green-50 text-green-700': row.alcance === 'ILT',
-                              'border-purple-300 bg-purple-50 text-purple-700': row.alcance === 'IWG',
-                            })}>
-                              {row.alcance}
-                            </Badge>
-                          ) : <span className="text-slate-300">—</span>}
+                          <CeldaEditable
+                            rowId={row.id}
+                            valor={row.alcance}
+                            opciones={OPCIONES_ALCANCE}
+                            onGuardar={(id, v) => guardarCampo(id, 'alcance', v)}
+                            renderBadge={(v) => v ? (
+                              <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[v] ?? '')}>
+                                {v}
+                              </Badge>
+                            ) : null}
+                          />
                         </td>
 
-                        {/* Proceso */}
+                        {/* Proceso — editable */}
                         <td className="px-3 py-2.5">
-                          {(row as any).proceso_interno ? (
-                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                              {PROCESOS_INTERNOS.find(p => p.value === (row as any).proceso_interno)?.label ?? (row as any).proceso_interno}
-                            </span>
-                          ) : (
-                            <span className="text-xs text-slate-300">—</span>
-                          )}
-                        </td>
-
-                        {/* Prioridad — asignada por admin */}
-                        <td className="px-3 py-2.5">
-                          {row.prioridad ? (
-                            <span className={cn(
-                              'rounded-full px-1.5 py-0.5 text-xs font-bold',
-                              PRIORIDADES[row.prioridad]?.bgColor,
-                              PRIORIDADES[row.prioridad]?.textColor
-                            )}>
-                              P{row.prioridad}
-                            </span>
-                          ) : (
-                            <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">
-                              —
-                            </span>
-                          )}
-                        </td>
-
-                        {/* Estado */}
-                        <td className="px-3 py-2.5">
-                          <span className={cn(
-                            'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
-                            estadoCfg.bgColor, estadoCfg.textColor
-                          )}>
-                            {estadoCfg.label}
-                          </span>
-                        </td>
-
-                        {/* Origen */}
-                        <td className="px-3 py-2.5">
-                          {(row as any).origen_requerimiento ? (() => {
-                            const cfg = ORIGENES_REQUERIMIENTO.find(o => o.value === (row as any).origen_requerimiento)
-                            return cfg ? (
-                              <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>
-                                {cfg.label}
+                          <CeldaEditable
+                            rowId={row.id}
+                            valor={(row as any).proceso_interno}
+                            opciones={OPCIONES_PROCESO}
+                            onGuardar={(id, v) => guardarCampo(id, 'proceso_interno', v)}
+                            renderBadge={(v) => v ? (
+                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
                               </span>
-                            ) : <span className="text-xs text-slate-300">—</span>
-                          })() : <span className="text-xs text-slate-300">—</span>}
+                            ) : null}
+                          />
+                        </td>
+
+                        {/* Prioridad — editable */}
+                        <td className="px-3 py-2.5">
+                          <CeldaEditable
+                            rowId={row.id}
+                            valor={row.prioridad ? String(row.prioridad) : null}
+                            opciones={OPCIONES_PRIORIDAD}
+                            onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
+                            renderBadge={(v) => {
+                              const n = v ? Number(v) : null
+                              const cfg = n ? PRIORIDADES[n] : null
+                              return cfg ? (
+                                <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
+                                  P{n}
+                                </span>
+                              ) : (
+                                <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                              )
+                            }}
+                          />
+                        </td>
+
+                        {/* Estado — abre diálogo existente */}
+                        <td className="px-3 py-2.5">
+                          <div
+                            className="group/edit flex items-center gap-1 cursor-pointer"
+                            onClick={(e) => { e.stopPropagation(); setCambioEstadoRow(row) }}
+                            title="Clic para cambiar estado"
+                          >
+                            <span className={cn(
+                              'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                              estadoCfg.bgColor, estadoCfg.textColor
+                            )}>
+                              {estadoCfg.label}
+                            </span>
+                            <Pencil size={10} className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+                          </div>
+                        </td>
+
+                        {/* Origen — editable */}
+                        <td className="px-3 py-2.5">
+                          <CeldaEditable
+                            rowId={row.id}
+                            valor={(row as any).origen_requerimiento}
+                            opciones={OPCIONES_ORIGEN}
+                            onGuardar={(id, v) => guardarCampo(id, 'origen_requerimiento', v)}
+                            renderBadge={(v) => {
+                              const cfg = v ? ORIGENES_REQUERIMIENTO.find(o => o.value === v) : null
+                              return cfg ? (
+                                <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>
+                                  {cfg.label}
+                                </span>
+                              ) : null
+                            }}
+                          />
                         </td>
 
                         {/* Avance */}
@@ -378,14 +456,10 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           </div>
                         </td>
 
-                        {/* Horas desarrollo estimadas */}
+                        {/* Horas desarrollo */}
                         <td className="px-3 py-2.5 text-right">
                           {(row as any).horas_estimadas_desarrollo
-                            ? (
-                              <span className="text-xs font-semibold text-indigo-600">
-                                {((row as any).horas_estimadas_desarrollo as number).toFixed(1)} h
-                              </span>
-                            )
+                            ? <span className="text-xs font-semibold text-indigo-600">{((row as any).horas_estimadas_desarrollo as number).toFixed(1)} h</span>
                             : <span className="text-xs text-slate-300">—</span>}
                         </td>
 
@@ -396,7 +470,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             : <span className="text-xs text-slate-300">—</span>}
                         </td>
 
-                        {/* Cualitativos anual */}
+                        {/* Cualitativos */}
                         <td className="px-3 py-2.5 text-right">
                           {((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
                             ? <span className="text-xs font-medium text-blue-600">{formatCOP((row as any).total_beneficios_cualitativos_anual)}</span>
@@ -411,9 +485,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                                 {formatCOP((row as any).impacto_economico_total_anual
                                   ?? ((row.ahorro_anual_cop ?? 0) + ((row as any).total_beneficios_cualitativos_anual ?? 0)))}
                               </span>
-                              <span className="text-[10px] text-slate-400">
-                                HH + Cual/año
-                              </span>
+                              <span className="text-[10px] text-slate-400">HH + Cual/año</span>
                             </div>
                           ) : (
                             <span className="text-xs text-slate-300">Sin cálculo</span>
@@ -435,13 +507,11 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                 </tbody>
               </table>
             </div>
-
             <Paginacion page={page} total={total} onPage={handlePage} />
           </>
         )}
       </div>
 
-      {/* Diálogos */}
       {cambioEstadoRow && (
         <CambiarEstadoDialog
           open={!!cambioEstadoRow}
