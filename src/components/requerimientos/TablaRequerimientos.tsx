@@ -23,7 +23,7 @@ import {
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
 } from '@/hooks/useRequerimientos'
 import { eliminarRequerimiento } from '@/actions/requerimientos'
-import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
@@ -243,7 +243,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     <ColHeader label="Rank"         sort={sort} onSort={handleSort} className="w-14 text-center" />
                     <ColHeader label="Nombre"       sort={sort} onSort={handleSort} className="min-w-[200px]" />
                     <ColHeader label="Alcance"      sort={sort} onSort={handleSort} className="w-20" />
-                    <ColHeader label="Responsable"  sort={sort} onSort={handleSort} className="w-32" />
+                    <ColHeader label="Proceso"       sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="P"            column="prioridad"             sort={sort} onSort={handleSort} className="w-12" />
                     <ColHeader label="Estado"       column="estado"                sort={sort} onSort={handleSort} className="w-32" />
                     <ColHeader label="Origen"       column="origen_requerimiento"  sort={sort} onSort={handleSort} className="w-36" />
@@ -320,9 +320,15 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           ) : <span className="text-slate-300">—</span>}
                         </td>
 
-                        {/* Responsable */}
+                        {/* Proceso */}
                         <td className="px-3 py-2.5">
-                          <AvatarIniciales nombre={row.responsable} />
+                          {(row as any).proceso_interno ? (
+                            <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                              {PROCESOS_INTERNOS.find(p => p.value === (row as any).proceso_interno)?.label ?? (row as any).proceso_interno}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-300">—</span>
+                          )}
                         </td>
 
                         {/* Prioridad — asignada por admin */}
