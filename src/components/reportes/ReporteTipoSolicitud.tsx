@@ -152,7 +152,7 @@ export function ReporteTipoSolicitud({ datos, isLoading }: Props) {
                   cx="50%"
                   cy="50%"
                   outerRadius={70}
-                  label={({ label, percent }) => `${label} ${Math.round((percent ?? 0) * 100)}%`}
+                  label={({ name, percent }) => `${name} ${Math.round((percent ?? 0) * 100)}%`}
                   labelLine={false}
                 >
                   {tiposConocidos.map((t, i) => (
