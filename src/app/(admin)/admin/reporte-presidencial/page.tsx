@@ -7,14 +7,9 @@ import {
 
 /* ── Formateadores ────────────────────────────────────────────────────────── */
 function cop(v: number) {
-  if (v >= 1_000_000_000) return `$ ${(v / 1_000_000_000).toFixed(1)} B`
-  if (v >= 1_000_000)     return `$ ${(v / 1_000_000).toFixed(1)} M`
-  if (v >= 1_000)         return `$ ${(v / 1_000).toFixed(0)} K`
-  return `$ ${v.toFixed(0)}`
-}
-function copFull(v: number) {
   return new Intl.NumberFormat('es-CO', { style: 'currency', currency: 'COP', maximumFractionDigits: 0 }).format(v)
 }
+const copFull = cop
 function fechaLocal(iso: string) {
   return new Date(iso).toLocaleDateString('es-CO', {
     day: '2-digit', month: 'long', year: 'numeric',
