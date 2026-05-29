@@ -6,7 +6,7 @@ import {
   getReuniones, crearReunion, actualizarReunion, agregarTareaReunion,
   toggleTareaReunion, eliminarTareaReunion, eliminarReunion,
   guardarRespuestaTarea, registrarAnexoTarea, eliminarAnexoTarea,
-  actualizarMotivoYPenalizacion,
+  actualizarMotivoYPenalizacion, registrarAnexoReunion, eliminarAnexoReunion,
 } from '@/actions/reuniones'
 import { getPerfilesActivos } from '@/actions/perfiles'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -20,7 +20,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, formatCOP } from '@/lib/utils'
-import type { Reunion, TareaReunion, AnexoTareaReunion, Perfil } from '@/lib/supabase/types'
+import type { Reunion, TareaReunion, AnexoTareaReunion, AnexoReunion, Perfil } from '@/lib/supabase/types'
 
 interface Props { requerimientoId: string; isAdmin?: boolean }
 
@@ -683,6 +683,116 @@ function FormNuevaReunion({ requerimientoId, perfiles, onCreated, onCancel }: {
   )
 }
 
+/* ── Panel de anexos de la reunión ───────────────────────────────────────── */
+function PanelAnexosReunion({
+  reunionId, anexos, onRefresh,
+}: {
+  reunionId: string; anexos: AnexoReunion[]; onRefresh: () => void
+}) {
+  const inputRef                   = useRef<HTMLInputElement>(null)
+  const [titulo, setTitulo]        = useState('')
+  const [uploading, setUploading]  = useState<string[]>([])
+
+  const subirAnexo = async (file: File) => {
+    if (!titulo.trim()) { toast.error('Escribe el título del anexo antes de adjuntar'); return }
+    if (!TIPOS_PERMITIDOS.includes(file.type)) { toast.error(`Tipo no permitido: ${file.name}`); return }
+    if (file.size > 20 * 1024 * 1024) { toast.error(`Supera 20 MB: ${file.name}`); return }
+
+    const ext  = file.name.split('.').pop()
+    const path = `igsi-reuniones-anexos/${reunionId}/${Date.now()}.${ext}`
+    const storageRef = ref(storage, path)
+
+    setUploading(prev => [...prev, file.name])
+    const task = uploadBytesResumable(storageRef, file, { contentType: file.type })
+
+    task.on('state_changed', null,
+      err => { toast.error(err.message); setUploading(prev => prev.filter(n => n !== file.name)) },
+      async () => {
+        const url = await getDownloadURL(task.snapshot.ref)
+        const res = await registrarAnexoReunion(reunionId, {
+          titulo:         titulo.trim(),
+          nombre_archivo: file.name,
+          url_storage:    url,
+          tipo_archivo:   file.type,
+          tamanio_bytes:  file.size,
+        })
+        setUploading(prev => prev.filter(n => n !== file.name))
+        if (res.ok) { setTitulo(''); onRefresh(); toast.success(`${file.name} adjuntado`) }
+        else toast.error(res.error ?? 'Error al guardar anexo')
+      }
+    )
+  }
+
+  const handleEliminar = async (a: AnexoReunion) => {
+    try {
+      await deleteObject(ref(storage, a.url_storage)).catch(() => {})
+      await eliminarAnexoReunion(a.id)
+      onRefresh()
+    } catch { toast.error('Error al eliminar') }
+  }
+
+  return (
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 space-y-3">
+      <p className="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+        <Paperclip size={12} /> Anexos de la reunión
+        {anexos.length > 0 && (
+          <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-xs font-bold text-blue-600">{anexos.length}</span>
+        )}
+      </p>
+
+      {/* Lista de anexos existentes */}
+      {anexos.length > 0 && (
+        <ul className="space-y-1.5">
+          {anexos.map(a => (
+            <li key={a.id} className="flex items-center gap-2 rounded-lg border border-slate-100 bg-white px-3 py-2">
+              <IconoTipo tipo={a.tipo_archivo} />
+              <div className="flex-1 min-w-0">
+                <p className="truncate text-xs font-semibold text-slate-700">{a.titulo}</p>
+                <p className="truncate text-[11px] text-slate-400">{a.nombre_archivo} {a.tamanio_bytes ? `· ${formatBytes(a.tamanio_bytes)}` : ''}</p>
+              </div>
+              <a href={a.url_storage} target="_blank" rel="noopener noreferrer"
+                className="shrink-0 text-slate-400 hover:text-blue-500"><Download size={13} /></a>
+              <button onClick={() => handleEliminar(a)} className="shrink-0 text-slate-300 hover:text-red-400">
+                <X size={12} />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+
+      {/* Subir nuevo anexo */}
+      <div className="space-y-2">
+        <div className="flex gap-2">
+          <input
+            value={titulo}
+            onChange={e => setTitulo(e.target.value)}
+            placeholder="Título del anexo (ej: Acta de reunión, Presentación...)"
+            className="flex-1 rounded-md border border-slate-200 bg-white px-3 py-1.5 text-xs outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+          />
+          <button
+            onClick={() => {
+              if (!titulo.trim()) { toast.error('Escribe el título primero'); return }
+              inputRef.current?.click()
+            }}
+            className="flex shrink-0 items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-slate-600 hover:border-blue-300 hover:bg-blue-50 hover:text-blue-600"
+          >
+            <Plus size={11} /> Adjuntar
+          </button>
+        </div>
+        <input ref={inputRef} type="file" multiple accept={TIPOS_PERMITIDOS.join(',')} className="hidden"
+          onChange={e => { Array.from(e.target.files ?? []).forEach(subirAnexo); e.target.value = '' }} />
+        {uploading.map(nombre => (
+          <div key={nombre} className="flex items-center gap-2 rounded-lg bg-blue-50 px-3 py-1.5 text-xs text-blue-700">
+            <div className="h-3 w-3 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
+            Subiendo {nombre}...
+          </div>
+        ))}
+        <p className="text-[11px] text-slate-400">PDF, Word, Excel, imágenes · máx. 20 MB por archivo</p>
+      </div>
+    </div>
+  )
+}
+
 /* ── Tarjeta de una reunión ──────────────────────────────────────────────── */
 function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
   reunion: Reunion; perfiles: Perfil[]; isAdmin: boolean; onRefresh: () => void
@@ -840,12 +950,19 @@ function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
       )}
 
       {expanded && !editing && (
-        <div className="px-4 py-3 space-y-3 bg-white">
+        <div className="px-4 py-3 space-y-4 bg-white">
           {reunion.notas && (
             <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">
               {reunion.notas}
             </p>
           )}
+
+          {/* Anexos de la reunión */}
+          <PanelAnexosReunion
+            reunionId={reunion.id}
+            anexos={reunion.anexos ?? []}
+            onRefresh={onRefresh}
+          />
 
           {reunion.tareas.length === 0 && !addingTask ? (
             <p className="text-xs italic text-slate-400">Sin tareas registradas</p>

@@ -2,14 +2,14 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
-import type { Reunion, TareaReunion } from '@/lib/supabase/types'
+import type { Reunion, TareaReunion, AnexoReunion } from '@/lib/supabase/types'
 
 export async function getReuniones(requerimientoId: string): Promise<Reunion[]> {
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
       .from('reuniones')
-      .select('*, tareas_reunion(*, anexos_tarea_reunion(*))')
+      .select('*, tareas_reunion(*, anexos_tarea_reunion(*)), anexos_reunion(*)')
       .eq('requerimiento_id', requerimientoId)
       .order('fecha_reunion', { ascending: false })
     if (error) return []
@@ -20,6 +20,10 @@ export async function getReuniones(requerimientoId: string): Promise<Reunion[]> 
           new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
         )
         .map((t: any) => ({ ...t, anexos: t.anexos_tarea_reunion ?? [] })),
+      anexos: (r.anexos_reunion ?? [])
+        .sort((a: AnexoReunion, b: AnexoReunion) =>
+          new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+        ),
     }))
   } catch {
     return []
@@ -244,6 +248,42 @@ export async function eliminarReunion(id: string): Promise<{ ok: boolean }> {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
       .from('reuniones')
+      .delete()
+      .eq('id', id)
+    return { ok: !error }
+  } catch {
+    return { ok: false }
+  }
+}
+
+export async function registrarAnexoReunion(
+  reunionId: string,
+  datos: { titulo: string; nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_reunion')
+      .insert({
+        reunion_id:    reunionId,
+        titulo:        datos.titulo.trim(),
+        nombre_archivo: datos.nombre_archivo,
+        url_storage:   datos.url_storage,
+        tipo_archivo:  datos.tipo_archivo ?? null,
+        tamanio_bytes: datos.tamanio_bytes ?? null,
+      })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function eliminarAnexoReunion(id: string): Promise<{ ok: boolean }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_reunion')
       .delete()
       .eq('id', id)
     return { ok: !error }

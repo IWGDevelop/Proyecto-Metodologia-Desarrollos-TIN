@@ -215,6 +215,17 @@ export interface Comentario {
 }
 
 // ─── Tabla: reuniones ────────────────────────────────────────────────────────
+export interface AnexoReunion {
+  id: string
+  reunion_id: string
+  titulo: string
+  nombre_archivo: string
+  url_storage: string
+  tipo_archivo: string | null
+  tamanio_bytes: number | null
+  created_at: string
+}
+
 export interface AnexoTareaReunion {
   id: string
   tarea_reunion_id: string
@@ -251,6 +262,7 @@ export interface Reunion {
   created_by: string | null
   created_at: string
   tareas: TareaReunion[]
+  anexos: AnexoReunion[]
 }
 
 // ─── Tabla: anexos ────────────────────────────────────────────────────────────
