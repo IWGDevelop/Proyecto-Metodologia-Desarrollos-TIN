@@ -3,7 +3,7 @@
 import { useState, useTransition, useRef } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  getReuniones, crearReunion, agregarTareaReunion,
+  getReuniones, crearReunion, actualizarReunion, agregarTareaReunion,
   toggleTareaReunion, eliminarTareaReunion, eliminarReunion,
   guardarRespuestaTarea, registrarAnexoTarea, eliminarAnexoTarea,
   actualizarMotivoYPenalizacion,
@@ -16,7 +16,7 @@ import {
   Video, PlayCircle, Plus, Trash2, CheckSquare, Square, Lock,
   ChevronDown, ChevronUp, CalendarCheck, Calendar, UserCheck, X, Link2,
   Paperclip, MessageSquare, AlertCircle, FileText, Image, File,
-  Download, DollarSign, Clock,
+  Download, DollarSign, Clock, Pencil, Check,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, formatCOP } from '@/lib/utils'
@@ -688,9 +688,16 @@ function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
   reunion: Reunion; perfiles: Perfil[]; isAdmin: boolean; onRefresh: () => void
 }) {
   const [expanded, setExpanded]     = useState(true)
+  const [editing, setEditing]       = useState(false)
   const [addingTask, setAddingTask] = useState(false)
   const [nuevaTarea, setNuevaTarea] = useState<TareaForm>({ ...TAREA_VACIA })
   const [isPending, startT]         = useTransition()
+
+  // Campos editables del evento
+  const [editTitulo,   setEditTitulo]   = useState(reunion.titulo)
+  const [editFecha,    setEditFecha]    = useState(reunion.fecha_reunion)
+  const [editUrl,      setEditUrl]      = useState(reunion.url_video ?? '')
+  const [editNotas,    setEditNotas]    = useState(reunion.notas ?? '')
 
   const total             = reunion.tareas.length
   const tareasCompletadas = reunion.tareas.filter(t => t.completada).length
@@ -698,6 +705,29 @@ function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
   const handleEliminarReunion = () => {
     if (!confirm('¿Eliminar esta reunión y todas sus tareas?')) return
     startT(async () => { await eliminarReunion(reunion.id); onRefresh() })
+  }
+
+  const handleGuardarEdicion = () => {
+    if (!editTitulo.trim()) { toast.error('El título es obligatorio'); return }
+    if (!editFecha)         { toast.error('La fecha es obligatoria'); return }
+    startT(async () => {
+      const res = await actualizarReunion(reunion.id, {
+        titulo:        editTitulo.trim(),
+        fecha_reunion: editFecha,
+        url_video:     editUrl.trim() || null,
+        notas:         editNotas.trim() || null,
+      })
+      if (res.ok) { toast.success('Reunión actualizada'); setEditing(false); onRefresh() }
+      else toast.error(res.error ?? 'Error al guardar')
+    })
+  }
+
+  const handleCancelarEdicion = () => {
+    setEditTitulo(reunion.titulo)
+    setEditFecha(reunion.fecha_reunion)
+    setEditUrl(reunion.url_video ?? '')
+    setEditNotas(reunion.notas ?? '')
+    setEditing(false)
   }
 
   const handleAgregarTarea = () => {
@@ -716,39 +746,100 @@ function CardReunion({ reunion, perfiles, isAdmin, onRefresh }: {
 
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50 overflow-hidden">
-      <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-100">
-        <div className="flex-1 min-w-0">
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm font-semibold text-slate-800">{reunion.titulo}</span>
-            {reunion.url_video && <VideoChip url={reunion.url_video} />}
+      {/* ── Cabecera: modo vista o modo edición ── */}
+      {editing ? (
+        <div className="border-b border-blue-100 bg-blue-50/40 px-4 py-3 space-y-3">
+          <p className="text-xs font-semibold text-blue-700">Editar reunión</p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500">Título <span className="text-red-400">*</span></label>
+              <input
+                value={editTitulo}
+                onChange={e => setEditTitulo(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-slate-500">Fecha <span className="text-red-400">*</span></label>
+              <input
+                type="date"
+                value={editFecha}
+                onChange={e => setEditFecha(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+              />
+            </div>
           </div>
-          <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-400">
-            <span className="flex items-center gap-1">
-              <CalendarCheck size={11} /> {formatFecha(reunion.fecha_reunion)}
-            </span>
-            {total > 0 && (
-              <span className={cn(
-                'rounded-full px-2 py-0.5 font-medium',
-                tareasCompletadas === total ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-600'
-              )}>
-                {tareasCompletadas}/{total} tareas completadas
+          <div className="space-y-1">
+            <label className="flex items-center gap-1 text-xs font-medium text-slate-500">
+              <Link2 size={11} /> URL del video (YouTube / Google Drive)
+            </label>
+            <input
+              placeholder="https://youtube.com/..."
+              value={editUrl}
+              onChange={e => setEditUrl(e.target.value)}
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+            />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-slate-500">Notas / resumen</label>
+            <textarea
+              value={editNotas}
+              onChange={e => setEditNotas(e.target.value)}
+              rows={3}
+              placeholder="Puntos tratados, decisiones, acuerdos..."
+              className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400 resize-none"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button onClick={handleCancelarEdicion}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 hover:bg-slate-50">
+              Cancelar
+            </button>
+            <button onClick={handleGuardarEdicion} disabled={isPending}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+              <Check size={12} /> {isPending ? 'Guardando...' : 'Guardar cambios'}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="flex items-start gap-3 px-4 py-3 border-b border-slate-100">
+          <div className="flex-1 min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="text-sm font-semibold text-slate-800">{reunion.titulo}</span>
+              {reunion.url_video && <VideoChip url={reunion.url_video} />}
+            </div>
+            <div className="mt-1 flex flex-wrap items-center gap-3 text-xs text-slate-400">
+              <span className="flex items-center gap-1">
+                <CalendarCheck size={11} /> {formatFecha(reunion.fecha_reunion)}
               </span>
-            )}
+              {total > 0 && (
+                <span className={cn(
+                  'rounded-full px-2 py-0.5 font-medium',
+                  tareasCompletadas === total ? 'bg-emerald-50 text-emerald-700' : 'bg-blue-50 text-blue-600'
+                )}>
+                  {tareasCompletadas}/{total} tareas completadas
+                </span>
+              )}
+            </div>
+          </div>
+          <div className="flex items-center gap-1 shrink-0">
+            <button onClick={() => setEditing(true)} title="Editar reunión"
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200 hover:text-blue-600">
+              <Pencil size={14} />
+            </button>
+            <button onClick={() => setExpanded(e => !e)}
+              className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200">
+              {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+            <button onClick={handleEliminarReunion} disabled={isPending}
+              className="rounded-lg p-1.5 text-slate-300 hover:text-red-500">
+              <Trash2 size={14} />
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setExpanded(e => !e)}
-            className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-200">
-            {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
-          <button onClick={handleEliminarReunion} disabled={isPending}
-            className="rounded-lg p-1.5 text-slate-300 hover:text-red-500">
-            <Trash2 size={14} />
-          </button>
-        </div>
-      </div>
+      )}
 
-      {expanded && (
+      {expanded && !editing && (
         <div className="px-4 py-3 space-y-3 bg-white">
           {reunion.notas && (
             <p className="whitespace-pre-wrap rounded-lg border border-slate-100 bg-slate-50 px-3 py-2 text-xs text-slate-500">

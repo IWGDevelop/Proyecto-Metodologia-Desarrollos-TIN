@@ -69,6 +69,28 @@ export async function crearReunion(
   }
 }
 
+export async function actualizarReunion(
+  reunionId: string,
+  datos: { titulo?: string; fecha_reunion?: string; url_video?: string | null; notas?: string | null }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('reuniones')
+      .update({
+        ...(datos.titulo !== undefined && { titulo: datos.titulo }),
+        ...(datos.fecha_reunion !== undefined && { fecha_reunion: datos.fecha_reunion }),
+        ...(datos.url_video !== undefined && { url_video: datos.url_video || null }),
+        ...(datos.notas !== undefined && { notas: datos.notas || null }),
+      })
+      .eq('id', reunionId)
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
 export async function agregarTareaReunion(
   reunionId: string,
   tarea: { descripcion: string; responsable_email?: string; fecha_inicio?: string; fecha_compromiso?: string }
