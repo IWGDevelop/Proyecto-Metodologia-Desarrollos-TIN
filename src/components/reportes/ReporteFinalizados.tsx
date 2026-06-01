@@ -29,6 +29,7 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
     const set = new Set<number>()
     datos.forEach(r => {
       const fecha = r.fecha_real_entrega ?? r.fecha_salida_vivo
+        ?? ((r.estado === 'ENTREGADO' || r.estado === 'CERRADO') ? r.updated_at?.split('T')[0] : null)
       if (fecha) set.add(new Date(fecha + 'T12:00:00').getFullYear())
     })
     const actual = getAñoActual()
@@ -40,6 +41,7 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
     const conteo: Record<number, number> = {}
     datos.forEach(r => {
       const fecha = r.fecha_real_entrega ?? r.fecha_salida_vivo
+        ?? ((r.estado === 'ENTREGADO' || r.estado === 'CERRADO') ? r.updated_at?.split('T')[0] : null)
       if (fecha) {
         const y = new Date(fecha + 'T12:00:00').getFullYear()
         conteo[y] = (conteo[y] ?? 0) + 1
@@ -56,29 +58,36 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
     if (!isLoading) setAño(añoConMasDatos)
   }, [añoConMasDatos, isLoading])
 
+  const getFechaFin = (r: MetricaRequerimiento): string | null => {
+    if (r.fecha_real_entrega) return r.fecha_real_entrega
+    if (r.fecha_salida_vivo)  return r.fecha_salida_vivo
+    if (r.estado === 'ENTREGADO' || r.estado === 'CERRADO') return r.updated_at?.split('T')[0] ?? null
+    return null
+  }
+
   const finalizados = useMemo(() => {
     return datos
       .filter(r => {
-        const fecha = r.fecha_real_entrega ?? r.fecha_salida_vivo
+        const fecha = getFechaFin(r)
         if (!fecha) return false
         return new Date(fecha + 'T12:00:00').getFullYear() === año
       })
       .sort((a, b) => {
-        const fa = a.fecha_real_entrega ?? a.fecha_salida_vivo ?? ''
-        const fb = b.fecha_real_entrega ?? b.fecha_salida_vivo ?? ''
+        const fa = getFechaFin(a) ?? ''
+        const fb = getFechaFin(b) ?? ''
         return fb.localeCompare(fa)
       })
-  }, [datos, año])
+  }, [datos, año]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const porMes = useMemo(() => {
     const mapa: Record<number, number> = {}
     finalizados.forEach(r => {
-      const fecha = r.fecha_real_entrega ?? r.fecha_salida_vivo!
+      const fecha = getFechaFin(r)!
       const mes = new Date(fecha + 'T12:00:00').getMonth()
       mapa[mes] = (mapa[mes] ?? 0) + 1
     })
     return MESES.map((label, i) => ({ label, mes: i + 1, cantidad: mapa[i] ?? 0 }))
-  }, [finalizados])
+  }, [finalizados]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const promedioDias = useMemo(() => {
     const conDias = finalizados.filter(r => r.dias_desarrollo != null && r.dias_desarrollo > 0)
@@ -208,7 +217,7 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
               </thead>
               <tbody className="divide-y divide-slate-50">
                 {finalizados.map((r, i) => {
-                  const fechaEntrega = r.fecha_real_entrega ?? r.fecha_salida_vivo
+                  const fechaEntrega = getFechaFin(r)
                   const cfg = ESTADOS[r.estado as Estado]
                   return (
                     <tr key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
