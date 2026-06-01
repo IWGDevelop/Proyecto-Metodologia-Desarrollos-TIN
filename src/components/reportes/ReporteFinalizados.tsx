@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Cell,
@@ -25,8 +25,6 @@ function getAñoActual() {
 }
 
 export function ReporteFinalizados({ datos, isLoading }: Props) {
-  const [año, setAño] = useState(getAñoActual())
-
   const añosDisponibles = useMemo(() => {
     const set = new Set<number>()
     datos.forEach(r => {
@@ -37,6 +35,26 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
     for (let y = actual - 2; y <= actual + 1; y++) set.add(y)
     return [...set].sort((a, b) => b - a)
   }, [datos])
+
+  const añoConMasDatos = useMemo(() => {
+    const conteo: Record<number, number> = {}
+    datos.forEach(r => {
+      const fecha = r.fecha_real_entrega ?? r.fecha_salida_vivo
+      if (fecha) {
+        const y = new Date(fecha + 'T12:00:00').getFullYear()
+        conteo[y] = (conteo[y] ?? 0) + 1
+      }
+    })
+    const entradas = Object.entries(conteo)
+    if (!entradas.length) return getAñoActual()
+    return Number(entradas.sort((a, b) => Number(b[1]) - Number(a[1]))[0][0])
+  }, [datos])
+
+  const [año, setAño] = useState(getAñoActual())
+
+  useEffect(() => {
+    if (!isLoading) setAño(añoConMasDatos)
+  }, [añoConMasDatos, isLoading])
 
   const finalizados = useMemo(() => {
     return datos

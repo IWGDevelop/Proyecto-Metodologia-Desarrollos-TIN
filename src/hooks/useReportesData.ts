@@ -55,7 +55,7 @@ export function useReportesData(filtros: FiltrosReportes, isAdmin = false) {
     })
   }, [todos, filtros])
 
-  return { datos: filtrados, isLoading, error }
+  return { datos: filtrados, todos, isLoading, error }
 }
 
 // Filtros iniciales sin rango de fecha para mostrar todo por defecto
