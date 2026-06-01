@@ -98,7 +98,8 @@ function PanelEvidencia({
   const [isPending, startT]                       = useTransition()
   const [motivo, setMotivo]                       = useState(tarea.motivo_incumplimiento ?? '')
   const [penalizacion, setPenalizacion]           = useState<number | null>(tarea.penalizacion_cop ?? null)
-  const [fechaCumplManual, setFechaCumplManual]   = useState('')
+  const [fechaCumplManual, setFechaCumplManual]   = useState(tarea.fecha_cumplimiento ?? '')
+  const [editandoFecha, setEditandoFecha]         = useState(false)
   const [isPendingC, startTC]                     = useTransition()
 
   const respuestaCambiada    = respuesta.trim() !== (tarea.respuesta ?? '').trim()
@@ -121,8 +122,11 @@ function PanelEvidencia({
       const res = await actualizarMotivoYPenalizacion(tarea.id, {
         fecha_cumplimiento: fechaCumplManual || null,
       })
-      if (res.ok) { toast.success('Fecha de cumplimiento registrada'); onRefresh() }
-      else toast.error(res.error ?? 'Error')
+      if (res.ok) {
+        toast.success('Fecha de cumplimiento actualizada')
+        setEditandoFecha(false)
+        onRefresh()
+      } else toast.error(res.error ?? 'Error')
     })
   }
 
@@ -266,34 +270,58 @@ function PanelEvidencia({
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Cumplimiento</p>
 
             {/* Estado: A tiempo / Incumplida / Sin fecha */}
-            {tarea.fecha_cumplimiento ? (
+            {tarea.fecha_cumplimiento && !editandoFecha ? (
               <div className={cn(
-                'flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs font-medium',
+                'flex items-start justify-between gap-2 rounded-lg px-3 py-2.5 text-xs font-medium',
                 esTarde ? 'bg-red-50 text-red-700' : 'bg-emerald-50 text-emerald-700'
               )}>
-                {esTarde ? (
-                  <div className="space-y-0.5">
-                    <p>
-                      ❌ <strong>Incumplida</strong> — {diasTarde} día{diasTarde !== 1 ? 's' : ''} de retraso
+                <div>
+                  {esTarde ? (
+                    <div className="space-y-0.5">
+                      <p>
+                        ❌ <strong>Incumplida</strong> — {diasTarde} día{diasTarde !== 1 ? 's' : ''} de retraso
+                      </p>
+                      <p className="font-normal text-red-600/80">
+                        Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
+                        {tarea.fecha_compromiso && ` · Compromiso: ${formatFecha(tarea.fecha_compromiso)}`}
+                      </p>
+                    </div>
+                  ) : (
+                    <p>✅ <strong>A tiempo</strong> — Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
+                      {tarea.fecha_compromiso && ` (compromiso: ${formatFecha(tarea.fecha_compromiso)})`}
                     </p>
-                    <p className="font-normal text-red-600/80">
-                      Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
-                      {tarea.fecha_compromiso && ` · Compromiso: ${formatFecha(tarea.fecha_compromiso)}`}
-                    </p>
-                  </div>
-                ) : (
-                  <p>✅ <strong>A tiempo</strong> — Cumplió el {formatFecha(tarea.fecha_cumplimiento)}
-                    {tarea.fecha_compromiso && ` (compromiso: ${formatFecha(tarea.fecha_compromiso)})`}
-                  </p>
+                  )}
+                </div>
+                {isAdmin && (
+                  <button
+                    onClick={() => { setFechaCumplManual(tarea.fecha_cumplimiento ?? ''); setEditandoFecha(true) }}
+                    title="Corregir fecha de cumplimiento"
+                    className={cn(
+                      'shrink-0 rounded p-0.5 transition-colors',
+                      esTarde
+                        ? 'text-red-300 hover:bg-red-100 hover:text-red-700'
+                        : 'text-emerald-300 hover:bg-emerald-100 hover:text-emerald-700'
+                    )}
+                  >
+                    <Pencil size={12} />
+                  </button>
                 )}
               </div>
-            ) : isAdmin ? (
-              /* Admin puede establecer la fecha manualmente para tareas sin fecha_cumplimiento */
-              <div className="rounded-lg border border-dashed border-slate-200 bg-slate-50 p-3 space-y-2">
-                <p className="text-xs text-slate-500">
-                  Fecha de cumplimiento no registrada. Se establece automáticamente al guardar evidencia,
-                  o puede ingresarla manualmente.
+            ) : isAdmin && (editandoFecha || !tarea.fecha_cumplimiento) ? (
+              /* Admin: establecer o corregir la fecha */
+              <div className="rounded-lg border border-dashed border-blue-200 bg-blue-50/40 p-3 space-y-2">
+                <p className="flex items-center gap-1.5 text-xs font-semibold text-blue-700">
+                  <Pencil size={11} />
+                  {editandoFecha ? 'Corregir fecha de cumplimiento' : 'Registrar fecha de cumplimiento'}
+                  <span className="rounded-full bg-blue-100 px-1.5 py-0.5 text-[10px] font-medium text-blue-600">
+                    Solo admin
+                  </span>
                 </p>
+                {!editandoFecha && (
+                  <p className="text-xs text-slate-500">
+                    Se establece automáticamente al guardar evidencia, o ingrésela manualmente si ya ocurrió.
+                  </p>
+                )}
                 <div className="flex items-end gap-2">
                   <div className="space-y-0.5">
                     <span className="text-[10px] font-medium text-slate-400">Fecha de cumplimiento</span>
@@ -304,19 +332,25 @@ function PanelEvidencia({
                       className="block rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                     />
                   </div>
-                  {fechaCumplManual && (
-                    <button onClick={guardarFechaCumpl} disabled={isPendingC}
-                      className="rounded-lg bg-slate-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-slate-700 disabled:opacity-50">
-                      {isPendingC ? 'Guardando...' : 'Guardar'}
+                  <button onClick={guardarFechaCumpl} disabled={isPendingC || !fechaCumplManual}
+                    className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50">
+                    {isPendingC ? 'Guardando...' : 'Guardar'}
+                  </button>
+                  {editandoFecha && (
+                    <button
+                      onClick={() => { setEditandoFecha(false); setFechaCumplManual(tarea.fecha_cumplimiento ?? '') }}
+                      className="rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-50"
+                    >
+                      Cancelar
                     </button>
                   )}
                 </div>
               </div>
-            ) : (
+            ) : !tarea.fecha_cumplimiento ? (
               <p className="text-xs text-slate-400 italic">
                 Fecha de cumplimiento pendiente — se registrará al guardar evidencia.
               </p>
-            )}
+            ) : null}
 
             {/* Motivo del incumplimiento (cuando hay retraso) */}
             {esTarde && (
