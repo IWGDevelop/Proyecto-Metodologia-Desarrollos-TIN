@@ -14,6 +14,8 @@ import { ReporteProductividad } from '@/components/reportes/ReporteProductividad
 import { ReporteContraste } from '@/components/reportes/ReporteContraste'
 import { ReporteIncumplimiento } from '@/components/reportes/ReporteIncumplimiento'
 import { ReporteTipoSolicitud } from '@/components/reportes/ReporteTipoSolicitud'
+import { ReporteFinalizados } from '@/components/reportes/ReporteFinalizados'
+import { ReporteTareasAbiertas } from '@/components/reportes/ReporteTareasAbiertas'
 import { useReportesData, FILTROS_INIT, type FiltrosReportes as TFiltros } from '@/hooks/useReportesData'
 import { exportarReporteCompleto } from '@/lib/exportar'
 import { ESTADOS, PRIORIDADES, SLA_DIAS } from '@/lib/constants'
@@ -133,6 +135,10 @@ export default function AdminReportesPage() {
         <section><ReporteProductividad datos={datos} isLoading={isLoading} /></section>
         <div className="border-t border-slate-200" />
         <section><ReporteIncumplimiento /></section>
+        <div className="border-t border-slate-200" />
+        <section><ReporteFinalizados datos={datos} isLoading={isLoading} /></section>
+        <div className="border-t border-slate-200" />
+        <section><ReporteTareasAbiertas /></section>
       </div>
     </div>
   )
