@@ -19,6 +19,7 @@ import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
+import { getPermisosUsuario } from '@/actions/roles-permisos'
 import type { Estado, ActividadImpacto, BeneficioCualitativo } from '@/lib/supabase/types'
 
 interface Props {
@@ -40,6 +41,25 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   ])
 
   if (error || !req) notFound()
+
+  const isAdmin = perfilAdmin?.rol === 'ADMIN_TIN'
+  const permisos = isAdmin ? {} : await getPermisosUsuario(perfilAdmin?.rol ?? 'USUARIO')
+  const pv = (recurso: string) => isAdmin || permisos[recurso]?.puede_ver === true
+  const pe = (recurso: string) => isAdmin || permisos[recurso]?.puede_editar === true
+  const pc = (recurso: string) => isAdmin || permisos[recurso]?.puede_crear === true
+
+  const tabsDef = [
+    { value: 'informacion',    recurso: 'req:informacion' },
+    { value: 'desarrollo',     recurso: 'req:desarrollo' },
+    { value: 'impacto',        recurso: 'req:impacto-hh' },
+    { value: 'historial',      recurso: 'req:historial' },
+    { value: 'impacto-real',   recurso: 'req:impacto-real' },
+    { value: 'reuniones',      recurso: 'req:reuniones' },
+    { value: 'penalizaciones', recurso: 'req:penalizaciones' },
+    { value: 'comentarios',    recurso: 'req:comentarios' },
+    { value: 'anexos',         recurso: 'req:anexos' },
+  ]
+  const defaultTab = tabsDef.find(t => pv(t.recurso))?.value ?? 'informacion'
 
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
@@ -82,51 +102,61 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <AsignarOrigenBtn
-            requerimientoId={id}
-            origenActual={req.origen_requerimiento ?? null}
-          />
-          <AsignarPrioridadBtn
-            requerimientoId={id}
-            prioridadActual={req.prioridad}
-            impactoHH={req.ahorro_anual_cop}
-            impactoCualitativos={req.total_beneficios_cualitativos_anual}
-            impactoTotal={req.impacto_economico_total_anual}
-          />
-          <CambiarEstadoBtn
-            requerimientoId={id}
-            estadoActual={req.estado}
-            horasEstimadas={req.horas_ahorradas_mes}
-            valorHoraEstimado={req.valor_hora_hombre}
-          />
-          <Link href={`/admin/requerimientos/${id}/editar`}>
-            <Button size="sm" variant="outline" className="gap-1.5">
-              <Pencil size={13} /> Editar
-            </Button>
-          </Link>
+          {pe('req:general') && (
+            <AsignarOrigenBtn
+              requerimientoId={id}
+              origenActual={req.origen_requerimiento ?? null}
+            />
+          )}
+          {pe('req:prioridad') && (
+            <AsignarPrioridadBtn
+              requerimientoId={id}
+              prioridadActual={req.prioridad}
+              impactoHH={req.ahorro_anual_cop}
+              impactoCualitativos={req.total_beneficios_cualitativos_anual}
+              impactoTotal={req.impacto_economico_total_anual}
+            />
+          )}
+          {pe('req:estado') && (
+            <CambiarEstadoBtn
+              requerimientoId={id}
+              estadoActual={req.estado}
+              horasEstimadas={req.horas_ahorradas_mes}
+              valorHoraEstimado={req.valor_hora_hombre}
+            />
+          )}
+          {pe('req:general') && (
+            <Link href={`/admin/requerimientos/${id}/editar`}>
+              <Button size="sm" variant="outline" className="gap-1.5">
+                <Pencil size={13} /> Editar
+              </Button>
+            </Link>
+          )}
         </div>
       </div>
 
-      <Tabs defaultValue="informacion">
+      <Tabs defaultValue={defaultTab}>
         <TabsList className="w-full justify-start flex-wrap">
-          <TabsTrigger value="informacion">Información</TabsTrigger>
-          <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>
-          <TabsTrigger value="impacto">Impacto HH</TabsTrigger>
-          <TabsTrigger value="historial">Historial</TabsTrigger>
-          <TabsTrigger value="impacto-real">
-            Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
-              <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">
-                {req.impacto_economico_total_anual_real ? '✓' : '!'}
-              </span>
-            )}
-          </TabsTrigger>
-          <TabsTrigger value="reuniones">Reuniones</TabsTrigger>
-          <TabsTrigger value="penalizaciones">Penalizaciones</TabsTrigger>
-          <TabsTrigger value="comentarios">Comentarios</TabsTrigger>
-          <TabsTrigger value="anexos">Anexos</TabsTrigger>
+          {pv('req:informacion')    && <TabsTrigger value="informacion">Información</TabsTrigger>}
+          {pv('req:desarrollo')     && <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>}
+          {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
+          {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
+          {pv('req:impacto-real')  && (
+            <TabsTrigger value="impacto-real">
+              Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
+                <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">
+                  {req.impacto_economico_total_anual_real ? '✓' : '!'}
+                </span>
+              )}
+            </TabsTrigger>
+          )}
+          {pv('req:reuniones')      && <TabsTrigger value="reuniones">Reuniones</TabsTrigger>}
+          {pv('req:penalizaciones') && <TabsTrigger value="penalizaciones">Penalizaciones</TabsTrigger>}
+          {pv('req:comentarios')    && <TabsTrigger value="comentarios">Comentarios</TabsTrigger>}
+          {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
         </TabsList>
 
-        <TabsContent value="informacion" className="mt-4 space-y-4">
+        {pv('req:informacion') && <TabsContent value="informacion" className="mt-4 space-y-4">
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <div className="rounded-xl border border-slate-200 bg-white p-4">
               <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Encabezado</p>
@@ -161,9 +191,9 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               <p className="whitespace-pre-wrap text-sm text-slate-700">{valor}</p>
             </div>
           ))}
-        </TabsContent>
+        </TabsContent>}
 
-        <TabsContent value="impacto" className="mt-4 space-y-4">
+        {pv('req:impacto-hh') && <TabsContent value="impacto" className="mt-4 space-y-4">
           {actividades.length > 0 && (
             <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
               <p className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Actividades impactadas</p>
@@ -282,69 +312,83 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               </div>
             </div>
           )}
-        </TabsContent>
+        </TabsContent>}
 
-        <TabsContent value="historial" className="mt-4">
-          <div className="rounded-xl border border-slate-200 bg-white p-5">
-            {(!historial || historial.length === 0) ? (
-              <p className="py-8 text-center text-sm text-slate-400">Sin cambios de estado registrados</p>
-            ) : (
-              <ol className="space-y-0 divide-y divide-slate-50">
-                {historial.map(h => {
-                  const antCfg  = h.estado_anterior ? getEstadoCfg(h.estado_anterior) : null
-                  const nuevCfg = getEstadoCfg(h.estado_nuevo)
-                  return (
-                    <li key={h.id} className="flex gap-3 py-3">
-                      <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 ring-2 ring-blue-100" />
-                      <div className="min-w-0 flex-1 text-sm">
-                        <div className="flex flex-wrap items-center gap-1">
-                          {antCfg && <span className={cn('rounded-full px-2 py-0.5 text-xs', antCfg.bgColor, antCfg.textColor)}>{antCfg.label}</span>}
-                          {antCfg && <span className="text-slate-400">→</span>}
-                          <span className={cn('rounded-full px-2 py-0.5 text-xs', nuevCfg.bgColor, nuevCfg.textColor)}>{nuevCfg.label}</span>
+        {pv('req:historial') && (
+          <TabsContent value="historial" className="mt-4">
+            <div className="rounded-xl border border-slate-200 bg-white p-5">
+              {(!historial || historial.length === 0) ? (
+                <p className="py-8 text-center text-sm text-slate-400">Sin cambios de estado registrados</p>
+              ) : (
+                <ol className="space-y-0 divide-y divide-slate-50">
+                  {historial.map(h => {
+                    const antCfg  = h.estado_anterior ? getEstadoCfg(h.estado_anterior) : null
+                    const nuevCfg = getEstadoCfg(h.estado_nuevo)
+                    return (
+                      <li key={h.id} className="flex gap-3 py-3">
+                        <div className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-400 ring-2 ring-blue-100" />
+                        <div className="min-w-0 flex-1 text-sm">
+                          <div className="flex flex-wrap items-center gap-1">
+                            {antCfg && <span className={cn('rounded-full px-2 py-0.5 text-xs', antCfg.bgColor, antCfg.textColor)}>{antCfg.label}</span>}
+                            {antCfg && <span className="text-slate-400">→</span>}
+                            <span className={cn('rounded-full px-2 py-0.5 text-xs', nuevCfg.bgColor, nuevCfg.textColor)}>{nuevCfg.label}</span>
+                          </div>
+                          {h.observacion && <p className="mt-0.5 text-xs text-slate-500">"{h.observacion}"</p>}
+                          <p className="mt-0.5 text-xs text-slate-400">{h.usuario ?? 'Sistema'} · {formatFechaRelativa(h.created_at)}</p>
                         </div>
-                        {h.observacion && <p className="mt-0.5 text-xs text-slate-500">"{h.observacion}"</p>}
-                        <p className="mt-0.5 text-xs text-slate-400">{h.usuario ?? 'Sistema'} · {formatFechaRelativa(h.created_at)}</p>
-                      </div>
-                    </li>
-                  )
-                })}
-              </ol>
-            )}
-          </div>
-        </TabsContent>
+                      </li>
+                    )
+                  })}
+                </ol>
+              )}
+            </div>
+          </TabsContent>
+        )}
 
-        <TabsContent value="desarrollo" className="mt-4">
-          <TabDesarrollo
-            requerimientoId={id}
-            rama={(req as any).rama ?? null}
-            tareas={tareas}
-            desarrolladores={desarrolladores}
-            perfilesDisponibles={perfilesDisponibles}
-            isAdmin
-            currentUserId={perfilAdmin?.id}
-            horasEstimadasDesarrollo={(req as any).horas_estimadas_desarrollo ?? null}
-          />
-        </TabsContent>
+        {pv('req:desarrollo') && (
+          <TabsContent value="desarrollo" className="mt-4">
+            <TabDesarrollo
+              requerimientoId={id}
+              rama={(req as any).rama ?? null}
+              tareas={tareas}
+              desarrolladores={desarrolladores}
+              perfilesDisponibles={perfilesDisponibles}
+              isAdmin={isAdmin}
+              currentUserId={perfilAdmin?.id}
+              horasEstimadasDesarrollo={(req as any).horas_estimadas_desarrollo ?? null}
+            />
+          </TabsContent>
+        )}
 
-        <TabsContent value="impacto-real" className="mt-4">
-          <TabImpactoReal req={req as any} />
-        </TabsContent>
+        {pv('req:impacto-real') && (
+          <TabsContent value="impacto-real" className="mt-4">
+            <TabImpactoReal req={req as any} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="reuniones" className="mt-4">
-          <TabReuniones requerimientoId={id} isAdmin={perfilAdmin?.rol === 'ADMIN_TIN'} />
-        </TabsContent>
+        {pv('req:reuniones') && (
+          <TabsContent value="reuniones" className="mt-4">
+            <TabReuniones requerimientoId={id} isAdmin={isAdmin} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="penalizaciones" className="mt-4">
-          <TabPenalizaciones requerimientoId={id} isAdmin={perfilAdmin?.rol === 'ADMIN_TIN'} />
-        </TabsContent>
+        {pv('req:penalizaciones') && (
+          <TabsContent value="penalizaciones" className="mt-4">
+            <TabPenalizaciones requerimientoId={id} isAdmin={isAdmin} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="comentarios" className="mt-4">
-          <TabComentarios requerimientoId={id} />
-        </TabsContent>
+        {pv('req:comentarios') && (
+          <TabsContent value="comentarios" className="mt-4">
+            <TabComentarios requerimientoId={id} />
+          </TabsContent>
+        )}
 
-        <TabsContent value="anexos" className="mt-4">
-          <TabAnexos requerimientoId={id} />
-        </TabsContent>
+        {pv('req:anexos') && (
+          <TabsContent value="anexos" className="mt-4">
+            <TabAnexos requerimientoId={id} />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   )

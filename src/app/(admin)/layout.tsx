@@ -1,6 +1,8 @@
 import { redirect } from 'next/navigation'
 import { getUser, getPerfil } from '@/lib/supabase/auth'
 import { AdminShell } from '@/components/layout/AdminShell'
+import { getPermisosUsuario } from '@/actions/roles-permisos'
+import type { PermisosMap } from '@/actions/roles-permisos'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser()
@@ -8,11 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   const perfil = await getPerfil()
 
-  // Profile missing (table not set up yet) — show shell anyway so admin can work
-  const ROLES_CON_ACCESO: string[] = ['ADMIN_TIN', 'PRESIDENCIA']
-  if (perfil && !ROLES_CON_ACCESO.includes(perfil.rol)) redirect('/mis-requerimientos')
-
-  // If no perfil but user exists, allow access with a dummy profile
+  // If no perfil but user exists, allow access with a dummy admin profile
   const perfilEfectivo = perfil ?? {
     id: user.id,
     email: user.email ?? '',
@@ -27,5 +25,21 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     updated_at: new Date().toISOString(),
   }
 
-  return <AdminShell perfil={perfilEfectivo}>{children}</AdminShell>
+  let permisos: PermisosMap = {}
+
+  if (perfilEfectivo.rol === 'ADMIN_TIN') {
+    // Full access — no permission checks
+  } else if (perfilEfectivo.rol === 'PRESIDENCIA') {
+    // Backward compat: PRESIDENCIA always has admin access; fetch permisos for tab/action gating
+    permisos = await getPermisosUsuario(perfilEfectivo.rol)
+  } else {
+    // Any other role (USUARIO, custom) needs at least one menu permission to enter admin
+    permisos = await getPermisosUsuario(perfilEfectivo.rol)
+    const tieneAccesoAdmin = Object.entries(permisos).some(
+      ([recurso, p]) => recurso.startsWith('menu:') && p.puede_ver
+    )
+    if (!tieneAccesoAdmin) redirect('/mis-requerimientos')
+  }
+
+  return <AdminShell perfil={perfilEfectivo} permisos={permisos}>{children}</AdminShell>
 }

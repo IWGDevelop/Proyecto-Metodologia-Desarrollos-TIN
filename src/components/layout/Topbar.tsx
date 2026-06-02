@@ -8,6 +8,7 @@ import { createClient } from '@/lib/supabase/client'
 import { signOutAction } from '@/actions/auth'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
+import type { PermisosMap } from '@/actions/roles-permisos'
 import Link from 'next/link'
 
 const PAGE_TITLES: Record<string, string> = {
@@ -44,15 +45,19 @@ function AvatarLetras({ nombre }: { nombre: string }) {
 interface Props {
   onMenuClick: () => void
   perfil?: Perfil
+  permisos?: PermisosMap
 }
 
-export function Topbar({ onMenuClick, perfil }: Props) {
+export function Topbar({ onMenuClick, perfil, permisos = {} }: Props) {
   const pathname = usePathname()
   const router   = useRouter()
   const [connected, setConnected]   = useState<boolean | null>(null)
   const [menuOpen, setMenuOpen]     = useState(false)
   const [isPending, startTransition] = useTransition()
   const title = getPageTitle(pathname)
+  const isAdmin = perfil?.rol === 'ADMIN_TIN'
+  const puedeCrearReq = isAdmin || permisos['req:general']?.puede_crear === true
+  const puedeVerUsuarios = isAdmin || permisos['menu:usuarios']?.puede_ver === true
 
   const handleSignOut = () => {
     startTransition(async () => {
@@ -102,14 +107,16 @@ export function Topbar({ onMenuClick, perfil }: Props) {
         </div>
 
         {/* New requirement button */}
-        <Button
-          size="sm"
-          onClick={() => router.push('/admin/requerimientos/nuevo')}
-          className="bg-blue-600 hover:bg-blue-700"
-        >
-          <Plus size={16} className="mr-1" />
-          <span className="hidden sm:inline">Nuevo</span>
-        </Button>
+        {puedeCrearReq && (
+          <Button
+            size="sm"
+            onClick={() => router.push('/admin/requerimientos/nuevo')}
+            className="bg-blue-600 hover:bg-blue-700"
+          >
+            <Plus size={16} className="mr-1" />
+            <span className="hidden sm:inline">Nuevo</span>
+          </Button>
+        )}
 
         {/* Admin avatar/menu */}
         {perfil && (
@@ -143,13 +150,15 @@ export function Topbar({ onMenuClick, perfil }: Props) {
                   >
                     <User size={14} /> Mi perfil
                   </Link>
-                  <Link
-                    href="/admin/usuarios"
-                    onClick={() => setMenuOpen(false)}
-                    className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
-                  >
-                    <Users size={14} /> Gestión de usuarios
-                  </Link>
+                  {puedeVerUsuarios && (
+                    <Link
+                      href="/admin/usuarios"
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center gap-2.5 px-4 py-2 text-sm text-slate-600 hover:bg-slate-50"
+                    >
+                      <Users size={14} /> Gestión de usuarios
+                    </Link>
+                  )}
                   <div className="border-t border-slate-100 mt-1 pt-1">
                     <button
                       onClick={handleSignOut}

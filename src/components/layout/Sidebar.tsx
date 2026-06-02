@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import {
   LayoutDashboard,
   ClipboardList,
@@ -18,23 +18,31 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RolUsuario } from '@/lib/supabase/types'
+import type { PermisosMap } from '@/actions/roles-permisos'
 
-const NAV_ITEMS_ADMIN = [
-  { href: '/admin/dashboard',             label: 'Dashboard',          Icon: LayoutDashboard },
-  { href: '/admin/requerimientos',        label: 'Requerimientos',     Icon: ClipboardList },
-  { href: '/admin/kanban',               label: 'Kanban',             Icon: Kanban },
-  { href: '/admin/reportes',             label: 'Reportes',           Icon: BarChart2 },
-  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial',  Icon: Star },
-  { href: '/admin/usuarios',             label: 'Usuarios',           Icon: Users },
-  { href: '/admin/roles',               label: 'Roles y Permisos',   Icon: ShieldCheck },
-  { href: '/admin/configuracion',        label: 'Configuración',      Icon: Settings2 },
+interface NavItem {
+  href: string
+  label: string
+  Icon: React.ComponentType<{ size?: number; className?: string }>
+  menuResource: string
+}
+
+const NAV_ITEMS_ADMIN: NavItem[] = [
+  { href: '/admin/dashboard',             label: 'Dashboard',         Icon: LayoutDashboard, menuResource: 'menu:dashboard' },
+  { href: '/admin/requerimientos',        label: 'Requerimientos',    Icon: ClipboardList,   menuResource: 'menu:requerimientos' },
+  { href: '/admin/kanban',               label: 'Kanban',            Icon: Kanban,           menuResource: 'menu:kanban' },
+  { href: '/admin/reportes',             label: 'Reportes',          Icon: BarChart2,        menuResource: 'menu:reportes' },
+  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial', Icon: Star,             menuResource: 'menu:reporte-presidencial' },
+  { href: '/admin/usuarios',             label: 'Usuarios',          Icon: Users,            menuResource: 'menu:usuarios' },
+  { href: '/admin/roles',               label: 'Roles y Permisos',  Icon: ShieldCheck,      menuResource: 'menu:roles' },
+  { href: '/admin/configuracion',        label: 'Configuración',     Icon: Settings2,        menuResource: 'menu:configuracion' },
 ]
 
-const NAV_ITEMS_PRESIDENCIA = [
-  { href: '/admin/dashboard',             label: 'Dashboard',         Icon: LayoutDashboard },
-  { href: '/admin/requerimientos',        label: 'Requerimientos',    Icon: ClipboardList },
-  { href: '/admin/reportes',             label: 'Reportes',          Icon: BarChart2 },
-  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial', Icon: Star },
+const NAV_ITEMS_PRESIDENCIA: NavItem[] = [
+  { href: '/admin/dashboard',             label: 'Dashboard',         Icon: LayoutDashboard, menuResource: 'menu:dashboard' },
+  { href: '/admin/requerimientos',        label: 'Requerimientos',    Icon: ClipboardList,   menuResource: 'menu:requerimientos' },
+  { href: '/admin/reportes',             label: 'Reportes',          Icon: BarChart2,        menuResource: 'menu:reportes' },
+  { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial', Icon: Star,             menuResource: 'menu:reporte-presidencial' },
 ]
 
 interface Props {
@@ -42,9 +50,10 @@ interface Props {
   onMobileClose: () => void
   onCollapsedChange?: (collapsed: boolean) => void
   rol?: RolUsuario
+  permisos?: PermisosMap
 }
 
-export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol }: Props) {
+export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, permisos = {} }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -64,7 +73,12 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol }: P
     })
   }
 
-  const navItems = rol === 'PRESIDENCIA' ? NAV_ITEMS_PRESIDENCIA : NAV_ITEMS_ADMIN
+  const navItems = useMemo(() => {
+    if (rol === 'ADMIN_TIN') return NAV_ITEMS_ADMIN
+    if (rol === 'PRESIDENCIA') return NAV_ITEMS_PRESIDENCIA
+    // USUARIO and other roles: filter based on configured permissions
+    return NAV_ITEMS_ADMIN.filter(item => permisos[item.menuResource]?.puede_ver === true)
+  }, [rol, permisos])
 
   const navContent = (
     <div className="flex h-full flex-col">
@@ -83,6 +97,11 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol }: P
             {rol === 'PRESIDENCIA' && (
               <span className="text-[10px] font-semibold tracking-widest text-amber-400 uppercase">
                 Presidencia
+              </span>
+            )}
+            {rol !== 'ADMIN_TIN' && rol !== 'PRESIDENCIA' && (
+              <span className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
+                {rol}
               </span>
             )}
           </div>
