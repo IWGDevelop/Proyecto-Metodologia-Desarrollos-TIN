@@ -24,9 +24,28 @@ export type PermisosMap = Record<string, Record<TipoPermiso, boolean>>
 
 /* ── Roles ─────────────────────────────────────────────────────────────────── */
 
+const ROLES_SISTEMA = [
+  { nombre: 'ADMIN_TIN',   descripcion: 'Administrador TIN — acceso completo al sistema',          es_sistema: true },
+  { nombre: 'USUARIO',     descripcion: 'Usuario estándar — acceso a sus requerimientos',          es_sistema: true },
+  { nombre: 'PRESIDENCIA', descripcion: 'Presidencia — acceso al dashboard y reportes ejecutivos', es_sistema: true },
+]
+
 export async function getRoles(): Promise<RolPersonalizado[]> {
   try {
     const supabase = createAdminClient()
+
+    // Auto-seed roles del sistema si no existen
+    const { count } = await (supabase as any)
+      .from('roles_personalizados')
+      .select('*', { count: 'exact', head: true })
+      .eq('es_sistema', true)
+
+    if (!count || count === 0) {
+      await (supabase as any)
+        .from('roles_personalizados')
+        .upsert(ROLES_SISTEMA, { onConflict: 'nombre', ignoreDuplicates: true })
+    }
+
     const { data } = await (supabase as any)
       .from('roles_personalizados')
       .select('*')
