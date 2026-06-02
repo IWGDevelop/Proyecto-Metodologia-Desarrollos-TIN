@@ -14,6 +14,7 @@ import {
   ChevronRight,
   X,
   Star,
+  ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { RolUsuario } from '@/lib/supabase/types'
@@ -25,6 +26,7 @@ const NAV_ITEMS_ADMIN = [
   { href: '/admin/reportes',             label: 'Reportes',           Icon: BarChart2 },
   { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial',  Icon: Star },
   { href: '/admin/usuarios',             label: 'Usuarios',           Icon: Users },
+  { href: '/admin/roles',               label: 'Roles y Permisos',   Icon: ShieldCheck },
   { href: '/admin/configuracion',        label: 'Configuración',      Icon: Settings2 },
 ]
 
