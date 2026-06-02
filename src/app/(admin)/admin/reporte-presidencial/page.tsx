@@ -113,8 +113,9 @@ interface Filtros {
   proceso: string
   tipo_solicitud: string
   prioridad: string
+  origen: string
 }
-const FILTROS_VACIOS: Filtros = { alcance: '', estado: '', proceso: '', tipo_solicitud: '', prioridad: '' }
+const FILTROS_VACIOS: Filtros = { alcance: '', estado: '', proceso: '', tipo_solicitud: '', prioridad: '', origen: '' }
 
 /* ── Sub-componentes UI ───────────────────────────────────────────────────── */
 function KpiCard({ label, valor, sub, icon: Icon, color }: { label: string; valor: string; sub?: string; icon: React.ElementType; color: string }) {
@@ -263,6 +264,22 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase }: {
           {[1, 2, 3, 4].map(p => <option key={p} value={String(p)}>P{p} — {PRIORIDADES[p]?.label}</option>)}
         </select>
 
+        {/* Origen */}
+        <select
+          value={filtros.origen}
+          onChange={e => onChange({ ...filtros, origen: e.target.value })}
+          className={cn(
+            'rounded-lg border px-3 py-1.5 text-xs outline-none focus:ring-1 focus:ring-blue-400',
+            filtros.origen ? 'border-amber-300 bg-amber-50 text-amber-700 font-semibold' : 'border-slate-200 bg-white text-slate-600'
+          )}
+        >
+          <option value="">Todos los orígenes</option>
+          {(ORIGENES_REQUERIMIENTO as unknown as { value: string; label: string }[]).map(o => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+          <option value="SIN_ORIGEN">Sin origen asignado</option>
+        </select>
+
         {activos > 0 && (
           <button
             onClick={limpiar}
@@ -305,6 +322,7 @@ export default function ReportePresidencialPage() {
       if (filtros.proceso       && r.proceso_interno   !== filtros.proceso)                    return false
       if (filtros.tipo_solicitud && r.tipo_solicitud   !== filtros.tipo_solicitud)             return false
       if (filtros.prioridad     && String(r.prioridad) !== filtros.prioridad)                  return false
+      if (filtros.origen        && (r.origen_requerimiento ?? 'SIN_ORIGEN') !== filtros.origen) return false
       return true
     })
   }, [base, filtros])
