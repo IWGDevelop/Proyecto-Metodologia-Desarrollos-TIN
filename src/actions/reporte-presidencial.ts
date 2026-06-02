@@ -79,6 +79,40 @@ function origenLabel(origen: string) {
   return (ORIGENES_REQUERIMIENTO as readonly { value: string; label: string }[]).find(o => o.value === origen)?.label ?? origen
 }
 
+export interface RowPresidencial {
+  id: string
+  identificacion: string
+  nombre_desarrollo: string | null
+  estado: string
+  es_borrador: boolean
+  alcance: string | null
+  prioridad: number | null
+  proceso_interno: string | null
+  origen_requerimiento: string | null
+  tipo_solicitud: string | null
+  horas_estimadas_desarrollo: number | null
+  impacto_economico_total_anual: number | null
+  impacto_economico_total_anual_real: number | null
+  ahorro_anual_cop: number | null
+  total_beneficios_cualitativos_anual: number | null
+}
+
+export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('v_metricas_requerimientos')
+    .select(`
+      id, identificacion, nombre_desarrollo,
+      estado, es_borrador, alcance, prioridad,
+      proceso_interno, origen_requerimiento, tipo_solicitud,
+      horas_estimadas_desarrollo,
+      impacto_economico_total_anual,
+      impacto_economico_total_anual_real,
+      ahorro_anual_cop, total_beneficios_cualitativos_anual
+    `)
+  return (data ?? []) as RowPresidencial[]
+}
+
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
   const supabase = createAdminClient()
 
