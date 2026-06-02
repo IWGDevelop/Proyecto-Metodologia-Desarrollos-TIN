@@ -1,18 +1,27 @@
 import { redirect } from 'next/navigation'
 import { getUser, getPerfil } from '@/lib/supabase/auth'
+import { getPermisosUsuario } from '@/actions/roles-permisos'
 
 export default async function HomePage() {
   const user = await getUser()
 
-  // Not authenticated — middleware should have caught this, but just in case
   if (!user) redirect('/login')
 
-  // Authenticated but profile may not exist yet (table not created)
   const perfil = await getPerfil()
 
-  if (perfil?.rol === 'ADMIN_TIN') redirect('/admin/dashboard')
-  if (perfil?.rol === 'USUARIO') redirect('/mis-requerimientos')
+  if (!perfil) redirect('/admin/dashboard')
 
-  // Fallback: authenticated but no profile yet → go to admin dashboard
-  redirect('/admin/dashboard')
+  if (perfil.rol === 'ADMIN_TIN' || perfil.rol === 'PRESIDENCIA') {
+    redirect('/admin/dashboard')
+  }
+
+  // For USUARIO (and any custom role): check if they have admin menu permissions
+  const permisos = await getPermisosUsuario(perfil.rol)
+  const tieneAccesoAdmin = Object.entries(permisos).some(
+    ([recurso, p]) => recurso.startsWith('menu:') && p.puede_ver
+  )
+
+  if (tieneAccesoAdmin) redirect('/admin/dashboard')
+
+  redirect('/mis-requerimientos')
 }
