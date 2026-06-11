@@ -325,7 +325,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     <ColHeader label="Alcance" column="alcance" sort={sort} onSort={handleSort} className="w-24" />
                     <ColHeader label="Proceso"   sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Tipo"     column="tipo_solicitud" sort={sort} onSort={handleSort} className="w-32" />
-                    <ColHeader label="P"        column="prioridad" sort={sort} onSort={handleSort} className="w-14" />
+                    <ColHeader label="Prior."   column="prioridad" sort={sort} onSort={handleSort} className="w-20" />
                     <ColHeader label="Estado"  column="estado"    sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Origen"  column="origen_requerimiento" sort={sort} onSort={handleSort} className="w-36" />
                     <ColHeader label="Avance"  sort={sort} onSort={handleSort} className="w-20" />
