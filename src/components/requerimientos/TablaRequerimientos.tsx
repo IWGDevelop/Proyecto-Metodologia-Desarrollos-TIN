@@ -208,10 +208,14 @@ const OPCIONES_ALCANCE: OpcionEdit[] = [
   { value: 'IWG', label: 'IWG' },
 ]
 const OPCIONES_PRIORIDAD: OpcionEdit[] = [
-  { value: '1', label: 'P1 — Crítica' },
-  { value: '2', label: 'P2 — Alta' },
-  { value: '3', label: 'P3 — Media' },
-  { value: '4', label: 'P4 — Baja' },
+  { value: '',    label: '— Sin prioridad' },
+  ...[1, 2, 3, 4].flatMap(p => [
+    { value: String(p), label: `P${p} — ${PRIORIDADES[p].label}` },
+    ...[1, 2, 3, 4, 5, 6, 7, 8, 9].map(sp => ({
+      value: `${p}.${sp}`,
+      label: `P${p}.${sp} — ${PRIORIDADES[p].label}`,
+    })),
+  ]),
 ]
 const OPCIONES_ORIGEN: OpcionEdit[] = ORIGENES_REQUERIMIENTO.map(o => ({ value: o.value, label: o.label }))
 const OPCIONES_PROCESO: OpcionEdit[] = PROCESOS_INTERNOS.map(p => ({ value: p.value, label: p.label }))
@@ -282,7 +286,16 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
   const guardarCampo = async (id: string, campo: string, valor: string | null) => {
     try {
       let payload: Record<string, unknown> = { [campo]: valor }
-      if (campo === 'prioridad') payload = { prioridad: valor ? Number(valor) : null }
+      if (campo === 'prioridad') {
+        if (!valor) {
+          payload = { prioridad: null, sub_prioridad: null }
+        } else if (valor.includes('.')) {
+          const [p, sp] = valor.split('.')
+          payload = { prioridad: Number(p), sub_prioridad: Number(sp) }
+        } else {
+          payload = { prioridad: Number(valor), sub_prioridad: null }
+        }
+      }
       await actualizarRequerimiento(id, payload)
       invalidar()
       toast.success('Guardado')
@@ -420,19 +433,22 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                         <td className="px-3 py-2.5">
                           <CeldaEditable
                             rowId={row.id}
-                            valor={row.prioridad ? String(row.prioridad) : null}
+                            valor={row.prioridad
+                              ? row.sub_prioridad
+                                ? `${row.prioridad}.${row.sub_prioridad}`
+                                : String(row.prioridad)
+                              : null}
                             opciones={OPCIONES_PRIORIDAD}
                             onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
                             renderBadge={(v) => {
-                              const n = v ? Number(v) : null
-                              const cfg = n ? PRIORIDADES[n] : null
+                              if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                              const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                              const cfg = PRIORIDADES[p]
                               return cfg ? (
                                 <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
-                                  P{n}
+                                  P{v}
                                 </span>
-                              ) : (
-                                <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
-                              )
+                              ) : null
                             }}
                           />
                         </td>

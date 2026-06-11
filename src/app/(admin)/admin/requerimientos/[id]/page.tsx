@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Pencil, ArrowLeft, Clock, DollarSign, TrendingUp } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, ORIGENES_REQUERIMIENTO, getEstadoCfg } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, ORIGENES_REQUERIMIENTO, getEstadoCfg, formatPrioridad } from '@/lib/constants'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
@@ -84,7 +84,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             </span>
             {prioridadCfg && (
               <span className={cn('rounded-full px-3 py-1 text-xs font-bold', prioridadCfg.bgColor, prioridadCfg.textColor)}>
-                P{req.prioridad} {prioridadCfg.label}
+                {formatPrioridad(req.prioridad, (req as any).sub_prioridad)} {prioridadCfg.label}
               </span>
             )}
             {req.alcance && (
@@ -112,6 +112,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             <AsignarPrioridadBtn
               requerimientoId={id}
               prioridadActual={req.prioridad}
+              subPrioridadActual={(req as any).sub_prioridad ?? null}
               impactoHH={req.ahorro_anual_cop}
               impactoCualitativos={req.total_beneficios_cualitativos_anual}
               impactoTotal={req.impacto_economico_total_anual}

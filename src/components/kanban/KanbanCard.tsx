@@ -4,7 +4,7 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Progress } from '@/components/ui/progress'
 import { DollarSign } from 'lucide-react'
-import { PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
+import { PRIORIDADES, PROCESOS_INTERNOS, formatPrioridad } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
@@ -91,7 +91,7 @@ export function KanbanCard({ card, onCardClick, isDragOverlay = false }: Props) 
         <div className="ml-auto">
           {prioridadCfg && (
             <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-bold', prioridadCfg.bgColor, prioridadCfg.textColor)}>
-              P{card.prioridad}
+              {formatPrioridad(card.prioridad, (card as any).sub_prioridad)}
             </span>
           )}
         </div>

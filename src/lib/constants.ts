@@ -207,6 +207,12 @@ export const PRIORIDADES: Record<
   },
 }
 
+export function formatPrioridad(prioridad: number | null, subPrioridad?: number | null): string {
+  if (!prioridad) return 'Sin prioridad'
+  if (!subPrioridad) return `P${prioridad}`
+  return `P${prioridad}.${subPrioridad}`
+}
+
 // ─── Tipos de solución ────────────────────────────────────────────────────────
 export const TIPOS_SOLUCION: Record<TipoSolucion, { label: string; descripcion: string }> = {
   DESARROLLO: {
