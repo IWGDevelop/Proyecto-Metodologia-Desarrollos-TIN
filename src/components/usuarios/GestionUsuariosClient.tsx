@@ -14,9 +14,10 @@ import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Switch } from '@/components/ui/switch'
-import { Plus, Pencil, Shield, User, RefreshCw, Star } from 'lucide-react'
+import { Plus, Pencil, Shield, User, RefreshCw, Star, Download } from 'lucide-react'
 import { formatFecha } from '@/lib/utils'
 import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { sincronizarPerfilesDesdeIGSI } from '@/actions/sync-igsi'
 import type { Perfil } from '@/lib/supabase/types'
 
 const createSchema = z.object({
@@ -60,6 +61,25 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState<Perfil | null>(null)
+  const [sincronizando, setSincronizando] = useState(false)
+
+  const onSincronizarIGSI = async () => {
+    setSincronizando(true)
+    try {
+      const result = await sincronizarPerfilesDesdeIGSI()
+      toast.success(`${result.actualizados} perfiles sincronizados desde IGSI`, {
+        description: result.sinCoincidencia > 0
+          ? `${result.sinCoincidencia} usuarios sin coincidencia en el directorio`
+          : undefined,
+      })
+      if (result.errores > 0) toast.warning(`${result.errores} perfiles no pudieron actualizarse`)
+      router.refresh()
+    } catch (e: any) {
+      toast.error(e?.message ?? 'Error al conectar con IGSI')
+    } finally {
+      setSincronizando(false)
+    }
+  }
 
   const createForm = useForm<CreateForm>({
     resolver: zodResolver(createSchema),
@@ -112,11 +132,23 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
   return (
     <>
       {/* Toolbar */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-sm text-slate-500">{initial.length} usuarios registrados</p>
-        <Button size="sm" onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 gap-1.5">
-          <Plus size={14} /> Crear usuario
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onSincronizarIGSI}
+            disabled={sincronizando}
+            className="gap-1.5 text-slate-600"
+          >
+            <Download size={14} className={sincronizando ? 'animate-bounce' : ''} />
+            {sincronizando ? 'Sincronizando...' : 'Sincronizar desde IGSI'}
+          </Button>
+          <Button size="sm" onClick={() => setShowCreate(true)} className="bg-blue-600 hover:bg-blue-700 gap-1.5">
+            <Plus size={14} /> Crear usuario
+          </Button>
+        </div>
       </div>
 
       {/* Table */}

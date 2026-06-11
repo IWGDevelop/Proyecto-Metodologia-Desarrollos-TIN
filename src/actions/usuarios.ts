@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { buscarInfoIgsiPorEmail } from './sync-igsi'
 
 export async function crearUsuario(data: {
   email: string
@@ -27,6 +28,9 @@ export async function crearUsuario(data: {
     if (authError) return { ok: false, error: authError.message }
     if (!authData.user) return { ok: false, error: 'No se pudo crear el usuario' }
 
+    // Intentar obtener proceso/empresa/cargo desde el directorio IGSI
+    const igsi = await buscarInfoIgsiPorEmail(data.email)
+
     // Upsert profile — works regardless of whether the trigger ran first
     const { error: upsertError } = await (supabase as any)
       .from('perfiles')
@@ -34,15 +38,15 @@ export async function crearUsuario(data: {
         id: authData.user.id,
         email: data.email,
         nombre_completo: data.nombre_completo,
-        cargo: data.cargo ?? null,
-        proceso_interno: data.proceso_interno ?? null,
-        empresa: data.empresa ?? null,
+        // IGSI tiene prioridad; si el admin llenó algo manualmente lo respeta como fallback
+        cargo:           igsi.cargo           ?? data.cargo           ?? null,
+        proceso_interno: igsi.proceso_interno ?? data.proceso_interno ?? null,
+        empresa:         igsi.empresa         ?? data.empresa         ?? null,
         rol: data.rol,
         activo: true,
       }, { onConflict: 'id' })
 
     if (upsertError) {
-      // User was created but profile update failed — non-fatal
       console.error('Profile upsert error:', upsertError.message)
     }
 
