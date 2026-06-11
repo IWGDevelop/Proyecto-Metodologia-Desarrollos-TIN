@@ -24,7 +24,9 @@ const FILTROS_ESTADO = [
   { value: 'ENTREGADO', label: 'Entregados' },
 ]
 
-function CardRequerimiento({ req, esPropietario }: { req: Requerimiento; esPropietario: boolean }) {
+type TipoRelacion = 'propietario' | 'participo' | 'proceso'
+
+function CardRequerimiento({ req, tipo }: { req: Requerimiento; tipo: TipoRelacion }) {
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const impacto      = (req as any).impacto_economico_total_anual ?? req.ahorro_anual_cop
@@ -50,8 +52,11 @@ function CardRequerimiento({ req, esPropietario }: { req: Requerimiento; esPropi
         <span className={cn('rounded-full px-2.5 py-0.5 text-xs font-semibold ml-auto', estadoCfg.bgColor, estadoCfg.textColor)}>
           {estadoCfg.label}
         </span>
-        {!esPropietario && (
+        {tipo === 'participo' && (
           <Badge variant="secondary" className="text-xs">Parte interesada</Badge>
+        )}
+        {tipo === 'proceso' && (
+          <Badge variant="outline" className="text-xs border-violet-300 bg-violet-50 text-violet-700">Mi proceso</Badge>
         )}
       </div>
 
@@ -90,7 +95,7 @@ function CardRequerimiento({ req, esPropietario }: { req: Requerimiento; esPropi
         <Link href={`/mis-requerimientos/${req.id}`} className="flex-1">
           <Button size="sm" variant="outline" className="w-full text-xs">Ver detalle →</Button>
         </Link>
-        {req.es_borrador && esPropietario && (
+        {req.es_borrador && tipo === 'propietario' && (
           <Link href={`/mis-requerimientos/${req.id}`}>
             <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs">Editar borrador</Button>
           </Link>
@@ -116,6 +121,16 @@ export function MisRequerimientosClient({ requerimientos, perfil }: Props) {
       )
     )
   ), [requerimientos, mios, perfil])
+
+  const miProceso = useMemo(() => {
+    if (!perfil.proceso_interno) return []
+    return requerimientos.filter(r =>
+      !mios.includes(r) &&
+      !participo.includes(r) &&
+      r.proceso_interno === perfil.proceso_interno &&
+      !r.es_borrador
+    )
+  }, [requerimientos, mios, participo, perfil])
 
   const filtrar = (list: Requerimiento[]) => {
     if (filtroEstado === 'TODOS') return list
@@ -163,6 +178,9 @@ export function MisRequerimientosClient({ requerimientos, perfil }: Props) {
         <TabsList>
           <TabsTrigger value="mias">Mis solicitudes ({mios.length})</TabsTrigger>
           <TabsTrigger value="participo">Donde participo ({participo.length})</TabsTrigger>
+          {perfil.proceso_interno && (
+            <TabsTrigger value="proceso">Mi proceso ({miProceso.length})</TabsTrigger>
+          )}
           <TabsTrigger value="resumen">Resumen</TabsTrigger>
         </TabsList>
 
@@ -177,7 +195,7 @@ export function MisRequerimientosClient({ requerimientos, perfil }: Props) {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtrar(mios).map(r => (
-                <CardRequerimiento key={r.id} req={r} esPropietario />
+                <CardRequerimiento key={r.id} req={r} tipo="propietario" />
               ))}
             </div>
           )}
@@ -191,11 +209,30 @@ export function MisRequerimientosClient({ requerimientos, perfil }: Props) {
           ) : (
             <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
               {filtrar(participo).map(r => (
-                <CardRequerimiento key={r.id} req={r} esPropietario={false} />
+                <CardRequerimiento key={r.id} req={r} tipo="participo" />
               ))}
             </div>
           )}
         </TabsContent>
+
+        {perfil.proceso_interno && (
+          <TabsContent value="proceso" className="mt-4">
+            <p className="mb-3 text-xs text-slate-500">
+              Requerimientos del proceso <strong className="text-slate-700">{perfil.proceso_interno}</strong> en los que no estás listado directamente.
+            </p>
+            {filtrar(miProceso).length === 0 ? (
+              <div className="rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center">
+                <p className="text-sm text-slate-400">No hay requerimientos activos de tu proceso</p>
+              </div>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                {filtrar(miProceso).map(r => (
+                  <CardRequerimiento key={r.id} req={r} tipo="proceso" />
+                ))}
+              </div>
+            )}
+          </TabsContent>
+        )}
 
         <TabsContent value="resumen" className="mt-4">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
