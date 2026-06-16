@@ -136,6 +136,15 @@ export const ESTADOS: Record<
     borderColor: 'border-gray-300',
     icon: 'XCircle',
   },
+  DESISTIDO: {
+    label: 'Desistido',
+    descripcion: 'El solicitante desistió del requerimiento',
+    color: 'red',
+    bgColor: 'bg-red-100',
+    textColor: 'text-red-700',
+    borderColor: 'border-red-300',
+    icon: 'Ban',
+  },
 }
 
 // Fallback para estados dinámicos del Kanban que no están en ESTADOS

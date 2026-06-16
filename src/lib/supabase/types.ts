@@ -75,6 +75,7 @@ export type Estado =
   | 'STAND_BY'
   | 'ENTREGADO'
   | 'CERRADO'
+  | 'DESISTIDO'
   | (string & {})   // permite estados personalizados dinámicos
 
 export interface EstadoKanban {

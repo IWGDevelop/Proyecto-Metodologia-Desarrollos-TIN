@@ -14,6 +14,7 @@ import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
 import { TabPenalizaciones } from '@/components/requerimientos/tabs/TabPenalizaciones'
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
+import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
 import { getTareas } from '@/actions/tareas'
@@ -118,12 +119,18 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               impactoTotal={req.impacto_economico_total_anual}
             />
           )}
-          {pe('req:estado') && (
+          {isAdmin && pe('req:estado') && (
             <CambiarEstadoBtn
               requerimientoId={id}
               estadoActual={req.estado}
               horasEstimadas={req.horas_ahorradas_mes}
               valorHoraEstimado={req.valor_hora_hombre}
+            />
+          )}
+          {!isAdmin && (
+            <DesistirBtn
+              requerimientoId={id}
+              estadoActual={req.estado}
             />
           )}
           {pe('req:general') && (
