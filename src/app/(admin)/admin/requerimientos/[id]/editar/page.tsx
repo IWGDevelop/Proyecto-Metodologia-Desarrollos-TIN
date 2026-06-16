@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { RequerimientoWizard } from '@/components/requerimientos/RequerimientoWizard'
 
 interface Props {
@@ -8,8 +8,8 @@ interface Props {
 
 export default async function EditarRequerimientoAdminPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
-  const { data: requerimiento, error } = await supabase
+  const supabase = createAdminClient()
+  const { data: requerimiento, error } = await (supabase as any)
     .from('requerimientos').select('*').eq('id', id).single()
 
   if (error || !requerimiento) notFound()

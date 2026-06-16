@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
 
@@ -12,7 +12,7 @@ const CAMPOS_MIGRACION = [
 
 // Si Supabase rechaza por columna inexistente, reintenta sin los campos de migración
 async function insertConFallback(
-  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  supabase: ReturnType<typeof createAdminClient>,
   tabla: string,
   payload: Record<string, unknown>
 ) {
@@ -31,7 +31,7 @@ async function insertConFallback(
 }
 
 async function updateConFallback(
-  supabase: ReturnType<typeof createClient> extends Promise<infer T> ? T : never,
+  supabase: ReturnType<typeof createAdminClient>,
   tabla: string,
   payload: Record<string, unknown>,
   id: string
@@ -53,7 +53,7 @@ async function updateConFallback(
 export async function crearRequerimiento(
   data: Partial<Omit<Requerimiento, 'id' | 'created_at' | 'updated_at'>> & Record<string, unknown>
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const payload = { identificacion: data.nombre_desarrollo ?? '', ...data }
 
   const { data: result, error } = await insertConFallback(supabase, 'requerimientos', payload)
@@ -71,7 +71,7 @@ export async function actualizarRequerimiento(
   id: string,
   data: Partial<Omit<Requerimiento, 'id' | 'created_at' | 'updated_at'>> & Record<string, unknown>
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const payload = { identificacion: data.nombre_desarrollo, ...data }
 
   const { data: result, error } = await updateConFallback(supabase, 'requerimientos', payload, id)
@@ -91,7 +91,7 @@ export async function guardarBorrador(
   id: string | null,
   data: Partial<Omit<Requerimiento, 'id' | 'created_at' | 'updated_at'>> & Record<string, unknown>
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const payload = { identificacion: data.nombre_desarrollo ?? '', ...data, es_borrador: true }
 
   if (id) {
@@ -112,7 +112,7 @@ export async function cambiarEstado(
   estado: string,
   observacion?: string
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const updates: Record<string, unknown> = { estado }
 
   const hoy = new Date().toISOString().split('T')[0]
@@ -142,7 +142,7 @@ export async function cambiarEstado(
 }
 
 export async function eliminarRequerimiento(id: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('requerimientos')
     .update({ estado: 'CERRADO', fecha_cierre: new Date().toISOString().split('T')[0] })
@@ -152,17 +152,10 @@ export async function eliminarRequerimiento(id: string) {
   revalidatePath('/dashboard')
 }
 
-export async function publicarRequerimiento(id: string) {
-  return actualizarRequerimiento(id, {
-    es_borrador: false,
-    fecha_envio_solicitud: new Date().toISOString(),
-  })
-}
-
 export async function agregarComentario(
   requerimientoId: string, comentario: string, usuario: string
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('comentarios')
     .insert({ requerimiento_id: requerimientoId, comentario, usuario })
@@ -170,4 +163,11 @@ export async function agregarComentario(
   if (error) throw new Error(`Error al agregar comentario: ${error.message}`)
   revalidatePath(`/requerimientos/${requerimientoId}`)
   return data
+}
+
+export async function publicarRequerimiento(id: string) {
+  return actualizarRequerimiento(id, {
+    es_borrador: false,
+    fecha_envio_solicitud: new Date().toISOString(),
+  })
 }
