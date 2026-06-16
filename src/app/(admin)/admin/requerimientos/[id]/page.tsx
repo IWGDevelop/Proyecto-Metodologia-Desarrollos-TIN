@@ -188,7 +188,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                 <div className="mt-3 border-t border-slate-100 pt-3">
                   <p className="mb-2 text-xs text-slate-500">Partes interesadas</p>
                   <div className="flex flex-wrap gap-1.5">
-                    {req.partes_interesadas.map((p, i) => (
+                    {req.partes_interesadas.map((p: string, i: number) => (
                       <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
                         {p}
                       </span>
