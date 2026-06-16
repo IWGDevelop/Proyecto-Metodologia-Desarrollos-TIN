@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { createClient } from '@/lib/supabase/client'
-import { Eye, EyeOff, Loader2, LayoutDashboard } from 'lucide-react'
+import { Eye, EyeOff, Loader2 } from 'lucide-react'
+import { InterflowLogoIcon } from '@/components/layout/InterflowLogo'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -54,11 +55,13 @@ export default function LoginPage() {
       <div className="rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-200/60 overflow-hidden">
         {/* Header */}
         <div className="border-b border-slate-100 px-8 py-8 text-center">
-          <div className="mb-4 inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-blue-600">
-            <LayoutDashboard size={28} className="text-white" />
+          <div className="mb-5 flex justify-center">
+            <InterflowLogoIcon px={64} />
           </div>
-          <h1 className="text-xl font-bold text-slate-800">IGSI</h1>
-          <p className="text-sm text-slate-500">Gestión de Requerimientos</p>
+          <h1 className="text-2xl font-bold tracking-tight text-slate-800">
+            INTER<span className="text-blue-600">FLOW</span>
+          </h1>
+          <p className="mt-1 text-sm text-slate-500">Gestión de Proyectos · Interworld Group</p>
         </div>
 
         {/* Form */}

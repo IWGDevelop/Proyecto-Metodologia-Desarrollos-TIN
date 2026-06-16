@@ -17,6 +17,7 @@ import {
   ShieldCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
 import type { RolUsuario } from '@/lib/supabase/types'
 import type { PermisosMap } from '@/actions/roles-permisos'
 
@@ -89,19 +90,14 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
           collapsed ? 'justify-center' : 'justify-between'
         )}
       >
-        {!collapsed && (
-          <div className="flex flex-col">
-            <span className="text-lg font-bold tracking-tight text-white">
-              IGSI <span className="text-blue-400">Dev</span>
-            </span>
+        {collapsed ? (
+          <InterflowLogoIcon px={30} />
+        ) : (
+          <div className="flex flex-col gap-0.5">
+            <InterflowLogo size="sm" />
             {rol === 'PRESIDENCIA' && (
-              <span className="text-[10px] font-semibold tracking-widest text-amber-400 uppercase">
+              <span className="ml-10 text-[9px] font-semibold tracking-widest text-amber-400 uppercase">
                 Presidencia
-              </span>
-            )}
-            {rol !== 'ADMIN_TIN' && rol !== 'PRESIDENCIA' && (
-              <span className="text-[10px] font-semibold tracking-widest text-slate-400 uppercase">
-                {rol}
               </span>
             )}
           </div>

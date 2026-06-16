@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { ClipboardList, Plus, Bell, User, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { InterflowLogo } from '@/components/layout/InterflowLogo'
 
 const NAV_ITEMS = [
   { href: '/mis-requerimientos',               label: 'Mis solicitudes',   Icon: ClipboardList },
@@ -23,11 +24,8 @@ export function SidebarUsuario({ mobileOpen, onMobileClose }: Props) {
   const navContent = (
     <div className="flex h-full flex-col">
       {/* Logo */}
-      <div className="flex h-16 items-center border-b border-slate-700 px-6">
-        <div>
-          <p className="text-base font-bold text-white">IGSI</p>
-          <p className="text-xs text-slate-400">Portal de solicitudes</p>
-        </div>
+      <div className="flex h-16 items-center border-b border-slate-700 px-4">
+        <InterflowLogo size="sm" />
       </div>
 
       {/* Nav */}

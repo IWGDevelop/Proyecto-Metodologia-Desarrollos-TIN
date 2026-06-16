@@ -7,8 +7,8 @@ import { Toaster } from '@/components/ui/sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'IGSI - Gestión de Requerimientos',
-  description: 'Sistema de gestión de requerimientos de desarrollo de software empresarial',
+  title: 'INTERFLOW — Interworld Group',
+  description: 'Plataforma de gestión de proyectos y desarrollos tecnológicos de Interworld Group',
 }
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
