@@ -184,6 +184,18 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                 <div className="flex justify-between"><dt className="text-slate-500">Avance</dt><dd className="font-medium">{req.porcentaje_avance}%</dd></div>
                 {req.fecha_envio_tin && <div className="flex justify-between"><dt className="text-slate-500">Fecha TIN</dt><dd>{formatFecha(req.fecha_envio_tin)}</dd></div>}
               </dl>
+              {req.partes_interesadas && req.partes_interesadas.length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-3">
+                  <p className="mb-2 text-xs text-slate-500">Partes interesadas</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {req.partes_interesadas.map((p, i) => (
+                      <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
+                        {p}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
           {[
