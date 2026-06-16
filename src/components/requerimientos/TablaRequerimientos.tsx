@@ -22,6 +22,7 @@ import {
   useRequerimientos, useInvalidateRequerimientos,
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
 } from '@/hooks/useRequerimientos'
+import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import { eliminarRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
 import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
@@ -235,15 +236,16 @@ interface Props {
   sort: SortConfig
   basePath?: string
   isAdmin?: boolean
+  perfilFiltro?: PerfilFiltro | null
 }
 
-export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false }: Props) {
+export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false, perfilFiltro }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const invalidar = useInvalidateRequerimientos()
 
-  const { data: result, isLoading, isFetching } = useRequerimientos(filtros, page, sort, isAdmin)
+  const { data: result, isLoading, isFetching } = useRequerimientos(filtros, page, sort, isAdmin, perfilFiltro)
 
   const [cambioEstadoRow, setCambioEstadoRow] = useState<MetricaRequerimiento | null>(null)
   const [eliminarId, setEliminarId] = useState<string | null>(null)

@@ -10,22 +10,24 @@ import { fetchTodosAdminParaExportar } from '@/actions/requerimientos-admin'
 import { formatFecha } from '@/lib/utils'
 import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, ALCANCES, TIPOS_SOLICITUD, PROCESOS_INTERNOS } from '@/lib/constants'
 import type { FiltrosRequerimientos, SortConfig } from '@/hooks/useRequerimientos'
+import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import type { Estado, TipoSolucion, Alcance } from '@/lib/supabase/types'
 
 interface Props {
   filtros: FiltrosRequerimientos
   sort: SortConfig
   isAdmin?: boolean
+  perfilFiltro?: PerfilFiltro | null
 }
 
-export function ExportarExcel({ filtros, sort, isAdmin = false }: Props) {
+export function ExportarExcel({ filtros, sort, isAdmin = false, perfilFiltro }: Props) {
   const [loading, setLoading] = useState(false)
 
   const handleExport = async () => {
     setLoading(true)
     try {
       const data = isAdmin
-        ? await fetchTodosAdminParaExportar(filtros, sort)
+        ? await fetchTodosAdminParaExportar(filtros, sort, perfilFiltro)
         : await fetchTodosParaExportar(filtros, sort)
 
       const rows = data.map((r, i) => ({

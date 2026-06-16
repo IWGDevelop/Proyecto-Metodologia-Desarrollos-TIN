@@ -3,6 +3,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { createClient } from '@/lib/supabase/client'
 import { fetchRequerimientosAdmin } from '@/actions/requerimientos-admin'
+import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export const PAGE_SIZE = 20
@@ -78,13 +79,14 @@ export function useRequerimientos(
   filtros: FiltrosRequerimientos,
   page: number = 1,
   sort: SortConfig = { column: 'created_at', direction: 'desc' },
-  isAdmin = false
+  isAdmin = false,
+  perfilFiltro?: PerfilFiltro | null
 ) {
   return useQuery<RequerimientosResult>({
-    queryKey: ['requerimientos', filtros, page, sort, isAdmin],
+    queryKey: ['requerimientos', filtros, page, sort, isAdmin, perfilFiltro],
     queryFn: () => isAdmin
-      ? fetchRequerimientosAdmin(filtros, page, sort)  // admin client — bypasa RLS
-      : fetchRequerimientos(filtros, page, sort),       // browser client — respeta RLS
+      ? fetchRequerimientosAdmin(filtros, page, sort, perfilFiltro)  // admin client — bypasa RLS
+      : fetchRequerimientos(filtros, page, sort),                     // browser client — respeta RLS
     staleTime: 30_000,
     placeholderData: (prev) => prev,
   })

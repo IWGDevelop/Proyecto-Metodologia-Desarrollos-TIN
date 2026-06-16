@@ -24,11 +24,28 @@ export interface RequerimientosAdminResult {
   totalFiltrado: number
 }
 
+export interface PerfilFiltro {
+  email: string
+  proceso_interno: string | null
+}
+
+function aplicarFiltroUsuario(query: any, perfilFiltro: PerfilFiltro): any {
+  const orParts: string[] = [
+    `responsable.ilike.%${perfilFiltro.email}%`,
+    `partes_interesadas.cs.{${perfilFiltro.email}}`,
+  ]
+  if (perfilFiltro.proceso_interno) {
+    orParts.push(`proceso_interno.eq.${perfilFiltro.proceso_interno}`)
+  }
+  return query.or(orParts.join(','))
+}
+
 const PAGE_SIZE = 20
 
 export async function fetchTodosAdminParaExportar(
   filtros: FiltrosAdmin,
-  sort: SortAdmin
+  sort: SortAdmin,
+  perfilFiltro?: PerfilFiltro | null
 ): Promise<MetricaRequerimiento[]> {
   try {
     const supabase = createAdminClient()
@@ -49,6 +66,7 @@ export async function fetchTodosAdminParaExportar(
     if (filtros.proceso_interno)            query = query.eq('proceso_interno', filtros.proceso_interno)
     if (filtros.tipo_solucion)              query = query.eq('tipo_solucion', filtros.tipo_solucion)
     if (filtros.es_borrador !== undefined)  query = query.eq('es_borrador', filtros.es_borrador)
+    if (perfilFiltro)                       query = aplicarFiltroUsuario(query, perfilFiltro)
 
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
     const isImpacto = ['impacto_economico_total_anual', 'ahorro_anual_cop',
@@ -66,7 +84,8 @@ export async function fetchTodosAdminParaExportar(
 export async function fetchRequerimientosAdmin(
   filtros: FiltrosAdmin,
   page: number,
-  sort: SortAdmin
+  sort: SortAdmin,
+  perfilFiltro?: PerfilFiltro | null
 ): Promise<RequerimientosAdminResult> {
   try {
     const supabase = createAdminClient()
@@ -93,6 +112,7 @@ export async function fetchRequerimientosAdmin(
     if (filtros.proceso_interno)       query = query.eq('proceso_interno', filtros.proceso_interno)
     if (filtros.tipo_solucion)         query = query.eq('tipo_solucion', filtros.tipo_solucion)
     if (filtros.es_borrador !== undefined) query = query.eq('es_borrador', filtros.es_borrador)
+    if (perfilFiltro)                  query = aplicarFiltroUsuario(query, perfilFiltro)
 
     // Ordenamiento — columnas de impacto siempre con nulls al final
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
