@@ -20,7 +20,7 @@ import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
 import { getPermisosUsuario } from '@/actions/roles-permisos'
-import type { Estado, ActividadImpacto, BeneficioCualitativo } from '@/lib/supabase/types'
+import type { Estado, ActividadImpacto, BeneficioCualitativo, HistorialEstado } from '@/lib/supabase/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -322,7 +322,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                 <p className="py-8 text-center text-sm text-slate-400">Sin cambios de estado registrados</p>
               ) : (
                 <ol className="space-y-0 divide-y divide-slate-50">
-                  {historial.map(h => {
+                  {historial.map((h: HistorialEstado) => {
                     const antCfg  = h.estado_anterior ? getEstadoCfg(h.estado_anterior) : null
                     const nuevCfg = getEstadoCfg(h.estado_nuevo)
                     return (
