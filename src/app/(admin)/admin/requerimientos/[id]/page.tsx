@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -28,11 +28,11 @@ interface Props {
 
 export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
   const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin] = await Promise.all([
-    supabase.from('requerimientos').select('*').eq('id', id).single(),
-    supabase.from('historial_estados').select('*')
+    (supabase as any).from('requerimientos').select('*').eq('id', id).single(),
+    (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
     getTareas(id),
     getDesarrolladoresReq(id),
