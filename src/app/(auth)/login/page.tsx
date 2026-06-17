@@ -20,7 +20,7 @@ const loginSchema = z.object({
 type LoginForm = z.infer<typeof loginSchema>
 
 const ERROR_MESSAGES: Record<string, string> = {
-  domain_not_allowed: 'Solo se permiten cuentas @iwglogistics.com. Usa tu correo corporativo.',
+  domain_not_allowed: 'Solo se permiten cuentas @iwglogistics.com o @iwltransport.com. Usa tu correo corporativo.',
   auth_callback_failed: 'Error al autenticar con Google. Intenta de nuevo.',
 }
 

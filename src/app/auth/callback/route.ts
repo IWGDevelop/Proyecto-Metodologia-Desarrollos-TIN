@@ -36,8 +36,10 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
-        // Restrict to corporate domain
-        if (user.email && !user.email.endsWith('@iwglogistics.com')) {
+        // Restrict to corporate domains
+        const DOMINIOS_PERMITIDOS = ['@iwglogistics.com', '@iwltransport.com']
+        const dominioPermitido = DOMINIOS_PERMITIDOS.some(d => user.email?.endsWith(d))
+        if (!dominioPermitido) {
           await supabase.auth.signOut()
           return NextResponse.redirect(`${origin}/login?error=domain_not_allowed`)
         }
