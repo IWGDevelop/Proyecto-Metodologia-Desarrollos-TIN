@@ -3,16 +3,17 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Pencil, ArrowLeft, Clock, DollarSign, TrendingUp } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD, ORIGENES_REQUERIMIENTO, getEstadoCfg, formatPrioridad } from '@/lib/constants'
-import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
+import { ArrowLeft } from 'lucide-react'
+import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
+import { formatFechaRelativa, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
 import { TabDesarrollo } from '@/components/requerimientos/tabs/TabDesarrollo'
 import { TabReuniones } from '@/components/requerimientos/tabs/TabReuniones'
 import { TabPenalizaciones } from '@/components/requerimientos/tabs/TabPenalizaciones'
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
+import { TabInformacion } from '@/components/requerimientos/tabs/TabInformacion'
+import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
@@ -21,7 +22,7 @@ import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
 import { getPermisosUsuario } from '@/actions/roles-permisos'
-import type { Estado, ActividadImpacto, BeneficioCualitativo, HistorialEstado } from '@/lib/supabase/types'
+import type { HistorialEstado } from '@/lib/supabase/types'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -64,11 +65,6 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
-  const tipoLabel    = TIPOS_SOLICITUD.find(t => t.value === req.tipo_solicitud)?.label
-  const origenLabel  = ORIGENES_REQUERIMIENTO.find(o => o.value === req.origen_requerimiento)?.label
-  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === req.proceso_interno)?.label
-  const actividades  = (req.actividades_impacto ?? []) as (ActividadImpacto & { horas_mes?: number })[]
-  const beneficios   = (req.beneficios_cualitativos ?? []) as BeneficioCualitativo[]
 
   return (
     <div className="space-y-5 p-6">
@@ -133,13 +129,6 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               estadoActual={req.estado}
             />
           )}
-          {pe('req:general') && (
-            <Link href={`/admin/requerimientos/${id}/editar`}>
-              <Button size="sm" variant="outline" className="gap-1.5">
-                <Pencil size={13} /> Editar
-              </Button>
-            </Link>
-          )}
         </div>
       </div>
 
@@ -164,175 +153,17 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
         </TabsList>
 
-        {pv('req:informacion') && <TabsContent value="informacion" className="mt-4 space-y-4">
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Encabezado</p>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between"><dt className="text-slate-500">Fecha solicitud</dt><dd>{formatFecha(req.fecha_solicitud)}</dd></div>
-                <div className="flex justify-between"><dt className="text-slate-500">Tipo</dt><dd>{tipoLabel}</dd></div>
-                {origenLabel && <div className="flex justify-between"><dt className="text-slate-500">Origen</dt><dd className="font-medium text-violet-700">{origenLabel}</dd></div>}
-                <div className="flex justify-between"><dt className="text-slate-500">Empresa</dt><dd>{req.empresa ?? req.alcance}</dd></div>
-                <div className="flex justify-between"><dt className="text-slate-500">Sucursal</dt><dd>{req.sucursal}</dd></div>
-              </dl>
-            </div>
-            <div className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Solicitante</p>
-              <dl className="space-y-2 text-sm">
-                <div className="flex justify-between"><dt className="text-slate-500">Responsable</dt><dd className="font-medium">{req.responsable}</dd></div>
-                <div className="flex justify-between"><dt className="text-slate-500">Proceso</dt><dd>{procesoLabel}</dd></div>
-                <div className="flex justify-between"><dt className="text-slate-500">Avance</dt><dd className="font-medium">{req.porcentaje_avance}%</dd></div>
-                {req.fecha_envio_tin && <div className="flex justify-between"><dt className="text-slate-500">Fecha TIN</dt><dd>{formatFecha(req.fecha_envio_tin)}</dd></div>}
-              </dl>
-              {req.partes_interesadas && req.partes_interesadas.length > 0 && (
-                <div className="mt-3 border-t border-slate-100 pt-3">
-                  <p className="mb-2 text-xs text-slate-500">Partes interesadas</p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {req.partes_interesadas.map((p: string, i: number) => (
-                      <span key={i} className="rounded-full bg-blue-50 px-2.5 py-0.5 text-xs font-medium text-blue-700 border border-blue-200">
-                        {p}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-          {[
-            { label: 'Situación actual', valor: req.descripcion_situacion_actual },
-            { label: 'Definición del requerimiento', valor: req.definicion_requerimiento },
-            { label: 'Objetivo', valor: req.objetivo },
-            { label: 'Criterios de validación', valor: req.criterios_validacion },
-            { label: 'Definición de usuarios', valor: req.definicion_usuarios },
-            { label: 'Ventajas y beneficios', valor: req.ventajas_beneficios },
-          ].filter(f => f.valor).map(({ label, valor }) => (
-            <div key={label} className="rounded-xl border border-slate-200 bg-white p-4">
-              <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">{label}</p>
-              <p className="whitespace-pre-wrap text-sm text-slate-700">{valor}</p>
-            </div>
-          ))}
-        </TabsContent>}
+        {pv('req:informacion') && (
+          <TabsContent value="informacion">
+            <TabInformacion req={req as any} canEdit={pe('req:general')} isAdmin={isAdmin} />
+          </TabsContent>
+        )}
 
-        {pv('req:impacto-hh') && <TabsContent value="impacto" className="mt-4 space-y-4">
-          {actividades.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <p className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Actividades impactadas</p>
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="bg-slate-50">
-                    <tr>
-                      {['Actividad', 'Cargo que ejecuta', 'Salario cargo', 'Frecuencia', 'Horas/mes'].map(h => (
-                        <th key={h} className="px-4 py-2.5 text-left text-xs font-medium text-slate-400">{h}</th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50">
-                    {actividades.map((act, i) => (
-                      <tr key={i}>
-                        <td className="px-4 py-2.5 text-slate-700">{act.actividad}</td>
-                        <td className="px-4 py-2.5 text-slate-600 text-xs">{act.cargo_ejecuta ?? '—'}</td>
-                        <td className="px-4 py-2.5 text-xs">
-                          {act.salario_cargo
-                            ? <span className="font-medium text-blue-600">{formatCOP(act.salario_cargo)}</span>
-                            : <span className="text-slate-400">Global</span>}
-                        </td>
-                        <td className="px-4 py-2.5 text-slate-500 text-xs">{act.frecuencia ?? '—'}</td>
-                        <td className="px-4 py-2.5 font-semibold text-emerald-600">{(act.horas_mes ?? 0).toFixed(2)} h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          )}
-          {/* Impacto HH */}
-          {(req.horas_ahorradas_mes ?? 0) > 0 && (
-            <div className="rounded-xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
-              <p className="mb-3 text-sm font-semibold text-emerald-200">Impacto en horas hombre</p>
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
-                {[
-                  { icon: Clock,      label: 'Horas ahorradas / mes', valor: `${req.horas_ahorradas_mes?.toFixed(1) ?? 0} h` },
-                  { icon: DollarSign, label: 'Ahorro mensual',        valor: formatCOP(req.ahorro_mensual_cop) },
-                  { icon: TrendingUp, label: 'Ahorro anual HH',       valor: formatCOP(req.ahorro_anual_cop) },
-                ].map(({ icon: Icon, label, valor }) => (
-                  <div key={label} className="rounded-lg bg-white/10 p-3">
-                    <Icon size={14} className="mb-1 text-emerald-300" />
-                    <p className="text-xs text-emerald-300">{label}</p>
-                    <p className="text-lg font-bold">{valor}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Beneficios cualitativos con valores */}
-          {beneficios.length > 0 && (
-            <div className="rounded-xl border border-slate-200 bg-white overflow-hidden">
-              <p className="border-b border-slate-100 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Beneficios cualitativos
-              </p>
-              <div className="divide-y divide-slate-50">
-                {beneficios.map((b, i) => {
-                  const ben = b as any
-                  return (
-                    <div key={i} className="flex items-start justify-between gap-4 px-4 py-3">
-                      <div className="flex items-start gap-2 min-w-0">
-                        {ben.icono && <span className="mt-0.5 text-base shrink-0">{ben.icono}</span>}
-                        <div className="min-w-0">
-                          {ben.nombre && <p className="text-xs font-semibold text-slate-700">{ben.nombre}</p>}
-                          {b.descripcion && <p className="text-xs text-slate-500 mt-0.5">{b.descripcion}</p>}
-                          {ben.justificacion && (
-                            <p className="mt-1 text-xs text-slate-400 italic">"{ben.justificacion}"</p>
-                          )}
-                        </div>
-                      </div>
-                      {(ben.valor_anual_calculado ?? 0) > 0 && (
-                        <div className="shrink-0 text-right">
-                          <p className="text-[10px] text-slate-400">{ben.periodicidad === 'MENSUAL' ? 'mensual ×12' : ben.periodicidad === 'UNICO' ? 'único' : 'anual'}</p>
-                          <p className="text-sm font-bold text-blue-600">{formatCOP(ben.valor_anual_calculado)}</p>
-                          <p className="text-[10px] text-slate-400">/ año</p>
-                        </div>
-                      )}
-                    </div>
-                  )
-                })}
-              </div>
-              {(req.total_beneficios_cualitativos_anual ?? 0) > 0 && (
-                <div className="flex items-center justify-between border-t border-slate-200 bg-blue-50 px-4 py-3">
-                  <span className="text-sm font-semibold text-slate-700">Total cualitativos / año</span>
-                  <span className="text-lg font-extrabold text-blue-700">{formatCOP(req.total_beneficios_cualitativos_anual)}</span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* Total combinado */}
-          {((req.ahorro_anual_cop ?? 0) > 0 || (req.total_beneficios_cualitativos_anual ?? 0) > 0) && (
-            <div className="rounded-xl border-2 border-emerald-300 bg-emerald-50 p-4">
-              <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-emerald-700">Resumen impacto total proyectado</p>
-              <div className="space-y-1.5 text-sm">
-                {(req.ahorro_anual_cop ?? 0) > 0 && (
-                  <div className="flex justify-between text-slate-600">
-                    <span>Ahorro en horas hombre (anual)</span>
-                    <span className="font-semibold text-emerald-700">{formatCOP(req.ahorro_anual_cop)}</span>
-                  </div>
-                )}
-                {(req.total_beneficios_cualitativos_anual ?? 0) > 0 && (
-                  <div className="flex justify-between text-slate-600">
-                    <span>Beneficios cualitativos (anual)</span>
-                    <span className="font-semibold text-blue-600">{formatCOP(req.total_beneficios_cualitativos_anual)}</span>
-                  </div>
-                )}
-                <div className="flex justify-between border-t border-emerald-200 pt-2">
-                  <span className="font-bold text-slate-800">Impacto económico total / año</span>
-                  <span className="text-xl font-extrabold text-emerald-700">
-                    {formatCOP((req.ahorro_anual_cop ?? 0) + (req.total_beneficios_cualitativos_anual ?? 0))}
-                  </span>
-                </div>
-              </div>
-            </div>
-          )}
-        </TabsContent>}
+        {pv('req:impacto-hh') && (
+          <TabsContent value="impacto">
+            <TabImpactoHH req={req as any} canEdit={pe('req:general')} />
+          </TabsContent>
+        )}
 
         {pv('req:historial') && (
           <TabsContent value="historial" className="mt-4">
