@@ -34,9 +34,14 @@ export async function GET(request: NextRequest) {
     const { error } = await supabase.auth.exchangeCodeForSession(code)
 
     if (!error) {
-      // Get role to redirect correctly
       const { data: { user } } = await supabase.auth.getUser()
       if (user) {
+        // Restrict to corporate domain
+        if (user.email && !user.email.endsWith('@iwglogistics.com')) {
+          await supabase.auth.signOut()
+          return NextResponse.redirect(`${origin}/login?error=domain_not_allowed`)
+        }
+
         const { data: perfil } = await (supabase as any)
           .from('perfiles')
           .select('rol')
