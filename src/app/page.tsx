@@ -9,10 +9,10 @@ export default async function HomePage() {
 
   const perfil = await getPerfil()
 
-  if (!perfil) redirect('/admin/dashboard')
+  if (!perfil) redirect('/admin/requerimientos')
 
   if (perfil.rol === 'ADMIN_TIN' || perfil.rol === 'PRESIDENCIA') {
-    redirect('/admin/dashboard')
+    redirect('/admin/requerimientos')
   }
 
   // For USUARIO (and any custom role): check if they have admin menu permissions
@@ -21,7 +21,7 @@ export default async function HomePage() {
     ([recurso, p]) => recurso.startsWith('menu:') && p.puede_ver
   )
 
-  if (tieneAccesoAdmin) redirect('/admin/dashboard')
+  if (tieneAccesoAdmin) redirect('/admin/requerimientos')
 
   redirect('/mis-requerimientos')
 }
