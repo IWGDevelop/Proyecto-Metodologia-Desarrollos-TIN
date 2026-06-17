@@ -7,6 +7,7 @@ import {
   MoreHorizontal, Eye, Pencil, RefreshCw, Archive,
   ChevronLeft, ChevronRight,
 } from 'lucide-react'
+import dynamic from 'next/dynamic'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -18,7 +19,11 @@ import { Button } from '@/components/ui/button'
 import { CambiarEstadoDialog } from './CambiarEstadoDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
-import { AsignarPrioridadBtn } from './AsignarPrioridadBtn'
+
+const AsignarPrioridadBtn = dynamic(
+  () => import('./AsignarPrioridadBtn').then(m => ({ default: m.AsignarPrioridadBtn })),
+  { ssr: false, loading: () => <span className="text-xs text-slate-300">—</span> }
+)
 import {
   useRequerimientos, useInvalidateRequerimientos,
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
