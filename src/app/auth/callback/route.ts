@@ -42,18 +42,7 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}/login?error=domain_not_allowed`)
         }
 
-        const { data: perfil } = await (supabase as any)
-          .from('perfiles')
-          .select('rol')
-          .eq('id', user.id)
-          .single()
-
-        if (next !== '/') {
-          return NextResponse.redirect(`${origin}${next}`)
-        }
-
-        const dest = perfil?.rol === 'ADMIN_TIN' ? '/admin/dashboard' : '/mis-requerimientos'
-        return NextResponse.redirect(`${origin}${dest}`)
+        return NextResponse.redirect(`${origin}${next}`)
       }
     }
   }
