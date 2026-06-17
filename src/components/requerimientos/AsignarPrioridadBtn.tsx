@@ -1,11 +1,12 @@
 'use client'
 
-import { useState, useTransition } from 'react'
+import { useState, useTransition, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { ChevronDown, TrendingUp } from 'lucide-react'
+import { ChevronDown, TrendingUp, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { actualizarRequerimiento } from '@/actions/requerimientos'
+import { getPrioridadesProceso, type PrioridadOcupada } from '@/actions/requerimientos-admin'
 import { PRIORIDADES, SLA_DIAS, formatPrioridad } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -19,26 +20,37 @@ interface Props {
   impactoHH?: number | null
   impactoCualitativos?: number | null
   impactoTotal?: number | null
+  proceso_interno?: string | null
 }
 
 export function AsignarPrioridadBtn({
   requerimientoId, prioridadActual, subPrioridadActual = null,
-  impactoHH, impactoCualitativos, impactoTotal,
+  impactoHH, impactoCualitativos, impactoTotal, proceso_interno,
 }: Props) {
   const router = useRouter()
   const [open, setOpen]               = useState(false)
   const [selPrioridad, setSelP]       = useState<number | null>(prioridadActual)
   const [selSubPrioridad, setSelSub]  = useState<number | null>(subPrioridadActual)
   const [isPending, startT]           = useTransition()
+  const [ocupadas, setOcupadas]       = useState<PrioridadOcupada[]>([])
 
   const total      = impactoTotal ?? ((impactoHH ?? 0) + (impactoCualitativos ?? 0))
   const cfgActual  = prioridadActual ? PRIORIDADES[prioridadActual] : null
   const sinCambios = selPrioridad === prioridadActual && selSubPrioridad === subPrioridadActual
 
-  const handleOpen = () => {
+  const isOcupada = (p: number | null, sp: number | null) =>
+    p !== null && ocupadas.some(o => o.prioridad === p && o.sub_prioridad === sp)
+
+  const conflicto = isOcupada(selPrioridad, selSubPrioridad)
+
+  const handleOpen = async () => {
     setSelP(prioridadActual)
     setSelSub(subPrioridadActual)
     setOpen(true)
+    if (proceso_interno) {
+      const data = await getPrioridadesProceso(proceso_interno, requerimientoId)
+      setOcupadas(data)
+    }
   }
 
   const handleSelPrioridad = (p: number) => {
@@ -52,6 +64,7 @@ export function AsignarPrioridadBtn({
   }
 
   const handleGuardar = () => {
+    if (conflicto) return
     startT(async () => {
       try {
         await actualizarRequerimiento(requerimientoId, {
@@ -66,6 +79,12 @@ export function AsignarPrioridadBtn({
         toast.error(e?.message ?? 'Error al asignar prioridad')
       }
     })
+  }
+
+  const getNombreConflicto = () => {
+    if (!conflicto) return null
+    const o = ocupadas.find(o => o.prioridad === selPrioridad && o.sub_prioridad === selSubPrioridad)
+    return o?.nombre ?? null
   }
 
   return (
@@ -143,7 +162,7 @@ export function AsignarPrioridadBtn({
             </div>
           </div>
 
-          {/* Selector de sub-prioridad — solo visible cuando hay prioridad principal */}
+          {/* Selector de sub-prioridad */}
           {selPrioridad && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
@@ -156,14 +175,17 @@ export function AsignarPrioridadBtn({
                     'rounded-lg border px-3 py-1.5 text-xs font-medium transition-all',
                     selSubPrioridad === null && selPrioridad !== null
                       ? 'border-slate-400 bg-slate-100 text-slate-700 ring-1 ring-slate-300'
-                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300'
+                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300',
+                    isOcupada(selPrioridad, null) ? 'opacity-50 cursor-not-allowed' : ''
                   )}
                 >
                   Sin sub
+                  {isOcupada(selPrioridad, null) && <span className="ml-1 text-red-500">✕</span>}
                 </button>
                 {SUB_PRIORIDADES.map(sp => {
                   const cfg = PRIORIDADES[selPrioridad]
                   const sel = selSubPrioridad === sp
+                  const ocupado = isOcupada(selPrioridad, sp)
                   return (
                     <button
                       key={sp}
@@ -172,10 +194,12 @@ export function AsignarPrioridadBtn({
                         'rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-all',
                         sel
                           ? cn(cfg.bgColor, cfg.borderColor, cfg.textColor)
-                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300',
+                        ocupado && !sel ? 'opacity-40' : ''
                       )}
                     >
                       {selPrioridad}.{sp}
+                      {ocupado && !sel && <span className="ml-0.5 text-red-400">✕</span>}
                     </button>
                   )
                 })}
@@ -193,6 +217,19 @@ export function AsignarPrioridadBtn({
             </div>
           )}
 
+          {/* Advertencia de conflicto */}
+          {conflicto && (
+            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-500" />
+              <p className="text-xs text-red-700">
+                Esta prioridad ya está asignada a otro requerimiento del mismo proceso
+                {getNombreConflicto() && (
+                  <span className="block font-semibold mt-0.5">"{getNombreConflicto()}"</span>
+                )}
+              </p>
+            </div>
+          )}
+
           {!selPrioridad && (
             <p className="text-xs text-slate-400 text-center">
               Selecciona una prioridad principal, o deja sin seleccionar para quitar la prioridad.
@@ -203,7 +240,7 @@ export function AsignarPrioridadBtn({
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Cancelar</Button>
             <Button
               onClick={handleGuardar}
-              disabled={isPending || sinCambios}
+              disabled={isPending || sinCambios || conflicto}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isPending ? 'Guardando...' : 'Guardar prioridad'}

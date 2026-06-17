@@ -137,3 +137,28 @@ export async function fetchRequerimientosAdmin(
     return { data: [], total: 0, totalFiltrado: 0 }
   }
 }
+
+export interface PrioridadOcupada {
+  prioridad: number
+  sub_prioridad: number | null
+  nombre: string
+}
+
+export async function getPrioridadesProceso(
+  proceso_interno: string,
+  excludeId: string
+): Promise<PrioridadOcupada[]> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('requerimientos')
+    .select('prioridad, sub_prioridad, nombre_desarrollo, identificacion')
+    .eq('proceso_interno', proceso_interno)
+    .neq('id', excludeId)
+    .not('prioridad', 'is', null)
+
+  return (data ?? []).map((r: any) => ({
+    prioridad: r.prioridad,
+    sub_prioridad: r.sub_prioridad ?? null,
+    nombre: r.nombre_desarrollo ?? r.identificacion ?? '',
+  }))
+}

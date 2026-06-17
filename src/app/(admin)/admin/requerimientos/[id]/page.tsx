@@ -105,16 +105,15 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               origenActual={req.origen_requerimiento ?? null}
             />
           )}
-          {pe('req:prioridad') && (
-            <AsignarPrioridadBtn
-              requerimientoId={id}
-              prioridadActual={req.prioridad}
-              subPrioridadActual={(req as any).sub_prioridad ?? null}
-              impactoHH={req.ahorro_anual_cop}
-              impactoCualitativos={req.total_beneficios_cualitativos_anual}
-              impactoTotal={req.impacto_economico_total_anual}
-            />
-          )}
+          <AsignarPrioridadBtn
+            requerimientoId={id}
+            prioridadActual={req.prioridad}
+            subPrioridadActual={(req as any).sub_prioridad ?? null}
+            impactoHH={req.ahorro_anual_cop}
+            impactoCualitativos={req.total_beneficios_cualitativos_anual}
+            impactoTotal={req.impacto_economico_total_anual}
+            proceso_interno={(req as any).proceso_interno ?? null}
+          />
           {isAdmin && pe('req:estado') && (
             <CambiarEstadoBtn
               requerimientoId={id}
