@@ -107,7 +107,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
           page={page}
           sort={sort}
           basePath="/admin/requerimientos"
-          isAdmin
+          isAdmin={isAdmin}
           perfilFiltro={perfilFiltro}
         />
       </Suspense>

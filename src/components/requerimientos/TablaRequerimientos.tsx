@@ -18,6 +18,7 @@ import { Button } from '@/components/ui/button'
 import { CambiarEstadoDialog } from './CambiarEstadoDialog'
 import { ConfirmDialog } from '@/components/shared/ConfirmDialog'
 import { EmptyState } from '@/components/shared/EmptyState'
+import { AsignarPrioridadBtn } from './AsignarPrioridadBtn'
 import {
   useRequerimientos, useInvalidateRequerimientos,
   PAGE_SIZE, type FiltrosRequerimientos, type SortConfig,
@@ -33,7 +34,7 @@ import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 interface OpcionEdit { value: string; label: string; badgeClass?: string }
 
 function CeldaEditable({
-  rowId, valor, opciones, onGuardar, renderBadge, placeholder = '—',
+  rowId, valor, opciones, onGuardar, renderBadge, placeholder = '—', editable = true,
 }: {
   rowId: string
   valor: string | null | undefined
@@ -41,9 +42,14 @@ function CeldaEditable({
   onGuardar: (id: string, v: string | null) => Promise<void>
   renderBadge: (v: string | null | undefined) => React.ReactNode
   placeholder?: string
+  editable?: boolean
 }) {
   const [editando, setEditando] = useState(false)
   const [guardando, setGuardando] = useState(false)
+
+  if (!editable) {
+    return <>{renderBadge(valor) ?? <span className="text-xs text-slate-300">{placeholder}</span>}</>
+  }
 
   if (editando) {
     return (
@@ -124,12 +130,13 @@ function ColHeader({
 
 // ─── Acciones por fila ────────────────────────────────────────────────────────
 function AccionesMenu({
-  row, onCambiarEstado, onEliminar, basePath,
+  row, onCambiarEstado, onEliminar, basePath, isAdmin,
 }: {
   row: MetricaRequerimiento
   onCambiarEstado: (r: MetricaRequerimiento) => void
   onEliminar: (id: string) => void
   basePath: string
+  isAdmin: boolean
 }) {
   const router = useRouter()
   return (
@@ -144,17 +151,21 @@ function AccionesMenu({
         <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}`)}>
           <Eye size={13} className="mr-2" /> Ver detalle
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
-          <Pencil size={13} className="mr-2" /> Editar completo
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onCambiarEstado(row)}>
-          <RefreshCw size={13} className="mr-2" /> Cambiar estado
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEliminar(row.id)} variant="destructive">
-          <Archive size={13} className="mr-2" /> Cerrar requerimiento
-        </DropdownMenuItem>
+        {isAdmin && (
+          <>
+            <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
+              <Pencil size={13} className="mr-2" /> Editar completo
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onCambiarEstado(row)}>
+              <RefreshCw size={13} className="mr-2" /> Cambiar estado
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onEliminar(row.id)} variant="destructive">
+              <Archive size={13} className="mr-2" /> Cerrar requerimiento
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -386,13 +397,14 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Alcance — editable */}
+                        {/* Alcance — editable solo admin */}
                         <td className="px-3 py-2.5">
                           <CeldaEditable
                             rowId={row.id}
                             valor={row.alcance}
                             opciones={OPCIONES_ALCANCE}
                             onGuardar={(id, v) => guardarCampo(id, 'alcance', v)}
+                            editable={isAdmin}
                             renderBadge={(v) => v ? (
                               <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[v] ?? '')}>
                                 {v}
@@ -401,13 +413,14 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           />
                         </td>
 
-                        {/* Proceso — editable */}
+                        {/* Proceso — editable solo admin */}
                         <td className="px-3 py-2.5">
                           <CeldaEditable
                             rowId={row.id}
                             valor={(row as any).proceso_interno}
                             opciones={OPCIONES_PROCESO}
                             onGuardar={(id, v) => guardarCampo(id, 'proceso_interno', v)}
+                            editable={isAdmin}
                             renderBadge={(v) => v ? (
                               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
                                 {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
@@ -416,13 +429,14 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           />
                         </td>
 
-                        {/* Tipo solicitud — editable */}
+                        {/* Tipo solicitud — editable solo admin */}
                         <td className="px-3 py-2.5">
                           <CeldaEditable
                             rowId={row.id}
                             valor={row.tipo_solicitud}
                             opciones={OPCIONES_TIPO_SOLICITUD}
                             onGuardar={(id, v) => guardarCampo(id, 'tipo_solicitud', v)}
+                            editable={isAdmin}
                             renderBadge={(v) => v ? (
                               <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[v] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>
                                 {TIPOS_SOLICITUD.find(t => t.value === v)?.label ?? v}
@@ -431,54 +445,74 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           />
                         </td>
 
-                        {/* Prioridad — editable */}
-                        <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={row.prioridad
-                              ? row.sub_prioridad
-                                ? `${row.prioridad}.${row.sub_prioridad}`
-                                : String(row.prioridad)
-                              : null}
-                            opciones={OPCIONES_PRIORIDAD}
-                            onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
-                            renderBadge={(v) => {
-                              if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
-                              const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
-                              const cfg = PRIORIDADES[p]
-                              return cfg ? (
-                                <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
-                                  P{v}
-                                </span>
-                              ) : null
-                            }}
-                          />
+                        {/* Prioridad — admin: select inline / usuario: botón con dialog */}
+                        <td className="px-3 py-2.5" onClick={e => e.stopPropagation()}>
+                          {isAdmin ? (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={row.prioridad
+                                ? row.sub_prioridad
+                                  ? `${row.prioridad}.${row.sub_prioridad}`
+                                  : String(row.prioridad)
+                                : null}
+                              opciones={OPCIONES_PRIORIDAD}
+                              onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
+                              editable
+                              renderBadge={(v) => {
+                                if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                                const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                                const cfg = PRIORIDADES[p]
+                                return cfg ? (
+                                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
+                                    P{v}
+                                  </span>
+                                ) : null
+                              }}
+                            />
+                          ) : (
+                            <AsignarPrioridadBtn
+                              requerimientoId={row.id}
+                              prioridadActual={row.prioridad ?? null}
+                              subPrioridadActual={(row as any).sub_prioridad ?? null}
+                              proceso_interno={(row as any).proceso_interno ?? null}
+                            />
+                          )}
                         </td>
 
-                        {/* Estado — abre diálogo existente */}
+                        {/* Estado — admin: abre diálogo / usuario: solo lectura */}
                         <td className="px-3 py-2.5">
-                          <div
-                            className="group/edit flex items-center gap-1 cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); setCambioEstadoRow(row) }}
-                            title="Clic para cambiar estado"
-                          >
+                          {isAdmin ? (
+                            <div
+                              className="group/edit flex items-center gap-1 cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); setCambioEstadoRow(row) }}
+                              title="Clic para cambiar estado"
+                            >
+                              <span className={cn(
+                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                estadoCfg.bgColor, estadoCfg.textColor
+                              )}>
+                                {estadoCfg.label}
+                              </span>
+                              <Pencil size={10} className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+                            </div>
+                          ) : (
                             <span className={cn(
                               'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                               estadoCfg.bgColor, estadoCfg.textColor
                             )}>
                               {estadoCfg.label}
                             </span>
-                            <Pencil size={10} className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
-                          </div>
+                          )}
                         </td>
 
-                        {/* Origen — editable */}
+                        {/* Origen — editable solo admin */}
                         <td className="px-3 py-2.5">
                           <CeldaEditable
                             rowId={row.id}
                             valor={(row as any).origen_requerimiento}
                             opciones={OPCIONES_ORIGEN}
                             onGuardar={(id, v) => guardarCampo(id, 'origen_requerimiento', v)}
+                            editable={isAdmin}
                             renderBadge={(v) => {
                               const cfg = v ? ORIGENES_REQUERIMIENTO.find(o => o.value === v) : null
                               return cfg ? (
@@ -541,6 +575,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             onCambiarEstado={setCambioEstadoRow}
                             onEliminar={setEliminarId}
                             basePath={basePath}
+                            isAdmin={isAdmin}
                           />
                         </td>
                       </tr>
