@@ -84,16 +84,20 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
         </div>
         <div className="flex items-center gap-2">
           <ExportarExcel filtros={filtros} sort={sort} isAdmin={isAdmin} perfilFiltro={perfilFiltro} />
-          <Link href="/admin/requerimientos/importar">
-            <Button size="sm" variant="outline" className="gap-1.5">
-              <FileJson size={14} /> Importar JSON
-            </Button>
-          </Link>
-          <Link href="/admin/requerimientos/nuevo">
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-              <Plus size={15} className="mr-1" /> Nuevo
-            </Button>
-          </Link>
+          {isAdmin && (
+            <>
+              <Link href="/admin/requerimientos/importar">
+                <Button size="sm" variant="outline" className="gap-1.5">
+                  <FileJson size={14} /> Importar JSON
+                </Button>
+              </Link>
+              <Link href="/admin/requerimientos/nuevo">
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
+                  <Plus size={15} className="mr-1" /> Nuevo
+                </Button>
+              </Link>
+            </>
+          )}
         </div>
       </div>
 
