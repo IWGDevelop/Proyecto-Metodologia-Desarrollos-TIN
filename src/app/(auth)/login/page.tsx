@@ -86,7 +86,7 @@ function LoginPageContent() {
             <InterflowLogoIcon px={64} />
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-800">
-            INTER<span className="text-blue-600">FLOW</span>
+            TIN-<span className="text-blue-600">FLOW</span>
           </h1>
           <p className="mt-1 text-sm text-slate-500">Gestión de Proyectos · Interworld Group</p>
         </div>

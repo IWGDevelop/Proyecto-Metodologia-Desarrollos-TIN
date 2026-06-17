@@ -7,7 +7,7 @@ import { Toaster } from '@/components/ui/sonner'
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'INTERFLOW — Interworld Group',
+  title: 'TIN-FLOW — Interworld Group',
   description: 'Plataforma de gestión de proyectos y desarrollos tecnológicos de Interworld Group',
 }
 

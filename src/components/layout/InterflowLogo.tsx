@@ -87,7 +87,7 @@ export function InterflowLogo({ size = 'md', className }: Props) {
       <InterflowLogoIcon px={cfg.icon} />
       <div className="flex flex-col leading-none">
         <span className={cn('font-bold tracking-tight text-white', cfg.text)}>
-          INTER<span className="text-sky-400">FLOW</span>
+          TIN-<span className="text-sky-400">FLOW</span>
         </span>
         <span className={cn('text-slate-400 font-normal tracking-wide uppercase', cfg.sub)}>
           Interworld Group
