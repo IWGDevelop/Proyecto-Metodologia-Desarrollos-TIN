@@ -97,7 +97,7 @@ export type TipoSolucion = 'DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'SUPERSET' 
 export type ProcesoInterno =
   | 'FINANCIERO' | 'OPERACIONES' | 'COMERCIAL' | 'CARGA'
   | 'SISTEMAS_GESTION' | 'SERVICIO_CLIENTE' | 'COMPRAS'
-  | 'SEGUROS' | 'DATOS' | 'TI' | 'GENERAL'
+  | 'SEGUROS' | 'DATOS' | 'TI' | 'GENERAL' | 'PRICING' | 'ESTRATEGIA'
 export type Impacta = 'FUNCIONARIOS' | 'CLIENTES' | 'AMBOS'
 
 // ─── Tipos JSONB embebidos ───────────────────────────────────────────────────
