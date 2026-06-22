@@ -171,16 +171,21 @@ export function TabAnexos({ requerimientoId, canUpload = true }: Props) {
         setUploading(prev => prev.filter(n => n !== file.name))
       },
       async () => {
-        const url = await getDownloadURL(task.snapshot.ref)
-        await registrarAnexo(requerimientoId, {
-          nombre_archivo: file.name,
-          url_storage:    url,
-          tipo_archivo:   file.type,
-          tamanio_bytes:  file.size,
-        })
-        setUploading(prev => prev.filter(n => n !== file.name))
-        qc.invalidateQueries({ queryKey: ['anexos', requerimientoId] })
-        toast.success(`${file.name} adjuntado`)
+        try {
+          const url = await getDownloadURL(task.snapshot.ref)
+          await registrarAnexo(requerimientoId, {
+            nombre_archivo: file.name,
+            url_storage:    url,
+            tipo_archivo:   file.type,
+            tamanio_bytes:  file.size,
+          })
+          qc.invalidateQueries({ queryKey: ['anexos', requerimientoId] })
+          toast.success(`${file.name} adjuntado`)
+        } catch (e: any) {
+          toast.error(`Error al registrar archivo: ${e?.message ?? 'Error desconocido'}`)
+        } finally {
+          setUploading(prev => prev.filter(n => n !== file.name))
+        }
       }
     )
   }

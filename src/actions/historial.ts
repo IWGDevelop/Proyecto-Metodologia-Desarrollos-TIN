@@ -55,23 +55,23 @@ export async function registrarAnexo(
     tamanio_bytes?: number
   }
 ) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  const { data, error } = await supabase
+  const { data, error } = await (supabase as any)
     .from('anexos')
-    .insert({ requerimiento_id: requerimientoId, ...payload } as never)
+    .insert({ requerimiento_id: requerimientoId, ...payload })
     .select()
     .single()
 
   if (error) throw new Error(error.message)
-  revalidatePath(`/requerimientos/${requerimientoId}`)
-  return data as unknown as Anexo
+  revalidatePath(`/admin/requerimientos/${requerimientoId}`)
+  return data as Anexo
 }
 
 export async function eliminarAnexo(id: string, requerimientoId: string) {
-  const supabase = await createClient()
+  const supabase = createAdminClient()
 
-  const { error } = await supabase.from('anexos').delete().eq('id', id)
+  const { error } = await (supabase as any).from('anexos').delete().eq('id', id)
   if (error) throw new Error(error.message)
-  revalidatePath(`/requerimientos/${requerimientoId}`)
+  revalidatePath(`/admin/requerimientos/${requerimientoId}`)
 }
