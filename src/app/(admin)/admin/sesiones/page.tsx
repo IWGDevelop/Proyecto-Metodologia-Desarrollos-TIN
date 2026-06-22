@@ -1,5 +1,5 @@
 import { getSesionesLog, getEstadisticasSesiones } from '@/actions/sesiones'
-import { Monitor, Users, LogIn, Chrome, Mail, Calendar } from 'lucide-react'
+import { Monitor, Users, LogIn, Globe, Mail, Calendar } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
 export const dynamic = 'force-dynamic'
@@ -122,7 +122,7 @@ export default async function SesionesPage() {
                   <td className="px-4 py-2.5">
                     {s.metodo === 'google' ? (
                       <span className="inline-flex items-center gap-1 rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-xs font-medium text-red-600">
-                        <Chrome size={10} /> Google
+                        <Globe size={10} /> Google
                       </span>
                     ) : (
                       <span className="inline-flex items-center gap-1 rounded-full bg-blue-50 border border-blue-200 px-2 py-0.5 text-xs font-medium text-blue-600">
