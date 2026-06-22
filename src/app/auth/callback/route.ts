@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
+import { registrarSesion } from '@/actions/sesiones'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
@@ -43,6 +44,18 @@ export async function GET(request: NextRequest) {
           await supabase.auth.signOut()
           return NextResponse.redirect(`${origin}/login?error=domain_not_allowed`)
         }
+
+        // Registrar inicio de sesión
+        const { data: perfil } = await (supabase as any)
+          .from('perfiles').select('nombre_completo').eq('id', user.id).single()
+        await registrarSesion({
+          user_id:    user.id,
+          email:      user.email!,
+          nombre:     perfil?.nombre_completo ?? null,
+          metodo:     'google',
+          ip:         request.headers.get('x-forwarded-for') ?? request.headers.get('x-real-ip') ?? null,
+          user_agent: request.headers.get('user-agent') ?? null,
+        })
 
         return NextResponse.redirect(`${origin}${next}`)
       }

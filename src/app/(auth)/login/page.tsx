@@ -6,6 +6,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useSearchParams } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
+import { registrarSesion } from '@/actions/sesiones'
 import { Eye, EyeOff, Loader2 } from 'lucide-react'
 import { InterflowLogoIcon } from '@/components/layout/InterflowLogo'
 import { Button } from '@/components/ui/button'
@@ -51,6 +52,16 @@ function LoginPageContent() {
       if (authError) {
         setError('Correo o contraseña incorrectos. Verifica tus datos.')
         return
+      }
+
+      // Registrar inicio de sesión
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        await registrarSesion({
+          user_id: user.id,
+          email:   user.email ?? data.email,
+          metodo:  'email',
+        })
       }
 
       // Hard navigation so the browser sends fresh cookies to the server
