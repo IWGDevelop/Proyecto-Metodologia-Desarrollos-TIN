@@ -13,7 +13,7 @@ export const paso2Schema = z.object({
   proceso_interno: z.enum([
     'FINANCIERO', 'OPERACIONES', 'COMERCIAL', 'CARGA',
     'SISTEMAS_GESTION', 'SERVICIO_CLIENTE', 'COMPRAS',
-    'SEGUROS', 'DATOS', 'TI', 'GENERAL',
+    'SEGUROS', 'DATOS', 'TI', 'GENERAL', 'PRICING', 'ESTRATEGIA',
   ] as const),
   responsable: z.string().min(1, 'El responsable es requerido'),
   partes_interesadas: z.array(z.string()).default([]),
