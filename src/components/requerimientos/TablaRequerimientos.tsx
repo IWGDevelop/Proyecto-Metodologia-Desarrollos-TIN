@@ -5,7 +5,7 @@ import { useCallback, useState, useTransition } from 'react'
 import {
   ChevronUp, ChevronDown, ChevronsUpDown,
   MoreHorizontal, Eye, Pencil, RefreshCw, Archive,
-  ChevronLeft, ChevronRight,
+  ChevronLeft, ChevronRight, Lock, Layers,
 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Progress } from '@/components/ui/progress'
@@ -28,6 +28,7 @@ import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS, TIPOS_
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
+import type { LoteConStats } from '@/actions/lotes'
 
 // ─── Celda editable inline ────────────────────────────────────────────────────
 interface OpcionEdit { value: string; label: string; badgeClass?: string }
@@ -237,13 +238,17 @@ interface Props {
   basePath?: string
   isAdmin?: boolean
   perfilFiltro?: PerfilFiltro | null
+  lotes?: LoteConStats[]
 }
 
-export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false, perfilFiltro }: Props) {
+export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false, perfilFiltro, lotes = [] }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const invalidar = useInvalidateRequerimientos()
+
+  // Mapa lote_id → lote para lookup O(1)
+  const loteMap = Object.fromEntries(lotes.map(l => [l.id, l]))
 
   const { data: result, isLoading, isFetching } = useRequerimientos(filtros, page, sort, isAdmin, perfilFiltro)
 
@@ -346,6 +351,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                                         (row.ahorro_anual_cop ?? 0) > 0 ||
                                         ((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
 
+                    const loteRow = (row as any).lote_id ? loteMap[(row as any).lote_id] : undefined
+                    const loteCerrado = loteRow?.cerrado === true
+
                     const rankBadge = tieneImpacto
                       ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }
                       : rankNum === 2 ? { cls: 'bg-slate-100 text-slate-600 border-slate-300',   ico: '🥈' }
@@ -384,110 +392,170 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                               {row.identificacion}
                             </p>
                           )}
+                          {loteRow && (
+                            <span className={cn(
+                              'mt-1 inline-flex items-center gap-0.5 rounded-full border px-1.5 py-0.5 text-[10px] font-medium',
+                              loteCerrado
+                                ? 'border-slate-300 bg-slate-100 text-slate-500'
+                                : 'border-blue-200 bg-blue-50 text-blue-600'
+                            )}>
+                              {loteCerrado && <Lock size={8} />}
+                              {!loteCerrado && <Layers size={8} />}
+                              L{loteRow.numero}
+                            </span>
+                          )}
                         </td>
 
-                        {/* Alcance — editable */}
+                        {/* Alcance — editable si lote abierto */}
                         <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={row.alcance}
-                            opciones={OPCIONES_ALCANCE}
-                            onGuardar={(id, v) => guardarCampo(id, 'alcance', v)}
-                            renderBadge={(v) => v ? (
-                              <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[v] ?? '')}>
-                                {v}
-                              </Badge>
-                            ) : null}
-                          />
+                          {loteCerrado ? (
+                            row.alcance
+                              ? <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[row.alcance] ?? '')}>{row.alcance}</Badge>
+                              : <span className="text-xs text-slate-300">—</span>
+                          ) : (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={row.alcance}
+                              opciones={OPCIONES_ALCANCE}
+                              onGuardar={(id, v) => guardarCampo(id, 'alcance', v)}
+                              renderBadge={(v) => v ? (
+                                <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[v] ?? '')}>
+                                  {v}
+                                </Badge>
+                              ) : null}
+                            />
+                          )}
                         </td>
 
-                        {/* Proceso — editable */}
+                        {/* Proceso — editable si lote abierto */}
                         <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={(row as any).proceso_interno}
-                            opciones={OPCIONES_PROCESO}
-                            onGuardar={(id, v) => guardarCampo(id, 'proceso_interno', v)}
-                            renderBadge={(v) => v ? (
-                              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
-                              </span>
-                            ) : null}
-                          />
-                        </td>
-
-                        {/* Tipo solicitud — editable */}
-                        <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={row.tipo_solicitud}
-                            opciones={OPCIONES_TIPO_SOLICITUD}
-                            onGuardar={(id, v) => guardarCampo(id, 'tipo_solicitud', v)}
-                            renderBadge={(v) => v ? (
-                              <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[v] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>
-                                {TIPOS_SOLICITUD.find(t => t.value === v)?.label ?? v}
-                              </span>
-                            ) : null}
-                          />
-                        </td>
-
-                        {/* Prioridad — editable */}
-                        <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={row.prioridad
-                              ? row.sub_prioridad
-                                ? `${row.prioridad}.${row.sub_prioridad}`
-                                : String(row.prioridad)
-                              : null}
-                            opciones={OPCIONES_PRIORIDAD}
-                            onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
-                            renderBadge={(v) => {
-                              if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
-                              const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
-                              const cfg = PRIORIDADES[p]
-                              return cfg ? (
-                                <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
-                                  P{v}
+                          {loteCerrado ? (
+                            (row as any).proceso_interno
+                              ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{PROCESOS_INTERNOS.find(p => p.value === (row as any).proceso_interno)?.label ?? (row as any).proceso_interno}</span>
+                              : <span className="text-xs text-slate-300">—</span>
+                          ) : (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={(row as any).proceso_interno}
+                              opciones={OPCIONES_PROCESO}
+                              onGuardar={(id, v) => guardarCampo(id, 'proceso_interno', v)}
+                              renderBadge={(v) => v ? (
+                                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
+                                  {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
                                 </span>
-                              ) : null
-                            }}
-                          />
+                              ) : null}
+                            />
+                          )}
                         </td>
 
-                        {/* Estado — abre diálogo existente */}
+                        {/* Tipo solicitud — editable si lote abierto */}
                         <td className="px-3 py-2.5">
-                          <div
-                            className="group/edit flex items-center gap-1 cursor-pointer"
-                            onClick={(e) => { e.stopPropagation(); setCambioEstadoRow(row) }}
-                            title="Clic para cambiar estado"
-                          >
+                          {loteCerrado ? (
+                            row.tipo_solicitud
+                              ? <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[row.tipo_solicitud] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>{TIPOS_SOLICITUD.find(t => t.value === row.tipo_solicitud)?.label ?? row.tipo_solicitud}</span>
+                              : <span className="text-xs text-slate-300">—</span>
+                          ) : (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={row.tipo_solicitud}
+                              opciones={OPCIONES_TIPO_SOLICITUD}
+                              onGuardar={(id, v) => guardarCampo(id, 'tipo_solicitud', v)}
+                              renderBadge={(v) => v ? (
+                                <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[v] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>
+                                  {TIPOS_SOLICITUD.find(t => t.value === v)?.label ?? v}
+                                </span>
+                              ) : null}
+                            />
+                          )}
+                        </td>
+
+                        {/* Prioridad — editable si lote abierto */}
+                        <td className="px-3 py-2.5">
+                          {loteCerrado ? (() => {
+                            const v = row.prioridad
+                              ? row.sub_prioridad ? `${row.prioridad}.${row.sub_prioridad}` : String(row.prioridad)
+                              : null
+                            if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                            const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                            const cfg = PRIORIDADES[p]
+                            return cfg
+                              ? <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>P{v}</span>
+                              : null
+                          })() : (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={row.prioridad
+                                ? row.sub_prioridad
+                                  ? `${row.prioridad}.${row.sub_prioridad}`
+                                  : String(row.prioridad)
+                                : null}
+                              opciones={OPCIONES_PRIORIDAD}
+                              onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
+                              renderBadge={(v) => {
+                                if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                                const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                                const cfg = PRIORIDADES[p]
+                                return cfg ? (
+                                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
+                                    P{v}
+                                  </span>
+                                ) : null
+                              }}
+                            />
+                          )}
+                        </td>
+
+                        {/* Estado — solo clickeable si lote abierto */}
+                        <td className="px-3 py-2.5">
+                          {loteCerrado ? (
                             <span className={cn(
                               'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                               estadoCfg.bgColor, estadoCfg.textColor
                             )}>
                               {estadoCfg.label}
                             </span>
-                            <Pencil size={10} className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
-                          </div>
+                          ) : (
+                            <div
+                              className="group/edit flex items-center gap-1 cursor-pointer"
+                              onClick={(e) => { e.stopPropagation(); setCambioEstadoRow(row) }}
+                              title="Clic para cambiar estado"
+                            >
+                              <span className={cn(
+                                'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
+                                estadoCfg.bgColor, estadoCfg.textColor
+                              )}>
+                                {estadoCfg.label}
+                              </span>
+                              <Pencil size={10} className="shrink-0 text-slate-300 opacity-0 group-hover/edit:opacity-100 transition-opacity" />
+                            </div>
+                          )}
                         </td>
 
-                        {/* Origen — editable */}
+                        {/* Origen — editable si lote abierto */}
                         <td className="px-3 py-2.5">
-                          <CeldaEditable
-                            rowId={row.id}
-                            valor={(row as any).origen_requerimiento}
-                            opciones={OPCIONES_ORIGEN}
-                            onGuardar={(id, v) => guardarCampo(id, 'origen_requerimiento', v)}
-                            renderBadge={(v) => {
-                              const cfg = v ? ORIGENES_REQUERIMIENTO.find(o => o.value === v) : null
-                              return cfg ? (
-                                <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>
-                                  {cfg.label}
-                                </span>
-                              ) : null
-                            }}
-                          />
+                          {loteCerrado ? (() => {
+                            const cfg = (row as any).origen_requerimiento
+                              ? ORIGENES_REQUERIMIENTO.find(o => o.value === (row as any).origen_requerimiento)
+                              : null
+                            return cfg
+                              ? <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>{cfg.label}</span>
+                              : <span className="text-xs text-slate-300">—</span>
+                          })() : (
+                            <CeldaEditable
+                              rowId={row.id}
+                              valor={(row as any).origen_requerimiento}
+                              opciones={OPCIONES_ORIGEN}
+                              onGuardar={(id, v) => guardarCampo(id, 'origen_requerimiento', v)}
+                              renderBadge={(v) => {
+                                const cfg = v ? ORIGENES_REQUERIMIENTO.find(o => o.value === v) : null
+                                return cfg ? (
+                                  <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', cfg.color, cfg.iconColor)}>
+                                    {cfg.label}
+                                  </span>
+                                ) : null
+                              }}
+                            />
+                          )}
                         </td>
 
                         {/* Avance */}
