@@ -112,6 +112,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
           sort={sort}
           basePath="/admin/requerimientos"
           isAdmin
+          esAdminTIN={perfil?.rol === 'ADMIN_TIN'}
           perfilFiltro={perfilFiltro}
           lotes={lotes}
         />

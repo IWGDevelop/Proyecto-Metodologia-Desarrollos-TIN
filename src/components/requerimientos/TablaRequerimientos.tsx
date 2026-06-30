@@ -237,11 +237,12 @@ interface Props {
   sort: SortConfig
   basePath?: string
   isAdmin?: boolean
+  esAdminTIN?: boolean
   perfilFiltro?: PerfilFiltro | null
   lotes?: LoteConStats[]
 }
 
-export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false, perfilFiltro, lotes = [] }: Props) {
+export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/requerimientos', isAdmin = false, esAdminTIN = false, perfilFiltro, lotes = [] }: Props) {
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -352,8 +353,8 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                                         ((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
 
                     const loteRow = (row as any).lote_id ? loteMap[(row as any).lote_id] : undefined
-                    // Admin siempre puede editar aunque el lote esté cerrado
-                    const loteCerrado = loteRow?.cerrado === true && !isAdmin
+                    // ADMIN_TIN siempre puede editar aunque el lote esté cerrado
+                    const loteCerrado = loteRow?.cerrado === true && !esAdminTIN
 
                     const rankBadge = tieneImpacto
                       ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }
