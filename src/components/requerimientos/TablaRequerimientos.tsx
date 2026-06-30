@@ -352,7 +352,8 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                                         ((row as any).total_beneficios_cualitativos_anual ?? 0) > 0
 
                     const loteRow = (row as any).lote_id ? loteMap[(row as any).lote_id] : undefined
-                    const loteCerrado = loteRow?.cerrado === true
+                    // Admin siempre puede editar aunque el lote esté cerrado
+                    const loteCerrado = loteRow?.cerrado === true && !isAdmin
 
                     const rankBadge = tieneImpacto
                       ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }

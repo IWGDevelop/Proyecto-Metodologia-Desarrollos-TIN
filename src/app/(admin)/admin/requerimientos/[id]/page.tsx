@@ -52,9 +52,9 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const loteCerrado = lote?.cerrado === true
 
   const pv = (recurso: string) => isAdmin || permisos[recurso]?.puede_ver === true
-  // Si el lote está cerrado, nadie puede editar (ni el admin)
-  const pe = (recurso: string) => !loteCerrado && (isAdmin || permisos[recurso]?.puede_editar === true)
-  const pc = (recurso: string) => !loteCerrado && (isAdmin || permisos[recurso]?.puede_crear === true)
+  // Admin siempre puede editar; usuarios normales bloqueados si el lote está cerrado
+  const pe = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_editar === true)
+  const pc = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_crear === true)
 
   const tabsDef = [
     { value: 'informacion',    recurso: 'req:informacion' },
