@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
 import {
   ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO,
-  TIPOS_SOLICITUD, PRIORIDADES,
+  TIPOS_SOLICITUD, PRIORIDADES, getEstadoCfg,
 } from '@/lib/constants'
 import type { RowPresidencial } from '@/actions/reporte-presidencial'
 
@@ -178,16 +178,15 @@ const ALCANCE_COLOR: Record<string, { badge: string; bar: string }> = {
 }
 
 /* ── Barra de filtros ────────────────────────────────────────────────────── */
-function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase }: {
+function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, estadosDisponibles }: {
   filtros: Filtros
   onChange: (f: Filtros) => void
   totalFiltrado: number
   totalBase: number
+  estadosDisponibles: string[]
 }) {
   const activos = Object.values(filtros).filter(Boolean).length
   const limpiar = () => onChange(FILTROS_VACIOS)
-
-  const estados = Object.entries(ESTADOS).map(([k, v]) => ({ value: k, label: v.label }))
 
   return (
     <div className="rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
@@ -212,7 +211,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase }: {
 
         <div className="h-6 w-px bg-slate-200" />
 
-        {/* Estado */}
+        {/* Estado — dinámico con todos los estados existentes */}
         <select
           value={filtros.estado}
           onChange={e => onChange({ ...filtros, estado: e.target.value })}
@@ -222,7 +221,10 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase }: {
           )}
         >
           <option value="">Todos los estados</option>
-          {estados.map(e => <option key={e.value} value={e.value}>{e.label}</option>)}
+          {estadosDisponibles.map(k => {
+            const cfg = getEstadoCfg(k)
+            return <option key={k} value={k}>{cfg.label}</option>
+          })}
         </select>
 
         {/* Proceso */}
@@ -315,6 +317,15 @@ export default function ReportePresidencialPage() {
   const base  = useMemo(() => todos.filter(r => !r.es_borrador), [todos])
   const totalBorradores = todos.length - base.length
 
+  // Estados distintos presentes en los datos (incluye personalizados)
+  const estadosDisponibles = useMemo(() => {
+    const set = new Set<string>([
+      ...Object.keys(ESTADOS),
+      ...todos.map(r => r.estado).filter(Boolean) as string[],
+    ])
+    return Array.from(set).sort()
+  }, [todos])
+
   const activos = useMemo(() => {
     return base.filter(r => {
       if (filtros.alcance       && r.alcance           !== filtros.alcance)                    return false
@@ -389,6 +400,7 @@ export default function ReportePresidencialPage() {
         onChange={setFiltros}
         totalFiltrado={activos.length}
         totalBase={base.length}
+        estadosDisponibles={estadosDisponibles}
       />
 
       {activos.length === 0 ? (
