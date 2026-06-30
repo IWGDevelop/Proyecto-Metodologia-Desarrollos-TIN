@@ -16,6 +16,7 @@ import {
   Star,
   ShieldCheck,
   Monitor,
+  Layers,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -37,6 +38,7 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/reporte-presidencial', label: 'Rep. Presidencial', Icon: Star,             menuResource: 'menu:reporte-presidencial' },
   { href: '/admin/usuarios',             label: 'Usuarios',          Icon: Users,            menuResource: 'menu:usuarios' },
   { href: '/admin/sesiones',            label: 'Sesiones',          Icon: Monitor,          menuResource: 'menu:sesiones' },
+  { href: '/admin/lotes',              label: 'Lotes',             Icon: Layers,           menuResource: 'menu:lotes' },
   { href: '/admin/roles',               label: 'Roles y Permisos',  Icon: ShieldCheck,      menuResource: 'menu:roles' },
   { href: '/admin/configuracion',        label: 'Configuración',     Icon: Settings2,        menuResource: 'menu:configuracion' },
 ]

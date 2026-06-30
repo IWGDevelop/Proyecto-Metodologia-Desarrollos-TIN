@@ -3,7 +3,7 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, Lock } from 'lucide-react'
 import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
 import { formatFechaRelativa, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
@@ -33,7 +33,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const supabase = createAdminClient()
 
   const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin] = await Promise.all([
-    (supabase as any).from('requerimientos').select('*').eq('id', id).single(),
+    (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
     getTareas(id),
@@ -46,9 +46,15 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
   const isAdmin = perfilAdmin?.rol === 'ADMIN_TIN'
   const permisos = isAdmin ? {} : await getPermisosUsuario(perfilAdmin?.rol ?? 'USUARIO')
+
+  // Lote vinculado a este requerimiento
+  const lote = (req as any).lote as { id: string; numero: number; nombre: string; cerrado: boolean } | null
+  const loteCerrado = lote?.cerrado === true
+
   const pv = (recurso: string) => isAdmin || permisos[recurso]?.puede_ver === true
-  const pe = (recurso: string) => isAdmin || permisos[recurso]?.puede_editar === true
-  const pc = (recurso: string) => isAdmin || permisos[recurso]?.puede_crear === true
+  // Si el lote está cerrado, nadie puede editar (ni el admin)
+  const pe = (recurso: string) => !loteCerrado && (isAdmin || permisos[recurso]?.puede_editar === true)
+  const pc = (recurso: string) => !loteCerrado && (isAdmin || permisos[recurso]?.puede_crear === true)
 
   const tabsDef = [
     { value: 'informacion',    recurso: 'req:informacion' },
@@ -68,6 +74,24 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
   return (
     <div className="space-y-5 p-6">
+      {/* Banner lote cerrado */}
+      {lote && (
+        <div className={cn(
+          'rounded-xl border px-4 py-3 flex items-center gap-3 text-sm',
+          loteCerrado
+            ? 'border-slate-300 bg-slate-50 text-slate-600'
+            : 'border-blue-200 bg-blue-50 text-blue-700'
+        )}>
+          {loteCerrado ? <Lock size={14} className="shrink-0 text-slate-400" /> : null}
+          <span>
+            <span className="font-semibold">Lote {lote.numero} — {lote.nombre}</span>
+            {loteCerrado && (
+              <span className="ml-2 text-slate-500">· Este lote está cerrado. Los requerimientos no pueden ser modificados.</span>
+            )}
+          </span>
+        </div>
+      )}
+
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <Link href="/admin/requerimientos" className="mb-2 inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">

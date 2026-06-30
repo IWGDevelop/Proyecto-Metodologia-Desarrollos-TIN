@@ -1,3 +1,15 @@
+// ─── Lotes ───────────────────────────────────────────────────────────────────
+export interface Lote {
+  id: string
+  numero: number
+  nombre: string
+  descripcion: string | null
+  cerrado: boolean
+  activo: boolean
+  fecha_cierre: string | null
+  created_at: string
+}
+
 // ─── Auth / Perfiles ─────────────────────────────────────────────────────────
 export type RolUsuario = 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA'
 

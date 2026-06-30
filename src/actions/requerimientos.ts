@@ -54,7 +54,16 @@ export async function crearRequerimiento(
   data: Partial<Omit<Requerimiento, 'id' | 'created_at' | 'updated_at'>> & Record<string, unknown>
 ) {
   const supabase = createAdminClient()
-  const payload = { identificacion: data.nombre_desarrollo ?? '', ...data }
+
+  // Auto-asignar al lote activo
+  const { data: loteActivo } = await (supabase as any)
+    .from('lotes').select('id').eq('activo', true).single()
+
+  const payload = {
+    identificacion: data.nombre_desarrollo ?? '',
+    ...data,
+    ...(loteActivo ? { lote_id: loteActivo.id } : {}),
+  }
 
   const { data: result, error } = await insertConFallback(supabase, 'requerimientos', payload)
   if (error) throw new Error(`Error al crear requerimiento: ${error.message}`)
