@@ -15,9 +15,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLUCION } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLUCION, getEstadoCfg } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import type { Estado } from '@/lib/supabase/types'
 
 const ALCANCES = [
   { value: 'IWF', color: 'bg-blue-100 text-blue-700 border-blue-300' },
@@ -37,9 +36,14 @@ function useDebounce<T>(value: T, delay: number): T {
 interface Props {
   totalFiltrado: number
   total: number
+  estadosDisponibles?: string[]
 }
 
-export function FiltrosRequerimientos({ totalFiltrado, total }: Props) {
+export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles }: Props) {
+  // Combina estados de la BD con los hardcodeados para no perder ninguno
+  const todosLosEstados = estadosDisponibles && estadosDisponibles.length > 0
+    ? Array.from(new Set([...Object.keys(ESTADOS), ...estadosDisponibles])).sort()
+    : Object.keys(ESTADOS)
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -148,22 +152,25 @@ export function FiltrosRequerimientos({ totalFiltrado, total }: Props) {
             )}
             <ChevronDown size={12} />
           </PopoverTrigger>
-          <PopoverContent className="w-56 p-2" align="start">
+          <PopoverContent className="w-64 p-2 max-h-72 overflow-y-auto" align="start">
             <div className="space-y-1">
-              {(Object.entries(ESTADOS) as [Estado, typeof ESTADOS[Estado]][]).map(([key, cfg]) => (
-                <label
-                  key={key}
-                  className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50"
-                >
-                  <Checkbox
-                    checked={estadosActivos.includes(key)}
-                    onCheckedChange={() => toggleEstado(key)}
-                  />
-                  <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', cfg.bgColor, cfg.textColor)}>
-                    {cfg.label}
-                  </span>
-                </label>
-              ))}
+              {todosLosEstados.map((key) => {
+                const cfg = getEstadoCfg(key)
+                return (
+                  <label
+                    key={key}
+                    className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50"
+                  >
+                    <Checkbox
+                      checked={estadosActivos.includes(key)}
+                      onCheckedChange={() => toggleEstado(key)}
+                    />
+                    <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', cfg.bgColor, cfg.textColor)}>
+                      {cfg.label}
+                    </span>
+                  </label>
+                )
+              })}
             </div>
           </PopoverContent>
         </Popover>

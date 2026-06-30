@@ -8,6 +8,7 @@ import { ExportarExcel } from '@/components/requerimientos/ExportarExcel'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { getLotesConStats } from '@/actions/lotes'
+import { getEstadosDistintos } from '@/actions/requerimientos-admin'
 import type { FiltrosRequerimientos as FiltrosType, SortConfig } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 
@@ -74,9 +75,10 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
     direction: (params.dir === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc',
   }
   const page = Math.max(1, parseInt(params.page ?? '1'))
-  const [{ total, totalFiltrado }, lotes] = await Promise.all([
+  const [{ total, totalFiltrado }, lotes, estadosDisponibles] = await Promise.all([
     getTotales(filtros, perfilFiltro),
     getLotesConStats(),
+    getEstadosDistintos(),
   ])
 
   return (
@@ -102,7 +104,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
       </div>
 
       <Suspense>
-        <FiltrosRequerimientos total={total} totalFiltrado={totalFiltrado} />
+        <FiltrosRequerimientos total={total} totalFiltrado={totalFiltrado} estadosDisponibles={estadosDisponibles} />
       </Suspense>
 
       <Suspense fallback={<TablaRequerimientosSkeleton />}>

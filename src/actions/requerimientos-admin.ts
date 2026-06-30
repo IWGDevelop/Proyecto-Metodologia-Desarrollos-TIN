@@ -138,6 +138,19 @@ export async function fetchRequerimientosAdmin(
   }
 }
 
+export async function getEstadosDistintos(): Promise<string[]> {
+  try {
+    const supabase = createAdminClient()
+    const { data } = await (supabase as any)
+      .from('requerimientos')
+      .select('estado')
+    const set = new Set<string>((data ?? []).map((r: any) => r.estado).filter(Boolean))
+    return Array.from(set).sort()
+  } catch {
+    return []
+  }
+}
+
 export interface PrioridadOcupada {
   prioridad: number
   sub_prioridad: number | null
