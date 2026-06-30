@@ -51,7 +51,11 @@ async function fetchRequerimientos(
       `identificacion.ilike.%${q}%,nombre_desarrollo.ilike.%${q}%,descripcion_situacion_actual.ilike.%${q}%`
     )
   }
-  if (filtros.estados?.length)       query = query.in('estado', filtros.estados)
+  if (filtros.estados?.length) {
+    query = query.in('estado', filtros.estados)
+  } else {
+    query = query.neq('estado', 'DESISTIDO')
+  }
   if (filtros.alcance)               query = query.eq('alcance', filtros.alcance)
   if (filtros.prioridad)             query = query.eq('prioridad', parseInt(filtros.prioridad))
   if (filtros.proceso_interno)       query = query.eq('proceso_interno', filtros.proceso_interno)

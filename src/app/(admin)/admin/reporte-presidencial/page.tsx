@@ -36,10 +36,22 @@ function computar(activos: RowPresidencial[]) {
   const impactoTotalReal = activos.reduce((s, r) => s + (r.impacto_economico_total_anual_real ?? 0), 0)
   const sinCuantificar = activos.filter(r => !r.impacto_economico_total_anual || r.impacto_economico_total_anual === 0).length
 
-  // Por estado
+  // Por estado — orden del flujo de trabajo
+  const ESTADO_ORDER = [
+    'SIN_GESTION', 'ANALISIS', 'EN_DEFINICION_USUARIO', 'EN_DESARROLLO',
+    'PRUEBAS_USUARIO', 'EN_ESPERA_POR_TERCEROS', 'ENTREGADO', 'DESISTIDO',
+  ]
   const estadoMap = new Map<string, number>()
   activos.forEach(r => { const k = r.estado ?? 'SIN_GESTION'; estadoMap.set(k, (estadoMap.get(k) ?? 0) + 1) })
-  const porEstado = Array.from(estadoMap.entries()).sort((a, b) => b[1] - a[1])
+  const porEstado = Array.from(estadoMap.entries())
+    .sort((a, b) => {
+      const ia = ESTADO_ORDER.indexOf(a[0])
+      const ib = ESTADO_ORDER.indexOf(b[0])
+      if (ia === -1 && ib === -1) return a[0].localeCompare(b[0])
+      if (ia === -1) return 1
+      if (ib === -1) return -1
+      return ia - ib
+    })
     .map(([estado, cantidad]) => ({
       estado, cantidad,
       label: ESTADOS[estado]?.label ?? estado.replace(/_/g, ' '),
