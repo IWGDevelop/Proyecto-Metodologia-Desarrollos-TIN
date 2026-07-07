@@ -109,6 +109,8 @@ function computar(activos: RowPresidencial[]) {
   })
 
   // Entregas por mes (solo ENTREGADO con fecha_real_entrega)
+  // Entregas por mes — incluye TODOS los ENTREGADO; sin fecha van a 'sin-fecha'
+  const SIN_FECHA_KEY = 'sin-fecha'
   const entregasMesMap = new Map<string, {
     rows: RowPresidencial[]
     impactoReal: number
@@ -116,9 +118,9 @@ function computar(activos: RowPresidencial[]) {
     horasAhorradasMes: number
   }>()
   activos
-    .filter(r => r.estado === 'ENTREGADO' && r.fecha_real_entrega)
+    .filter(r => r.estado === 'ENTREGADO')
     .forEach(r => {
-      const mes = r.fecha_real_entrega!.substring(0, 7)
+      const mes = r.fecha_real_entrega ? r.fecha_real_entrega.substring(0, 7) : SIN_FECHA_KEY
       const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horasAhorradasMes: 0 }
       entregasMesMap.set(mes, {
         rows: [...prev.rows, r],
@@ -128,10 +130,18 @@ function computar(activos: RowPresidencial[]) {
       })
     })
   const porMesEntrega = Array.from(entregasMesMap.entries())
-    .sort((a, b) => a[0].localeCompare(b[0]))
+    .sort((a, b) => {
+      // 'sin-fecha' siempre al final
+      if (a[0] === SIN_FECHA_KEY) return 1
+      if (b[0] === SIN_FECHA_KEY) return -1
+      return a[0].localeCompare(b[0])
+    })
     .map(([mes, d]) => ({
       mes,
-      label: new Date(`${mes}-15`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
+      label: mes === SIN_FECHA_KEY
+        ? 'Sin fecha registrada'
+        : new Date(`${mes}-15`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
+      sinFecha: mes === SIN_FECHA_KEY,
       cantidad: d.rows.length,
       rows: d.rows.sort((a, b) => (a.nombre_desarrollo ?? '').localeCompare(b.nombre_desarrollo ?? '')),
       impactoReal:       d.impactoReal,
@@ -720,7 +730,7 @@ export default function ReportePresidencialPage() {
                       valor={m.cantidad}
                       max={maxMesEntrega}
                       display={`${m.cantidad} entrega${m.cantidad !== 1 ? 's' : ''}`}
-                      colorBar="bg-emerald-500"
+                      colorBar={m.sinFecha ? 'bg-amber-400' : 'bg-emerald-500'}
                     />
                   ))}
                 </div>
@@ -730,18 +740,25 @@ export default function ReportePresidencialPage() {
                   {r.porMesEntrega.map(m => {
                     const isOpen = expandedMeses.has(m.mes)
                     const impactoMes = m.impactoReal || m.impactoEstimado
+                    const accentBg  = m.sinFecha ? 'bg-amber-100'  : 'bg-emerald-100'
+                    const accentText = m.sinFecha ? 'text-amber-700' : 'text-emerald-700'
                     return (
-                      <div key={m.mes} className="overflow-hidden rounded-xl border border-slate-200">
+                      <div key={m.mes} className={cn('overflow-hidden rounded-xl border', m.sinFecha ? 'border-amber-200' : 'border-slate-200')}>
                         {/* Cabecera del mes */}
                         <button
                           onClick={() => toggleMes(m.mes)}
                           className="flex w-full items-center justify-between gap-3 bg-white px-4 py-3 text-left hover:bg-slate-50 transition-colors"
                         >
                           <div className="flex items-center gap-3">
-                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-700">
+                            <span className={cn('inline-flex items-center justify-center rounded-full px-3 py-0.5 text-xs font-extrabold', accentBg, accentText)}>
                               {m.cantidad}
                             </span>
                             <span className="text-sm font-semibold text-slate-700 capitalize">{m.label}</span>
+                            {m.sinFecha && (
+                              <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-600">
+                                Registrar fecha
+                              </span>
+                            )}
                           </div>
                           <div className="flex items-center gap-4">
                             {impactoMes > 0 && (
