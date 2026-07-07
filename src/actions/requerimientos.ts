@@ -3,6 +3,22 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
+import { sendEmail } from '@/lib/email'
+import { templateCambioEstado } from '@/lib/email-templates'
+
+const ESTADO_LABEL: Record<string, string> = {
+  SIN_GESTION:              'Sin gestión',
+  ANALISIS:                 'En estudio y evaluación técnica',
+  EN_DEFINICION_USUARIO:    'En definición de usuario',
+  EN_DESARROLLO:            'En desarrollo',
+  PRUEBAS_USUARIO:          'Pruebas usuario',
+  EN_ESPERA_POR_TERCEROS:   'En espera por terceros',
+  ENTREGADO:                'Entregado',
+  CERRADO:                  'Cerrado',
+  DESISTIDO:                'Desistido',
+}
+
+const TEST_EMAIL = 'c.tin@iwglogistics.com'
 
 // Campos que pueden no existir si la migración no se ha ejecutado aún
 const CAMPOS_MIGRACION = [
@@ -123,6 +139,14 @@ export async function cambiarEstado(
   fechaTransicion?: string  // YYYY-MM-DD; reemplaza la fecha auto-asignada del estado destino
 ) {
   const supabase = createAdminClient()
+
+  // Obtener datos del requerimiento antes del cambio
+  const { data: req } = await (supabase as any)
+    .from('requerimientos')
+    .select('nombre_desarrollo, identificacion, estado')
+    .eq('id', id)
+    .single()
+
   const updates: Record<string, unknown> = { estado }
 
   const hoy = new Date().toISOString().split('T')[0]
@@ -150,6 +174,21 @@ export async function cambiarEstado(
   revalidatePath(`/requerimientos/${id}`)
   revalidatePath('/kanban')
   revalidatePath('/dashboard')
+
+  // Enviar correo de notificación (sin bloquear si falla)
+  if (req) {
+    sendEmail({
+      to: TEST_EMAIL,
+      subject: `[${req.identificacion}] Cambio de estado: ${ESTADO_LABEL[estado] ?? estado}`,
+      html: templateCambioEstado({
+        nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+        identificacion:   req.identificacion ?? '',
+        estadoAnterior:   ESTADO_LABEL[req.estado] ?? req.estado ?? '—',
+        estadoNuevo:      ESTADO_LABEL[estado] ?? estado,
+        observacion:      observacion?.trim(),
+      }),
+    }).catch(err => console.error('[email] Error al enviar notificación de estado:', err))
+  }
 }
 
 export async function registrarFechaEntrega(id: string, fecha: string) {
