@@ -37,6 +37,10 @@ export function CambiarEstadoBtn({
   const [observacion, setObservacion] = useState('')
   const [isPending, startT] = useTransition()
 
+  // Fecha de entrega (solo para ENTREGADO)
+  const hoyISO = () => new Date().toISOString().split('T')[0]
+  const [fechaEntregado, setFechaEntregado] = useState(hoyISO)
+
   // Impacto real quick-fill
   const [showImpacto, setShowImpacto] = useState(false)
   const [horasMes, setHorasMes]       = useState<number>(horasEstimadas ?? 0)
@@ -58,6 +62,7 @@ export function CambiarEstadoBtn({
     setShowImpacto(false)
     setHorasMes(horasEstimadas ?? 0)
     setValorHora(valorHoraEstimado ?? 0)
+    setFechaEntregado(hoyISO())
     setOpen(true)
   }
 
@@ -70,7 +75,10 @@ export function CambiarEstadoBtn({
 
     startT(async () => {
       try {
-        await cambiarEstado(requerimientoId, estadoDestino.nombre, observacion || undefined)
+        await cambiarEstado(
+          requerimientoId, estadoDestino.nombre, observacion || undefined,
+          estadoDestino.nombre === 'ENTREGADO' ? fechaEntregado : undefined
+        )
 
         if (ESTADOS_FINALIZADOS.includes(estadoDestino.nombre) && showImpacto && horasMes > 0) {
           const ahorroMensual = Math.round(horasMes * valorHora)
@@ -161,6 +169,23 @@ export function CambiarEstadoBtn({
                   )
                 })()}
               </div>
+
+              {/* Fecha de entrega */}
+              {estadoDestino.nombre === 'ENTREGADO' && (
+                <div className="space-y-1.5">
+                  <Label className="text-sm">
+                    Fecha de entrega <span className="text-red-500">*</span>
+                  </Label>
+                  <input
+                    type="date"
+                    value={fechaEntregado}
+                    onChange={e => setFechaEntregado(e.target.value)}
+                    max={hoyISO()}
+                    className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400"
+                  />
+                  <p className="text-[11px] text-slate-400">Se usa para el informe de entregas por mes</p>
+                </div>
+              )}
 
               {/* Observación */}
               <div className="space-y-1.5">

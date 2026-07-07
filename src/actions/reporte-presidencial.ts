@@ -95,6 +95,7 @@ export interface RowPresidencial {
   impacto_economico_total_anual_real: number | null
   ahorro_anual_cop: number | null
   total_beneficios_cualitativos_anual: number | null
+  fecha_real_entrega: string | null
 }
 
 export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
@@ -108,7 +109,8 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
       horas_estimadas_desarrollo,
       impacto_economico_total_anual,
       impacto_economico_total_anual_real,
-      ahorro_anual_cop, total_beneficios_cualitativos_anual
+      ahorro_anual_cop, total_beneficios_cualitativos_anual,
+      fecha_real_entrega
     `)
   return (data ?? []) as RowPresidencial[]
 }

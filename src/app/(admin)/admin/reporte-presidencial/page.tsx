@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, Clock, AlertCircle, BarChart3,
   Building2, Layers, MapPin, Target, Tag, ShieldAlert, X,
-  RefreshCw,
+  RefreshCw, CalendarCheck,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
@@ -108,6 +108,22 @@ function computar(activos: RowPresidencial[]) {
     return { prioridad: p, label: cfg.label, cantidad: prioridadMap.get(p) ?? 0, porcentaje: total > 0 ? Math.round(((prioridadMap.get(p) ?? 0) / total) * 100) : 0, color: cfg.color, bgColor: cfg.bgColor, textColor: cfg.textColor }
   })
 
+  // Entregas por mes (solo ENTREGADO con fecha_real_entrega)
+  const entregasMesMap = new Map<string, number>()
+  activos
+    .filter(r => r.estado === 'ENTREGADO' && r.fecha_real_entrega)
+    .forEach(r => {
+      const mes = r.fecha_real_entrega!.substring(0, 7) // YYYY-MM
+      entregasMesMap.set(mes, (entregasMesMap.get(mes) ?? 0) + 1)
+    })
+  const porMesEntrega = Array.from(entregasMesMap.entries())
+    .sort((a, b) => a[0].localeCompare(b[0]))
+    .map(([mes, cantidad]) => ({
+      mes,
+      label: new Date(`${mes}-15`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
+      cantidad,
+    }))
+
   // Top impacto
   const topImpacto = activos
     .filter(r => (r.impacto_economico_total_anual ?? 0) > 0)
@@ -115,7 +131,7 @@ function computar(activos: RowPresidencial[]) {
     .slice(0, 10)
     .map(r => ({ id: r.id, nombre: r.nombre_desarrollo ?? r.identificacion ?? '—', impacto: r.impacto_economico_total_anual ?? 0, proceso: r.proceso_interno ? procesoLabel(r.proceso_interno) : null, alcance: r.alcance ?? null }))
 
-  return { total, totalHoras, impactoTotal, impactoTotalReal, sinCuantificar, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto }
+  return { total, totalHoras, impactoTotal, impactoTotalReal, sinCuantificar, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto, porMesEntrega }
 }
 
 /* ── Filtros state ────────────────────────────────────────────────────────── */
@@ -352,12 +368,13 @@ export default function ReportePresidencialPage() {
 
   const r = useMemo(() => computar(activos), [activos])
 
-  const maxEstado         = Math.max(...r.porEstado.map(e => e.cantidad),  1)
-  const maxProceso        = Math.max(...r.porProceso.map(p => p.cantidad), 1)
-  const maxImpactoProceso = Math.max(...r.porProceso.map(p => p.impactoAnual), 1)
-  const maxAlcance        = Math.max(...r.porAlcance.map(a => a.cantidad), 1)
-  const maxOrigen         = Math.max(...r.porOrigen.map(o => o.cantidad),  1)
-  const maxTopImpacto     = Math.max(...r.topImpacto.map(t => t.impacto),  1)
+  const maxEstado         = Math.max(...r.porEstado.map(e => e.cantidad),       1)
+  const maxProceso        = Math.max(...r.porProceso.map(p => p.cantidad),      1)
+  const maxImpactoProceso = Math.max(...r.porProceso.map(p => p.impactoAnual),  1)
+  const maxAlcance        = Math.max(...r.porAlcance.map(a => a.cantidad),      1)
+  const maxOrigen         = Math.max(...r.porOrigen.map(o => o.cantidad),       1)
+  const maxTopImpacto     = Math.max(...r.topImpacto.map(t => t.impacto),       1)
+  const maxMesEntrega     = Math.max(...r.porMesEntrega.map(m => m.cantidad),   1)
   const pctCuantificados  = r.total > 0 ? Math.round(((r.total - r.sinCuantificar) / r.total) * 100) : 0
 
   const generadoEn = dataUpdatedAt
@@ -642,6 +659,44 @@ export default function ReportePresidencialPage() {
               </div>
             </Seccion>
           )}
+
+          {/* ── Entregas por mes ── */}
+          <Seccion titulo="Entregas por mes" icono={CalendarCheck}>
+            {r.porMesEntrega.length === 0 ? (
+              <p className="text-xs italic text-slate-400">
+                Sin entregas registradas con fecha en los datos actuales
+              </p>
+            ) : (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  {r.porMesEntrega.map(m => (
+                    <BarraHorizontal
+                      key={m.mes}
+                      label={m.label.charAt(0).toUpperCase() + m.label.slice(1)}
+                      valor={m.cantidad}
+                      max={maxMesEntrega}
+                      display={`${m.cantidad} entrega${m.cantidad !== 1 ? 's' : ''}`}
+                      colorBar="bg-emerald-500"
+                    />
+                  ))}
+                </div>
+                <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+                  {r.porMesEntrega.map(m => (
+                    <div key={m.mes} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center min-w-[90px]">
+                      <p className="text-lg font-extrabold text-emerald-700">{m.cantidad}</p>
+                      <p className="text-[11px] text-emerald-600 capitalize">{m.label}</p>
+                    </div>
+                  ))}
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center min-w-[90px]">
+                    <p className="text-lg font-extrabold text-slate-700">
+                      {r.porMesEntrega.reduce((s, m) => s + m.cantidad, 0)}
+                    </p>
+                    <p className="text-[11px] text-slate-500">Total entregados</p>
+                  </div>
+                </div>
+              </div>
+            )}
+          </Seccion>
 
           {/* ── Alerta sin cuantificar ── */}
           {r.sinCuantificar > 0 && (

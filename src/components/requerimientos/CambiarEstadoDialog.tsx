@@ -16,7 +16,10 @@ import { ESTADOS, getEstadoCfg } from '@/lib/constants'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
+import { Input } from '@/components/ui/input'
 import type { Estado } from '@/lib/supabase/types'
+
+const hoyISO = () => new Date().toISOString().split('T')[0]
 
 interface Props {
   open: boolean
@@ -31,6 +34,7 @@ export function CambiarEstadoDialog({
 }: Props) {
   const [nuevoEstado, setNuevoEstado] = useState<Estado>(estadoActual)
   const [observacion, setObservacion] = useState('')
+  const [fechaEntregado, setFechaEntregado] = useState(hoyISO)
   const [isPending, startTransition] = useTransition()
 
   const handleSubmit = () => {
@@ -40,10 +44,14 @@ export function CambiarEstadoDialog({
     }
     startTransition(async () => {
       try {
-        await cambiarEstado(requerimientoId, nuevoEstado, observacion)
+        await cambiarEstado(
+          requerimientoId, nuevoEstado, observacion,
+          nuevoEstado === 'ENTREGADO' ? fechaEntregado : undefined
+        )
         toast.success(`Estado cambiado a "${getEstadoCfg(nuevoEstado).label}"`)
         onOpenChange(false)
         setObservacion('')
+        setFechaEntregado(hoyISO())
         onSuccess?.()
       } catch (err) {
         toast.error('Error al cambiar estado')
@@ -87,6 +95,23 @@ export function CambiarEstadoDialog({
               </SelectContent>
             </Select>
           </div>
+
+          {nuevoEstado === 'ENTREGADO' && (
+            <div className="space-y-1.5">
+              <Label htmlFor="fecha-entregado">
+                Fecha de entrega <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="fecha-entregado"
+                type="date"
+                value={fechaEntregado}
+                onChange={e => setFechaEntregado(e.target.value)}
+                max={hoyISO()}
+                className="text-sm"
+              />
+              <p className="text-[11px] text-slate-400">Se usa para el informe de entregas por mes</p>
+            </div>
+          )}
 
           {nuevoEstado === 'STAND_BY' && (
             <div className="space-y-1.5">

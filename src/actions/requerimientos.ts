@@ -119,7 +119,8 @@ export async function guardarBorrador(
 export async function cambiarEstado(
   id: string,
   estado: string,
-  observacion?: string
+  observacion?: string,
+  fechaEntregado?: string  // YYYY-MM-DD; si se omite se usa la fecha de hoy
 ) {
   const supabase = createAdminClient()
   const updates: Record<string, unknown> = { estado }
@@ -127,7 +128,7 @@ export async function cambiarEstado(
   const hoy = new Date().toISOString().split('T')[0]
   if (estado === 'ENTREGADO' || estado === 'CERRADO') updates.porcentaje_avance = 100
   if (estado === 'EN_DESARROLLO') updates.fecha_inicio_desarrollo = hoy
-  if (estado === 'ENTREGADO') updates.fecha_real_entrega = hoy
+  if (estado === 'ENTREGADO') updates.fecha_real_entrega = fechaEntregado ?? hoy
   if (estado === 'CERRADO') updates.fecha_cierre = hoy
 
   const { error } = await (supabase as any).from('requerimientos').update(updates).eq('id', id)
