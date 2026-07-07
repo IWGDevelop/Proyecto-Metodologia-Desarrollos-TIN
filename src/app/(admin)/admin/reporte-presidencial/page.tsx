@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, Clock, AlertCircle, BarChart3,
   Building2, Layers, MapPin, Target, Tag, ShieldAlert, X,
-  RefreshCw, CalendarCheck,
+  RefreshCw, CalendarCheck, ChevronDown,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
@@ -109,19 +109,34 @@ function computar(activos: RowPresidencial[]) {
   })
 
   // Entregas por mes (solo ENTREGADO con fecha_real_entrega)
-  const entregasMesMap = new Map<string, number>()
+  const entregasMesMap = new Map<string, {
+    rows: RowPresidencial[]
+    impactoReal: number
+    impactoEstimado: number
+    horas: number
+  }>()
   activos
     .filter(r => r.estado === 'ENTREGADO' && r.fecha_real_entrega)
     .forEach(r => {
-      const mes = r.fecha_real_entrega!.substring(0, 7) // YYYY-MM
-      entregasMesMap.set(mes, (entregasMesMap.get(mes) ?? 0) + 1)
+      const mes = r.fecha_real_entrega!.substring(0, 7)
+      const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horas: 0 }
+      entregasMesMap.set(mes, {
+        rows: [...prev.rows, r],
+        impactoReal:    prev.impactoReal    + (r.impacto_economico_total_anual_real ?? 0),
+        impactoEstimado: prev.impactoEstimado + (r.impacto_economico_total_anual ?? 0),
+        horas:          prev.horas          + (r.horas_estimadas_desarrollo ?? 0),
+      })
     })
   const porMesEntrega = Array.from(entregasMesMap.entries())
     .sort((a, b) => a[0].localeCompare(b[0]))
-    .map(([mes, cantidad]) => ({
+    .map(([mes, d]) => ({
       mes,
       label: new Date(`${mes}-15`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
-      cantidad,
+      cantidad: d.rows.length,
+      rows: d.rows.sort((a, b) => (a.nombre_desarrollo ?? '').localeCompare(b.nombre_desarrollo ?? '')),
+      impactoReal:     d.impactoReal,
+      impactoEstimado: d.impactoEstimado,
+      horas:           d.horas,
     }))
 
   // Top impacto
@@ -335,6 +350,12 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
 /* ── Página principal ────────────────────────────────────────────────────── */
 export default function ReportePresidencialPage() {
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)
+  const [expandedMeses, setExpandedMeses] = useState<Set<string>>(new Set())
+  const toggleMes = (mes: string) => setExpandedMeses(prev => {
+    const next = new Set(prev)
+    next.has(mes) ? next.delete(mes) : next.add(mes)
+    return next
+  })
 
   const { data: todos = [], isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ['datos-presidencial'],
@@ -668,7 +689,30 @@ export default function ReportePresidencialPage() {
               </p>
             ) : (
               <div className="space-y-4">
-                <div className="space-y-3">
+                {/* Resumen global */}
+                <div className="grid grid-cols-3 gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-3">
+                  <div className="text-center">
+                    <p className="text-2xl font-extrabold text-emerald-700">
+                      {r.porMesEntrega.reduce((s, m) => s + m.cantidad, 0)}
+                    </p>
+                    <p className="text-[11px] text-emerald-600">Total entregados</p>
+                  </div>
+                  <div className="text-center border-x border-emerald-200">
+                    <p className="text-2xl font-extrabold text-emerald-700">
+                      {r.porMesEntrega.length}
+                    </p>
+                    <p className="text-[11px] text-emerald-600">Meses con entregas</p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-lg font-extrabold text-emerald-700">
+                      {cop(r.porMesEntrega.reduce((s, m) => s + (m.impactoReal || m.impactoEstimado), 0))}
+                    </p>
+                    <p className="text-[11px] text-emerald-600">Impacto total / año</p>
+                  </div>
+                </div>
+
+                {/* Barra resumen */}
+                <div className="space-y-2">
                   {r.porMesEntrega.map(m => (
                     <BarraHorizontal
                       key={m.mes}
@@ -680,19 +724,114 @@ export default function ReportePresidencialPage() {
                     />
                   ))}
                 </div>
-                <div className="flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-                  {r.porMesEntrega.map(m => (
-                    <div key={m.mes} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-center min-w-[90px]">
-                      <p className="text-lg font-extrabold text-emerald-700">{m.cantidad}</p>
-                      <p className="text-[11px] text-emerald-600 capitalize">{m.label}</p>
-                    </div>
-                  ))}
-                  <div className="rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 text-center min-w-[90px]">
-                    <p className="text-lg font-extrabold text-slate-700">
-                      {r.porMesEntrega.reduce((s, m) => s + m.cantidad, 0)}
-                    </p>
-                    <p className="text-[11px] text-slate-500">Total entregados</p>
-                  </div>
+
+                {/* Acordeón por mes */}
+                <div className="space-y-2 border-t border-slate-100 pt-3">
+                  {r.porMesEntrega.map(m => {
+                    const isOpen = expandedMeses.has(m.mes)
+                    const impactoMes = m.impactoReal || m.impactoEstimado
+                    return (
+                      <div key={m.mes} className="overflow-hidden rounded-xl border border-slate-200">
+                        {/* Cabecera del mes */}
+                        <button
+                          onClick={() => toggleMes(m.mes)}
+                          className="flex w-full items-center justify-between gap-3 bg-white px-4 py-3 text-left hover:bg-slate-50 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <span className="inline-flex items-center justify-center rounded-full bg-emerald-100 px-3 py-0.5 text-xs font-extrabold text-emerald-700">
+                              {m.cantidad}
+                            </span>
+                            <span className="text-sm font-semibold text-slate-700 capitalize">{m.label}</span>
+                          </div>
+                          <div className="flex items-center gap-4">
+                            {impactoMes > 0 && (
+                              <span className="text-xs font-bold text-emerald-600">{cop(impactoMes)} / año</span>
+                            )}
+                            {m.horas > 0 && (
+                              <span className="text-xs text-slate-400">{m.horas.toLocaleString('es-CO')} h</span>
+                            )}
+                            <ChevronDown
+                              size={15}
+                              className={cn('text-slate-400 transition-transform', isOpen && 'rotate-180')}
+                            />
+                          </div>
+                        </button>
+
+                        {/* Detalle expandido */}
+                        {isOpen && (
+                          <div className="border-t border-slate-100 bg-slate-50">
+                            {/* Consolidado del mes */}
+                            <div className="grid grid-cols-3 gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-2.5">
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Entregas</p>
+                                <p className="text-sm font-bold text-slate-700">{m.cantidad}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Impacto / año</p>
+                                <p className="text-sm font-bold text-emerald-700">
+                                  {impactoMes > 0 ? cop(impactoMes) : '—'}
+                                  {m.impactoReal > 0 && (
+                                    <span className="ml-1 text-[10px] font-medium text-emerald-500">(real)</span>
+                                  )}
+                                </p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Horas estimadas</p>
+                                <p className="text-sm font-bold text-indigo-600">
+                                  {m.horas > 0 ? `${m.horas.toLocaleString('es-CO')} h` : '—'}
+                                </p>
+                              </div>
+                            </div>
+
+                            {/* Tabla de desarrollos */}
+                            <table className="w-full text-xs">
+                              <thead>
+                                <tr className="border-b border-slate-200 bg-slate-100">
+                                  <th className="py-2 pl-4 text-left font-semibold text-slate-400">Desarrollo</th>
+                                  <th className="py-2 px-2 text-left font-semibold text-slate-400">Proceso</th>
+                                  <th className="py-2 px-2 text-center font-semibold text-slate-400">Empresa</th>
+                                  <th className="py-2 pr-4 text-right font-semibold text-slate-400">Impacto / año</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-100">
+                                {m.rows.map(row => {
+                                  const impactoRow = row.impacto_economico_total_anual_real ?? row.impacto_economico_total_anual ?? 0
+                                  return (
+                                    <tr key={row.id} className="hover:bg-white transition-colors">
+                                      <td className="py-2.5 pl-4 pr-2">
+                                        <a
+                                          href={`/admin/requerimientos/${row.id}`}
+                                          className="font-medium text-slate-700 hover:text-blue-600 hover:underline"
+                                        >
+                                          {row.nombre_desarrollo ?? row.identificacion ?? '—'}
+                                        </a>
+                                      </td>
+                                      <td className="px-2 py-2.5 text-slate-500">
+                                        {row.proceso_interno ? procesoLabel(row.proceso_interno) : '—'}
+                                      </td>
+                                      <td className="px-2 py-2.5 text-center">
+                                        {row.alcance ? (
+                                          <span className={cn(
+                                            'inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold',
+                                            ALCANCE_COLOR[row.alcance]?.badge ?? 'bg-slate-100 text-slate-600 border-slate-300'
+                                          )}>
+                                            {row.alcance}
+                                          </span>
+                                        ) : '—'}
+                                      </td>
+                                      <td className="py-2.5 pl-2 pr-4 text-right font-bold text-emerald-600">
+                                        {impactoRow > 0 ? cop(impactoRow) : <span className="text-slate-300 font-normal">Sin datos</span>}
+                                      </td>
+                                    </tr>
+                                  )
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })}
                 </div>
               </div>
             )}
