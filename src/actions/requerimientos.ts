@@ -120,16 +120,17 @@ export async function cambiarEstado(
   id: string,
   estado: string,
   observacion?: string,
-  fechaEntregado?: string  // YYYY-MM-DD; si se omite se usa la fecha de hoy
+  fechaTransicion?: string  // YYYY-MM-DD; reemplaza la fecha auto-asignada del estado destino
 ) {
   const supabase = createAdminClient()
   const updates: Record<string, unknown> = { estado }
 
   const hoy = new Date().toISOString().split('T')[0]
+  const fecha = fechaTransicion ?? hoy
   if (estado === 'ENTREGADO' || estado === 'CERRADO') updates.porcentaje_avance = 100
-  if (estado === 'EN_DESARROLLO') updates.fecha_inicio_desarrollo = hoy
-  if (estado === 'ENTREGADO') updates.fecha_real_entrega = fechaEntregado ?? hoy
-  if (estado === 'CERRADO') updates.fecha_cierre = hoy
+  if (estado === 'EN_DESARROLLO') updates.fecha_inicio_desarrollo = fecha
+  if (estado === 'ENTREGADO')     updates.fecha_real_entrega       = fecha
+  if (estado === 'CERRADO')       updates.fecha_cierre             = fecha
 
   const { error } = await (supabase as any).from('requerimientos').update(updates).eq('id', id)
   if (error) throw new Error(`Error al cambiar estado: ${error.message}`)

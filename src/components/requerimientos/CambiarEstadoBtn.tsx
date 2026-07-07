@@ -20,6 +20,12 @@ import type { EstadoKanban } from '@/lib/supabase/types'
 
 const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
 
+const FECHA_LABEL: Record<string, string> = {
+  EN_DESARROLLO: 'Fecha de inicio de desarrollo',
+  ENTREGADO:     'Fecha de entrega',
+  CERRADO:       'Fecha de cierre',
+}
+
 interface Props {
   requerimientoId: string
   estadoActual: string
@@ -37,9 +43,8 @@ export function CambiarEstadoBtn({
   const [observacion, setObservacion] = useState('')
   const [isPending, startT] = useTransition()
 
-  // Fecha de entrega (solo para ENTREGADO)
   const hoyISO = () => new Date().toISOString().split('T')[0]
-  const [fechaEntregado, setFechaEntregado] = useState(hoyISO)
+  const [fechaTransicion, setFechaTransicion] = useState(hoyISO)
 
   // Impacto real quick-fill
   const [showImpacto, setShowImpacto] = useState(false)
@@ -62,7 +67,7 @@ export function CambiarEstadoBtn({
     setShowImpacto(false)
     setHorasMes(horasEstimadas ?? 0)
     setValorHora(valorHoraEstimado ?? 0)
-    setFechaEntregado(hoyISO())
+    setFechaTransicion(hoyISO())
     setOpen(true)
   }
 
@@ -77,7 +82,7 @@ export function CambiarEstadoBtn({
       try {
         await cambiarEstado(
           requerimientoId, estadoDestino.nombre, observacion || undefined,
-          estadoDestino.nombre === 'ENTREGADO' ? fechaEntregado : undefined
+          estadoDestino.nombre in FECHA_LABEL ? fechaTransicion : undefined
         )
 
         if (ESTADOS_FINALIZADOS.includes(estadoDestino.nombre) && showImpacto && horasMes > 0) {
@@ -170,20 +175,19 @@ export function CambiarEstadoBtn({
                 })()}
               </div>
 
-              {/* Fecha de entrega */}
-              {estadoDestino.nombre === 'ENTREGADO' && (
+              {/* Fecha de transición */}
+              {estadoDestino.nombre in FECHA_LABEL && (
                 <div className="space-y-1.5">
                   <Label className="text-sm">
-                    Fecha de entrega <span className="text-red-500">*</span>
+                    {FECHA_LABEL[estadoDestino.nombre]} <span className="text-red-500">*</span>
                   </Label>
                   <input
                     type="date"
-                    value={fechaEntregado}
-                    onChange={e => setFechaEntregado(e.target.value)}
+                    value={fechaTransicion}
+                    onChange={e => setFechaTransicion(e.target.value)}
                     max={hoyISO()}
                     className="w-full rounded-md border border-slate-200 bg-white px-3 py-1.5 text-sm outline-none focus:border-blue-400"
                   />
-                  <p className="text-[11px] text-slate-400">Se usa para el informe de entregas por mes</p>
                 </div>
               )}
 

@@ -21,6 +21,12 @@ import type { Estado } from '@/lib/supabase/types'
 
 const hoyISO = () => new Date().toISOString().split('T')[0]
 
+const FECHA_LABEL: Record<string, string> = {
+  EN_DESARROLLO: 'Fecha de inicio de desarrollo',
+  ENTREGADO:     'Fecha de entrega',
+  CERRADO:       'Fecha de cierre',
+}
+
 interface Props {
   open: boolean
   onOpenChange: (open: boolean) => void
@@ -34,8 +40,10 @@ export function CambiarEstadoDialog({
 }: Props) {
   const [nuevoEstado, setNuevoEstado] = useState<Estado>(estadoActual)
   const [observacion, setObservacion] = useState('')
-  const [fechaEntregado, setFechaEntregado] = useState(hoyISO)
+  const [fechaTransicion, setFechaTransicion] = useState(hoyISO)
   const [isPending, startTransition] = useTransition()
+
+  const tieneFecha = nuevoEstado in FECHA_LABEL
 
   const handleSubmit = () => {
     if (nuevoEstado === estadoActual) {
@@ -46,12 +54,12 @@ export function CambiarEstadoDialog({
       try {
         await cambiarEstado(
           requerimientoId, nuevoEstado, observacion,
-          nuevoEstado === 'ENTREGADO' ? fechaEntregado : undefined
+          tieneFecha ? fechaTransicion : undefined
         )
         toast.success(`Estado cambiado a "${getEstadoCfg(nuevoEstado).label}"`)
         onOpenChange(false)
         setObservacion('')
-        setFechaEntregado(hoyISO())
+        setFechaTransicion(hoyISO())
         onSuccess?.()
       } catch (err) {
         toast.error('Error al cambiar estado')
@@ -96,20 +104,19 @@ export function CambiarEstadoDialog({
             </Select>
           </div>
 
-          {nuevoEstado === 'ENTREGADO' && (
+          {tieneFecha && (
             <div className="space-y-1.5">
-              <Label htmlFor="fecha-entregado">
-                Fecha de entrega <span className="text-red-500">*</span>
+              <Label htmlFor="fecha-transicion">
+                {FECHA_LABEL[nuevoEstado]} <span className="text-red-500">*</span>
               </Label>
               <Input
-                id="fecha-entregado"
+                id="fecha-transicion"
                 type="date"
-                value={fechaEntregado}
-                onChange={e => setFechaEntregado(e.target.value)}
+                value={fechaTransicion}
+                onChange={e => setFechaTransicion(e.target.value)}
                 max={hoyISO()}
                 className="text-sm"
               />
-              <p className="text-[11px] text-slate-400">Se usa para el informe de entregas por mes</p>
             </div>
           )}
 
