@@ -5,7 +5,7 @@ import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
 import { sendEmail } from '@/lib/email'
 import { templateCambioEstado } from '@/lib/email-templates'
-import { getEmailsActivos } from '@/actions/config-email'
+import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
 
 const ESTADO_LABEL: Record<string, string> = {
   SIN_GESTION:              'Sin gestión',
@@ -142,7 +142,7 @@ export async function cambiarEstado(
   // Obtener datos del requerimiento antes del cambio
   const { data: req } = await (supabase as any)
     .from('requerimientos')
-    .select('nombre_desarrollo, identificacion, estado')
+    .select('nombre_desarrollo, identificacion, estado, partes_interesadas')
     .eq('id', id)
     .single()
 
@@ -176,8 +176,17 @@ export async function cambiarEstado(
 
   // Enviar correo de notificación (sin bloquear si falla)
   if (req) {
-    getEmailsActivos().then(destinatarios => {
+    Promise.all([
+      getEmailsActivos(),
+      getConfigParam('notif_partes_interesadas'),
+    ]).then(([globales, notifPI]) => {
+      const partesInteresadas: string[] = notifPI === 'true'
+        ? (req.partes_interesadas ?? [])
+        : []
+
+      const destinatarios = [...new Set([...globales, ...partesInteresadas])]
       if (destinatarios.length === 0) return
+
       return sendEmail({
         to: destinatarios,
         subject: `[${req.identificacion}] Cambio de estado: ${ESTADO_LABEL[estado] ?? estado}`,

@@ -2,13 +2,15 @@
 
 import { useState, useTransition } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Mail, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Send } from 'lucide-react'
+import { Mail, Plus, Trash2, ToggleLeft, ToggleRight, Loader2, Send, Users } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   getDestinatariosEmail,
   agregarDestinatario,
   toggleDestinatario,
   eliminarDestinatario,
+  getConfigParam,
+  setConfigParam,
 } from '@/actions/config-email'
 import type { DestinatarioEmail } from '@/actions/config-email'
 
@@ -19,11 +21,19 @@ export function GestionNotificacionesEmail() {
   const [nombre, setNombre] = useState('')
   const [errorMsg, setErrorMsg] = useState('')
   const [loadingId, setLoadingId] = useState<string | null>(null)
+  const [togglingPI, setTogglingPI] = useState(false)
 
   const { data: destinatarios = [], isLoading } = useQuery<DestinatarioEmail[]>({
     queryKey: ['config-email'],
     queryFn: getDestinatariosEmail,
   })
+
+  const { data: notifPI = 'false' } = useQuery<string>({
+    queryKey: ['config-notif-pi'],
+    queryFn: () => getConfigParam('notif_partes_interesadas').then(v => v ?? 'false'),
+  })
+
+  const partesActivo = notifPI === 'true'
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['config-email'] })
 
@@ -63,6 +73,15 @@ export function GestionNotificacionesEmail() {
     })
   }
 
+  const handleTogglePI = () => {
+    setTogglingPI(true)
+    startTransition(async () => {
+      await setConfigParam('notif_partes_interesadas', partesActivo ? 'false' : 'true')
+      qc.invalidateQueries({ queryKey: ['config-notif-pi'] })
+      setTogglingPI(false)
+    })
+  }
+
   const activos = destinatarios.filter(d => d.activo).length
 
   return (
@@ -74,6 +93,37 @@ export function GestionNotificacionesEmail() {
           <strong>{activos}</strong> destinatario{activos !== 1 ? 's' : ''} activo{activos !== 1 ? 's' : ''} —
           recibirán una notificación cada vez que un desarrollo cambie de estado.
         </div>
+      </div>
+
+      {/* Toggle partes interesadas */}
+      <div className="flex items-center justify-between rounded-xl border border-slate-200 bg-white p-4">
+        <div className="flex items-center gap-3">
+          <div className={cn('rounded-lg p-2', partesActivo ? 'bg-emerald-50' : 'bg-slate-100')}>
+            <Users size={16} className={partesActivo ? 'text-emerald-600' : 'text-slate-400'} />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-slate-700">Notificar partes interesadas por requerimiento</p>
+            <p className="text-xs text-slate-400">
+              Cuando está activo, cada desarrollo también notifica a sus propias partes interesadas
+            </p>
+          </div>
+        </div>
+        <button
+          onClick={handleTogglePI}
+          disabled={togglingPI}
+          className="flex items-center gap-2 rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors disabled:opacity-50"
+        >
+          {togglingPI ? (
+            <Loader2 size={16} className="animate-spin text-slate-400" />
+          ) : partesActivo ? (
+            <ToggleRight size={20} className="text-emerald-500" />
+          ) : (
+            <ToggleLeft size={20} className="text-slate-400" />
+          )}
+          <span className={partesActivo ? 'text-emerald-600' : 'text-slate-500'}>
+            {partesActivo ? 'Activo' : 'Inactivo'}
+          </span>
+        </button>
       </div>
 
       {/* Tabla de destinatarios */}

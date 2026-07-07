@@ -58,3 +58,22 @@ export async function eliminarDestinatario(id: string) {
   if (error) throw new Error(error.message)
   revalidatePath('/admin/configuracion')
 }
+
+export async function getConfigParam(clave: string): Promise<string | null> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('configuracion_sistema')
+    .select('valor')
+    .eq('clave', clave)
+    .single()
+  return data?.valor ?? null
+}
+
+export async function setConfigParam(clave: string, valor: string) {
+  const supabase = createAdminClient()
+  const { error } = await (supabase as any)
+    .from('configuracion_sistema')
+    .upsert({ clave, valor }, { onConflict: 'clave' })
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/configuracion')
+}
