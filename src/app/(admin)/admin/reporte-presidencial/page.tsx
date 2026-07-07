@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useTransition, useCallback } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, Clock, AlertCircle, BarChart3,
@@ -9,6 +9,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
+import { registrarFechaEntrega } from '@/actions/requerimientos'
 import {
   ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO,
   TIPOS_SOLICITUD, PRIORIDADES, getEstadoCfg,
@@ -366,6 +367,28 @@ export default function ReportePresidencialPage() {
     next.has(mes) ? next.delete(mes) : next.add(mes)
     return next
   })
+
+  // Fechas pendientes: map de id → fecha seleccionada (para filas sin fecha)
+  const hoyISO = new Date().toISOString().split('T')[0]
+  const [fechasPendientes, setFechasPendientes] = useState<Record<string, string>>({})
+  const [savingId, setSavingId] = useState<string | null>(null)
+  const [, startSave] = useTransition()
+
+  const getFecha = useCallback((id: string) => fechasPendientes[id] ?? hoyISO, [fechasPendientes, hoyISO])
+  const setFecha = (id: string, f: string) => setFechasPendientes(prev => ({ ...prev, [id]: f }))
+
+  const guardarFecha = (id: string) => {
+    const fecha = getFecha(id)
+    setSavingId(id)
+    startSave(async () => {
+      try {
+        await registrarFechaEntrega(id, fecha)
+        await refetch()
+      } finally {
+        setSavingId(null)
+      }
+    })
+  }
 
   const { data: todos = [], isLoading, dataUpdatedAt, refetch, isFetching } = useQuery({
     queryKey: ['datos-presidencial'],
@@ -809,6 +832,7 @@ export default function ReportePresidencialPage() {
                                   <th className="py-2 px-2 text-center font-semibold text-slate-400">Empresa</th>
                                   <th className="py-2 px-2 text-right font-semibold text-slate-400">HH/mes</th>
                                   <th className="py-2 pr-4 text-right font-semibold text-slate-400">Impacto / año</th>
+                                  {m.sinFecha && <th className="py-2 pr-4 text-right font-semibold text-slate-400">Fecha entrega</th>}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
@@ -845,6 +869,26 @@ export default function ReportePresidencialPage() {
                                       <td className="py-2.5 pl-2 pr-4 text-right font-bold text-emerald-600">
                                         {impactoRow > 0 ? cop(impactoRow) : <span className="text-slate-300 font-normal">Sin datos</span>}
                                       </td>
+                                      {m.sinFecha && (
+                                        <td className="py-1.5 pr-4">
+                                          <div className="flex items-center justify-end gap-1.5">
+                                            <input
+                                              type="date"
+                                              value={getFecha(row.id)}
+                                              max={hoyISO}
+                                              onChange={e => setFecha(row.id, e.target.value)}
+                                              className="rounded border border-amber-300 bg-white px-2 py-1 text-xs outline-none focus:border-amber-500"
+                                            />
+                                            <button
+                                              onClick={() => guardarFecha(row.id)}
+                                              disabled={savingId === row.id}
+                                              className="rounded bg-amber-500 px-2 py-1 text-xs font-semibold text-white hover:bg-amber-600 disabled:opacity-50"
+                                            >
+                                              {savingId === row.id ? '...' : 'Guardar'}
+                                            </button>
+                                          </div>
+                                        </td>
+                                      )}
                                     </tr>
                                   )
                                 })}

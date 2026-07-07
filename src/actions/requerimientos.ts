@@ -152,6 +152,18 @@ export async function cambiarEstado(
   revalidatePath('/dashboard')
 }
 
+export async function registrarFechaEntrega(id: string, fecha: string) {
+  const supabase = createAdminClient()
+  const { error } = await (supabase as any)
+    .from('requerimientos')
+    .update({ fecha_real_entrega: fecha })
+    .eq('id', id)
+  if (error) throw new Error(error.message)
+  revalidatePath('/admin/requerimientos')
+  revalidatePath(`/admin/requerimientos/${id}`)
+  revalidatePath('/admin/reporte-presidencial')
+}
+
 export async function eliminarRequerimiento(id: string) {
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
