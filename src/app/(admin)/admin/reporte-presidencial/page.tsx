@@ -113,18 +113,18 @@ function computar(activos: RowPresidencial[]) {
     rows: RowPresidencial[]
     impactoReal: number
     impactoEstimado: number
-    horas: number
+    horasAhorradasMes: number
   }>()
   activos
     .filter(r => r.estado === 'ENTREGADO' && r.fecha_real_entrega)
     .forEach(r => {
       const mes = r.fecha_real_entrega!.substring(0, 7)
-      const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horas: 0 }
+      const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horasAhorradasMes: 0 }
       entregasMesMap.set(mes, {
         rows: [...prev.rows, r],
-        impactoReal:    prev.impactoReal    + (r.impacto_economico_total_anual_real ?? 0),
-        impactoEstimado: prev.impactoEstimado + (r.impacto_economico_total_anual ?? 0),
-        horas:          prev.horas          + (r.horas_estimadas_desarrollo ?? 0),
+        impactoReal:       prev.impactoReal       + (r.impacto_economico_total_anual_real ?? 0),
+        impactoEstimado:   prev.impactoEstimado   + (r.impacto_economico_total_anual ?? 0),
+        horasAhorradasMes: prev.horasAhorradasMes + (r.horas_ahorradas_mes ?? 0),
       })
     })
   const porMesEntrega = Array.from(entregasMesMap.entries())
@@ -134,9 +134,9 @@ function computar(activos: RowPresidencial[]) {
       label: new Date(`${mes}-15`).toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
       cantidad: d.rows.length,
       rows: d.rows.sort((a, b) => (a.nombre_desarrollo ?? '').localeCompare(b.nombre_desarrollo ?? '')),
-      impactoReal:     d.impactoReal,
-      impactoEstimado: d.impactoEstimado,
-      horas:           d.horas,
+      impactoReal:       d.impactoReal,
+      impactoEstimado:   d.impactoEstimado,
+      horasAhorradasMes: d.horasAhorradasMes,
     }))
 
   // Top impacto
@@ -747,8 +747,8 @@ export default function ReportePresidencialPage() {
                             {impactoMes > 0 && (
                               <span className="text-xs font-bold text-emerald-600">{cop(impactoMes)} / año</span>
                             )}
-                            {m.horas > 0 && (
-                              <span className="text-xs text-slate-400">{m.horas.toLocaleString('es-CO')} h</span>
+                            {m.horasAhorradasMes > 0 && (
+                              <span className="text-xs text-slate-400">{m.horasAhorradasMes.toLocaleString('es-CO')} HH/mes</span>
                             )}
                             <ChevronDown
                               size={15}
@@ -776,9 +776,9 @@ export default function ReportePresidencialPage() {
                                 </p>
                               </div>
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Horas estimadas</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">HH ahorradas / mes</p>
                                 <p className="text-sm font-bold text-indigo-600">
-                                  {m.horas > 0 ? `${m.horas.toLocaleString('es-CO')} h` : '—'}
+                                  {m.horasAhorradasMes > 0 ? `${m.horasAhorradasMes.toLocaleString('es-CO')} h` : '—'}
                                 </p>
                               </div>
                             </div>
@@ -790,6 +790,7 @@ export default function ReportePresidencialPage() {
                                   <th className="py-2 pl-4 text-left font-semibold text-slate-400">Desarrollo</th>
                                   <th className="py-2 px-2 text-left font-semibold text-slate-400">Proceso</th>
                                   <th className="py-2 px-2 text-center font-semibold text-slate-400">Empresa</th>
+                                  <th className="py-2 px-2 text-right font-semibold text-slate-400">HH/mes</th>
                                   <th className="py-2 pr-4 text-right font-semibold text-slate-400">Impacto / año</th>
                                 </tr>
                               </thead>
@@ -818,6 +819,11 @@ export default function ReportePresidencialPage() {
                                             {row.alcance}
                                           </span>
                                         ) : '—'}
+                                      </td>
+                                      <td className="px-2 py-2.5 text-right text-indigo-600 font-semibold">
+                                        {row.horas_ahorradas_mes != null && row.horas_ahorradas_mes > 0
+                                          ? `${row.horas_ahorradas_mes.toLocaleString('es-CO')} h`
+                                          : <span className="text-slate-300 font-normal">—</span>}
                                       </td>
                                       <td className="py-2.5 pl-2 pr-4 text-right font-bold text-emerald-600">
                                         {impactoRow > 0 ? cop(impactoRow) : <span className="text-slate-300 font-normal">Sin datos</span>}

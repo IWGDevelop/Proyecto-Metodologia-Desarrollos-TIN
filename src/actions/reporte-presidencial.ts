@@ -91,6 +91,7 @@ export interface RowPresidencial {
   origen_requerimiento: string | null
   tipo_solicitud: string | null
   horas_estimadas_desarrollo: number | null
+  horas_ahorradas_mes: number | null
   impacto_economico_total_anual: number | null
   impacto_economico_total_anual_real: number | null
   ahorro_anual_cop: number | null
@@ -106,7 +107,7 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
       id, identificacion, nombre_desarrollo,
       estado, es_borrador, alcance, prioridad,
       proceso_interno, origen_requerimiento, tipo_solicitud,
-      horas_estimadas_desarrollo,
+      horas_estimadas_desarrollo, horas_ahorradas_mes,
       impacto_economico_total_anual,
       impacto_economico_total_anual_real,
       ahorro_anual_cop, total_beneficios_cualitativos_anual,
