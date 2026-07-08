@@ -2,12 +2,10 @@
 
 import { useState, useTransition } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { createClient } from '@/lib/supabase/client'
-import { agregarComentario } from '@/actions/requerimientos'
+import { agregarComentario, getComentarios } from '@/actions/requerimientos'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Skeleton } from '@/components/ui/skeleton'
 import { formatFechaRelativa } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { Comentario } from '@/lib/supabase/types'
@@ -19,17 +17,9 @@ export function TabComentarios({ requerimientoId }: Props) {
   const [isPending, startTransition] = useTransition()
   const qc = useQueryClient()
 
-  const { data: comentarios, isLoading, isError, error } = useQuery<Comentario[]>({
+  const { data: comentarios = [], isLoading, isError, error } = useQuery<Comentario[]>({
     queryKey: ['comentarios', requerimientoId],
-    queryFn: async () => {
-      const supabase = createClient()
-      const { data, error } = await supabase
-        .from('comentarios').select('*')
-        .eq('requerimiento_id', requerimientoId)
-        .order('created_at', { ascending: true })
-      if (error) throw error
-      return (data ?? []) as Comentario[]
-    },
+    queryFn: () => getComentarios(requerimientoId),
     retry: 1,
   })
 
@@ -63,7 +53,7 @@ export function TabComentarios({ requerimientoId }: Props) {
       {/* Lista */}
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         {isLoading ? (
-          <div className="space-y-3">{Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+          <p className="py-8 text-center text-sm text-slate-400">Cargando comentarios...</p>
         ) : isError ? (
           <p className="py-8 text-center text-sm text-red-400">
             Error al cargar comentarios: {(error as Error)?.message ?? 'Error desconocido'}

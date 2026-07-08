@@ -235,6 +235,17 @@ export async function eliminarRequerimiento(id: string) {
   revalidatePath('/dashboard')
 }
 
+export async function getComentarios(requerimientoId: string) {
+  const supabase = createAdminClient()
+  const { data, error } = await (supabase as any)
+    .from('comentarios')
+    .select('*')
+    .eq('requerimiento_id', requerimientoId)
+    .order('created_at', { ascending: true })
+  if (error) throw new Error(error.message)
+  return data ?? []
+}
+
 export async function agregarComentario(
   requerimientoId: string, comentario: string
 ) {
