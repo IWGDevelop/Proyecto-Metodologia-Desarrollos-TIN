@@ -3,9 +3,7 @@ export function subjectReq(_identificacion: string, nombreDesarrollo: string) {
   return `TIN-FLOW | ${nombreDesarrollo}`
 }
 
-const LOGO_SVG = `<svg width="44" height="44" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="if-bg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d4ed8"></stop><stop offset="100%" stop-color="#0ea5e9"></stop></linearGradient><linearGradient id="if-stroke1" x1="4" y1="11" x2="32" y2="25" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"></stop><stop offset="100%" stop-color="#bae6fd" stop-opacity="0.9"></stop></linearGradient><linearGradient id="if-stroke2" x1="4" y1="25" x2="32" y2="11" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93c5fd" stop-opacity="0.7"></stop><stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"></stop></linearGradient></defs><rect width="36" height="36" rx="9" fill="url(#if-bg)"></rect><path d="M 5 13 C 10 13 10 18 18 18 C 26 18 26 23 31 23" stroke="url(#if-stroke1)" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 21 L 31 23 L 28 25" stroke="url(#if-stroke1)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><path d="M 5 23 C 10 23 10 18 18 18 C 26 18 26 13 31 13" stroke="url(#if-stroke2)" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 11 L 31 13 L 28 15" stroke="url(#if-stroke2)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><circle cx="18" cy="18" r="2.2" fill="white" opacity="0.95"></circle></svg>`
-
-const LOGO_URI = `data:image/svg+xml;base64,${Buffer.from(LOGO_SVG).toString('base64')}`
+const LOGO_INLINE = `<svg width="44" height="44" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><rect width="36" height="36" rx="9" fill="#1d4ed8"></rect><path d="M 5 13 C 10 13 10 18 18 18 C 26 18 26 23 31 23" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 21 L 31 23 L 28 25" stroke="#ffffff" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><path d="M 5 23 C 10 23 10 18 18 18 C 26 18 26 13 31 13" stroke="#93c5fd" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 11 L 31 13 L 28 15" stroke="#93c5fd" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><circle cx="18" cy="18" r="2.2" fill="white" opacity="0.95"></circle></svg>`
 
 /** Returns an HTML string wrapped in the shared email shell */
 function shell(content: string) {
@@ -20,9 +18,7 @@ function shell(content: string) {
         <tr><td style="background:#1e3a5f;padding:20px 32px">
           <table cellpadding="0" cellspacing="0">
             <tr>
-              <td style="padding-right:12px;vertical-align:middle">
-                <img src="${LOGO_URI}" width="44" height="44" alt="TIN-FLOW" style="display:block;border:0" />
-              </td>
+              <td style="padding-right:12px;vertical-align:middle">${LOGO_INLINE}</td>
               <td style="vertical-align:middle">
                 <p style="margin:0;color:#fff;font-size:18px;font-weight:bold;letter-spacing:-.01em">TIN-<span style="color:#38bdf8">FLOW</span></p>
                 <p style="margin:2px 0 0;color:#64748b;font-size:10px;letter-spacing:.08em;text-transform:uppercase">Interworld Group</p>
