@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
 import { sendEmail } from '@/lib/email'
@@ -226,9 +227,24 @@ export async function eliminarRequerimiento(id: string) {
 }
 
 export async function agregarComentario(
-  requerimientoId: string, comentario: string, usuario: string
+  requerimientoId: string, comentario: string
 ) {
+  const authClient = await createClient()
+  const { data: { user } } = await authClient.auth.getUser()
+
   const supabase = createAdminClient()
+
+  // Obtener nombre del usuario autenticado desde perfiles
+  let usuario = 'Usuario'
+  if (user?.id) {
+    const { data: perfil } = await (supabase as any)
+      .from('perfiles')
+      .select('nombre_completo')
+      .eq('id', user.id)
+      .single()
+    if (perfil?.nombre_completo) usuario = perfil.nombre_completo
+  }
+
   const { data, error } = await (supabase as any)
     .from('comentarios')
     .insert({ requerimiento_id: requerimientoId, comentario, usuario })

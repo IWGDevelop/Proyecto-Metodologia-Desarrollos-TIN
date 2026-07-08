@@ -6,7 +6,6 @@ import { createClient } from '@/lib/supabase/client'
 import { agregarComentario } from '@/actions/requerimientos'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFechaRelativa } from '@/lib/utils'
@@ -17,7 +16,6 @@ interface Props { requerimientoId: string }
 
 export function TabComentarios({ requerimientoId }: Props) {
   const [texto, setTexto] = useState('')
-  const [usuario, setUsuario] = useState('')
   const [isPending, startTransition] = useTransition()
   const qc = useQueryClient()
 
@@ -36,10 +34,10 @@ export function TabComentarios({ requerimientoId }: Props) {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!texto.trim() || !usuario.trim()) return
+    if (!texto.trim()) return
     startTransition(async () => {
       try {
-        await agregarComentario(requerimientoId, texto.trim(), usuario.trim())
+        await agregarComentario(requerimientoId, texto.trim())
         setTexto('')
         qc.invalidateQueries({ queryKey: ['comentarios', requerimientoId] })
         toast.success('Comentario agregado')
@@ -53,14 +51,10 @@ export function TabComentarios({ requerimientoId }: Props) {
       <form onSubmit={handleSubmit} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
         <p className="text-sm font-semibold text-slate-700">Agregar comentario</p>
         <div className="space-y-1.5">
-          <Label htmlFor="usuario-comentario" className="text-xs">Tu nombre</Label>
-          <Input id="usuario-comentario" placeholder="Nombre..." value={usuario} onChange={e => setUsuario(e.target.value)} />
-        </div>
-        <div className="space-y-1.5">
           <Label className="text-xs">Comentario</Label>
           <Textarea rows={3} placeholder="Escribe tu comentario..." value={texto} onChange={e => setTexto(e.target.value)} />
         </div>
-        <Button type="submit" size="sm" disabled={isPending || !texto.trim() || !usuario.trim()} className="bg-blue-600 hover:bg-blue-700">
+        <Button type="submit" size="sm" disabled={isPending || !texto.trim()} className="bg-blue-600 hover:bg-blue-700">
           {isPending ? 'Guardando...' : 'Agregar comentario'}
         </Button>
       </form>
