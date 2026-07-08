@@ -1,6 +1,6 @@
 /** Asunto estándar por requerimiento — todos los correos del mismo req usan este subject para que el cliente de correo los agrupe en un solo hilo */
-export function subjectReq(identificacion: string, nombreDesarrollo: string) {
-  return `TIN-FLOW | [${identificacion}] ${nombreDesarrollo}`
+export function subjectReq(_identificacion: string, nombreDesarrollo: string) {
+  return `TIN-FLOW | ${nombreDesarrollo}`
 }
 
 const LOGO_SVG = `<svg width="44" height="44" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="if-bg" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d4ed8"></stop><stop offset="100%" stop-color="#0ea5e9"></stop></linearGradient><linearGradient id="if-stroke1" x1="4" y1="11" x2="32" y2="25" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff" stop-opacity="1"></stop><stop offset="100%" stop-color="#bae6fd" stop-opacity="0.9"></stop></linearGradient><linearGradient id="if-stroke2" x1="4" y1="25" x2="32" y2="11" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93c5fd" stop-opacity="0.7"></stop><stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"></stop></linearGradient></defs><rect width="36" height="36" rx="9" fill="url(#if-bg)"></rect><path d="M 5 13 C 10 13 10 18 18 18 C 26 18 26 23 31 23" stroke="url(#if-stroke1)" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 21 L 31 23 L 28 25" stroke="url(#if-stroke1)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><path d="M 5 23 C 10 23 10 18 18 18 C 26 18 26 13 31 13" stroke="url(#if-stroke2)" stroke-width="2.8" stroke-linecap="round" fill="none"></path><path d="M 28 11 L 31 13 L 28 15" stroke="url(#if-stroke2)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"></path><circle cx="18" cy="18" r="2.2" fill="white" opacity="0.95"></circle></svg>`
@@ -60,7 +60,7 @@ export function templateCambioEstado({
 }) {
   return shell(`
     <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Actualización de estado</h2>
-    <p style="margin:0 0 24px;font-size:14px;color:#64748b">El requerimiento <strong>${identificacion}</strong> ha cambiado de estado.</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">El desarrollo <strong>${nombreDesarrollo}</strong> ha cambiado de estado.</p>
 
     <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px">
       <tr>
@@ -75,7 +75,7 @@ export function templateCambioEstado({
       </tr>
     </table>
 
-    <p style="margin:0 0 6px;font-size:14px;color:#1e293b"><strong>Desarrollo:</strong> ${nombreDesarrollo}</p>
+    <p style="margin:0 0 6px;font-size:14px;color:#1e293b"></p>
     ${observacion ? `<p style="margin:0 0 24px;font-size:14px;color:#475569"><strong>Observación:</strong> ${observacion}</p>` : '<p style="margin-bottom:24px"></p>'}
 
     ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
@@ -95,7 +95,7 @@ export function templateNuevoComentario({
 }) {
   return shell(`
     <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Nuevo comentario</h2>
-    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Se agregó un comentario en <strong>${identificacion} — ${nombreDesarrollo}</strong>.</p>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Se agregó un comentario en <strong>${nombreDesarrollo}</strong>.</p>
 
     <div style="background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
       <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8">${usuario}</p>
