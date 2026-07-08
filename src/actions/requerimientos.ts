@@ -8,6 +8,12 @@ import { sendEmail } from '@/lib/email'
 import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
 
+function getAppUrl(): string {
+  if (process.env.APP_URL) return process.env.APP_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return ''
+}
+
 const ESTADO_LABEL: Record<string, string> = {
   SIN_GESTION:              'Sin gestión',
   ANALISIS:                 'En estudio y evaluación técnica',
@@ -188,7 +194,7 @@ export async function cambiarEstado(
       const destinatarios = [...new Set([...globales, ...partesInteresadas])]
       if (destinatarios.length === 0) return
 
-      const appUrl = process.env.APP_URL ?? ''
+      const appUrl = getAppUrl()
       return sendEmail({
         to: destinatarios,
         subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
@@ -272,7 +278,7 @@ export async function agregarComentario(
         : []
       const destinatarios = [...new Set([...globales, ...partesInteresadas])]
       if (destinatarios.length === 0) return
-      const appUrl = process.env.APP_URL ?? ''
+      const appUrl = getAppUrl()
       return sendEmail({
         to: destinatarios,
         subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
