@@ -16,6 +16,11 @@ function getAuth() {
   })
 }
 
+/** Codifica el asunto en RFC 2047 Base64 para soportar tildes y caracteres especiales */
+function encodeSubject(subject: string): string {
+  return `=?UTF-8?B?${Buffer.from(subject, 'utf-8').toString('base64')}?=`
+}
+
 function buildRawMessage(to: string | string[], subject: string, html: string): string {
   const recipients = Array.isArray(to) ? to.join(', ') : to
   const from = process.env.GMAIL_FROM ?? 'no-reply@iwglogistics.com'
@@ -23,14 +28,15 @@ function buildRawMessage(to: string | string[], subject: string, html: string): 
   const message = [
     `From: IWG Logistics <${from}>`,
     `To: ${recipients}`,
-    `Subject: ${subject}`,
+    `Subject: ${encodeSubject(subject)}`,
     'MIME-Version: 1.0',
     'Content-Type: text/html; charset=utf-8',
+    'Content-Transfer-Encoding: 8bit',
     '',
     html,
   ].join('\r\n')
 
-  return Buffer.from(message).toString('base64url')
+  return Buffer.from(message, 'utf-8').toString('base64url')
 }
 
 export interface SendEmailOptions {
