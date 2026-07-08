@@ -19,17 +19,18 @@ export function TabComentarios({ requerimientoId }: Props) {
   const [isPending, startTransition] = useTransition()
   const qc = useQueryClient()
 
-  const { data: comentarios, isLoading } = useQuery<Comentario[]>({
+  const { data: comentarios, isLoading, isError, error } = useQuery<Comentario[]>({
     queryKey: ['comentarios', requerimientoId],
     queryFn: async () => {
       const supabase = createClient()
       const { data, error } = await supabase
         .from('comentarios').select('*')
         .eq('requerimiento_id', requerimientoId)
-        .order('created_at', { ascending: false })
+        .order('created_at', { ascending: true })
       if (error) throw error
       return (data ?? []) as Comentario[]
     },
+    retry: 1,
   })
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -63,17 +64,26 @@ export function TabComentarios({ requerimientoId }: Props) {
       <div className="rounded-xl border border-slate-200 bg-white p-4">
         {isLoading ? (
           <div className="space-y-3">{Array.from({length: 3}).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)}</div>
+        ) : isError ? (
+          <p className="py-8 text-center text-sm text-red-400">
+            Error al cargar comentarios: {(error as Error)?.message ?? 'Error desconocido'}
+          </p>
         ) : !comentarios?.length ? (
           <p className="py-8 text-center text-sm text-slate-400">Sin comentarios aún</p>
         ) : (
-          <ol className="divide-y divide-slate-50">
+          <ol className="divide-y divide-slate-100">
             {comentarios.map(c => (
-              <li key={c.id} className="py-3">
-                <div className="flex items-start justify-between">
-                  <p className="text-sm font-semibold text-slate-700">{c.usuario}</p>
-                  <span className="text-xs text-slate-400">{formatFechaRelativa(c.created_at)}</span>
+              <li key={c.id} className="py-3 first:pt-0 last:pb-0">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-slate-200 text-[11px] font-bold text-slate-600">
+                      {(c.usuario ?? '?').charAt(0).toUpperCase()}
+                    </div>
+                    <p className="text-sm font-semibold text-slate-700 truncate">{c.usuario ?? 'Usuario'}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-slate-400">{formatFechaRelativa(c.created_at)}</span>
                 </div>
-                <p className="mt-1 text-sm text-slate-600">{c.comentario}</p>
+                <p className="mt-2 ml-9 text-sm text-slate-600 whitespace-pre-wrap">{c.comentario}</p>
               </li>
             ))}
           </ol>
