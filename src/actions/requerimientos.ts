@@ -188,6 +188,7 @@ export async function cambiarEstado(
       const destinatarios = [...new Set([...globales, ...partesInteresadas])]
       if (destinatarios.length === 0) return
 
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
       return sendEmail({
         to: destinatarios,
         subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
@@ -197,6 +198,7 @@ export async function cambiarEstado(
           estadoAnterior:   ESTADO_LABEL[req.estado] ?? req.estado ?? '—',
           estadoNuevo:      ESTADO_LABEL[estado] ?? estado,
           observacion:      observacion?.trim(),
+          enlace:           appUrl ? `${appUrl}/admin/requerimientos/${id}` : undefined,
         }),
       })
     }).catch(err => console.error('[email] Error al enviar notificación de estado:', err))
@@ -269,6 +271,7 @@ export async function agregarComentario(
         : []
       const destinatarios = [...new Set([...globales, ...partesInteresadas])]
       if (destinatarios.length === 0) return
+      const appUrl = process.env.NEXT_PUBLIC_APP_URL ?? ''
       return sendEmail({
         to: destinatarios,
         subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
@@ -277,6 +280,7 @@ export async function agregarComentario(
           identificacion:   req.identificacion ?? '',
           comentario,
           usuario,
+          enlace: appUrl ? `${appUrl}/admin/requerimientos/${requerimientoId}` : undefined,
         }),
       })
     }).catch(err => console.error('[email] Error al enviar notificación de comentario:', err))

@@ -83,11 +83,13 @@ export function templateNuevoComentario({
   identificacion,
   comentario,
   usuario,
+  enlace,
 }: {
   nombreDesarrollo: string
   identificacion: string
   comentario: string
   usuario: string
+  enlace?: string
 }) {
   return shell(`
     <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Nuevo comentario</h2>
@@ -97,6 +99,8 @@ export function templateNuevoComentario({
       <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8">${usuario}</p>
       <p style="margin:0;font-size:14px;color:#1e293b;white-space:pre-wrap">${comentario}</p>
     </div>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
   `)
 }
 
