@@ -1,3 +1,8 @@
+/** Asunto estándar por requerimiento — todos los correos del mismo req usan este subject para que el cliente de correo los agrupe en un solo hilo */
+export function subjectReq(identificacion: string, nombreDesarrollo: string) {
+  return `[${identificacion}] ${nombreDesarrollo}`
+}
+
 /** Returns an HTML string wrapped in the shared email shell */
 function shell(content: string) {
   return `<!DOCTYPE html>
@@ -61,6 +66,28 @@ export function templateCambioEstado({
     ${observacion ? `<p style="margin:0 0 24px;font-size:14px;color:#475569"><strong>Observación:</strong> ${observacion}</p>` : '<p style="margin-bottom:24px"></p>'}
 
     ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
+export function templateNuevoComentario({
+  nombreDesarrollo,
+  identificacion,
+  comentario,
+  usuario,
+}: {
+  nombreDesarrollo: string
+  identificacion: string
+  comentario: string
+  usuario: string
+}) {
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Nuevo comentario</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Se agregó un comentario en <strong>${identificacion} — ${nombreDesarrollo}</strong>.</p>
+
+    <div style="background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
+      <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8">${usuario}</p>
+      <p style="margin:0;font-size:14px;color:#1e293b;white-space:pre-wrap">${comentario}</p>
+    </div>
   `)
 }
 

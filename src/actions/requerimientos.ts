@@ -4,7 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
 import { sendEmail } from '@/lib/email'
-import { templateCambioEstado } from '@/lib/email-templates'
+import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -189,7 +189,7 @@ export async function cambiarEstado(
 
       return sendEmail({
         to: destinatarios,
-        subject: `[${req.identificacion}] Cambio de estado: ${ESTADO_LABEL[estado] ?? estado}`,
+        subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
         html: templateCambioEstado({
           nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
           identificacion:   req.identificacion ?? '',
@@ -235,6 +235,37 @@ export async function agregarComentario(
     .select().single()
   if (error) throw new Error(`Error al agregar comentario: ${error.message}`)
   revalidatePath(`/requerimientos/${requerimientoId}`)
+
+  // Enviar correo de notificación (sin bloquear si falla)
+  const { data: req } = await (supabase as any)
+    .from('requerimientos')
+    .select('nombre_desarrollo, identificacion, partes_interesadas')
+    .eq('id', requerimientoId)
+    .single()
+
+  if (req) {
+    Promise.all([
+      getEmailsActivos(),
+      getConfigParam('notif_partes_interesadas'),
+    ]).then(([globales, notifPI]) => {
+      const partesInteresadas: string[] = notifPI === 'true'
+        ? (req.partes_interesadas ?? [])
+        : []
+      const destinatarios = [...new Set([...globales, ...partesInteresadas])]
+      if (destinatarios.length === 0) return
+      return sendEmail({
+        to: destinatarios,
+        subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
+        html: templateNuevoComentario({
+          nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+          identificacion:   req.identificacion ?? '',
+          comentario,
+          usuario,
+        }),
+      })
+    }).catch(err => console.error('[email] Error al enviar notificación de comentario:', err))
+  }
+
   return data
 }
 
