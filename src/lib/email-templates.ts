@@ -3,6 +3,10 @@ export function subjectReq(identificacion: string, nombreDesarrollo: string) {
   return `[${identificacion}] ${nombreDesarrollo}`
 }
 
+const LOGO_SVG = `<svg width="44" height="44" viewBox="0 0 36 36" fill="none" xmlns="http://www.w3.org/2000/svg"><defs><linearGradient id="a" x1="0" y1="0" x2="36" y2="36" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#1d4ed8"/><stop offset="100%" stop-color="#0ea5e9"/></linearGradient><linearGradient id="b" x1="4" y1="11" x2="32" y2="25" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#ffffff"/><stop offset="100%" stop-color="#bae6fd" stop-opacity="0.9"/></linearGradient><linearGradient id="c" x1="4" y1="25" x2="32" y2="11" gradientUnits="userSpaceOnUse"><stop offset="0%" stop-color="#93c5fd" stop-opacity="0.7"/><stop offset="100%" stop-color="#ffffff" stop-opacity="0.95"/></linearGradient></defs><rect width="36" height="36" rx="9" fill="url(#a)"/><path d="M5 13C10 13 10 18 18 18C26 18 26 23 31 23" stroke="url(#b)" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M28 21L31 23L28 25" stroke="url(#b)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><path d="M5 23C10 23 10 18 18 18C26 18 26 13 31 13" stroke="url(#c)" stroke-width="2.8" stroke-linecap="round" fill="none"/><path d="M28 11L31 13L28 15" stroke="url(#c)" stroke-width="2.8" stroke-linecap="round" stroke-linejoin="round" fill="none"/><circle cx="18" cy="18" r="2.2" fill="#ffffff" opacity="0.95"/></svg>`
+
+const LOGO_URI = `data:image/svg+xml;base64,${Buffer.from(LOGO_SVG).toString('base64')}`
+
 /** Returns an HTML string wrapped in the shared email shell */
 function shell(content: string) {
   return `<!DOCTYPE html>
@@ -13,9 +17,18 @@ function shell(content: string) {
     <tr><td align="center">
       <table width="600" cellpadding="0" cellspacing="0" style="background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.08)">
         <!-- Header -->
-        <tr><td style="background:#1e3a5f;padding:24px 32px">
-          <p style="margin:0;color:#fff;font-size:20px;font-weight:bold">IWG Logistics</p>
-          <p style="margin:4px 0 0;color:#93c5fd;font-size:12px;letter-spacing:.05em;text-transform:uppercase">Sistema de Gestión TIN</p>
+        <tr><td style="background:#1e3a5f;padding:20px 32px">
+          <table cellpadding="0" cellspacing="0">
+            <tr>
+              <td style="padding-right:12px;vertical-align:middle">
+                <img src="${LOGO_URI}" width="44" height="44" alt="TIN-FLOW" style="display:block;border:0" />
+              </td>
+              <td style="vertical-align:middle">
+                <p style="margin:0;color:#fff;font-size:18px;font-weight:bold;letter-spacing:-.01em">TIN-<span style="color:#38bdf8">FLOW</span></p>
+                <p style="margin:2px 0 0;color:#64748b;font-size:10px;letter-spacing:.08em;text-transform:uppercase">Interworld Group</p>
+              </td>
+            </tr>
+          </table>
         </td></tr>
         <!-- Body -->
         <tr><td style="padding:32px">${content}</td></tr>
