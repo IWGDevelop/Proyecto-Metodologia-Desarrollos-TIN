@@ -11,7 +11,7 @@ export interface Lote {
 }
 
 // ─── Auth / Perfiles ─────────────────────────────────────────────────────────
-export type RolUsuario = 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA'
+export type RolUsuario = 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA' | 'DIRECCION_ESTRATEGIA' | (string & {})
 
 export interface Perfil {
   id: string
