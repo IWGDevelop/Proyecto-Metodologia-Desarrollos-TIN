@@ -6,7 +6,7 @@ import {
   ShieldCheck, Plus, Pencil, Trash2, Check, X,
   LayoutDashboard, ClipboardList, Kanban, BarChart2,
   Star, Users, Settings2, Lock, Eye, FilePen, FolderPlus,
-  ChevronDown, ChevronUp, Power,
+  ChevronDown, ChevronUp, Power, Code2,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -22,8 +22,9 @@ const ICONOS_MENU: Record<string, React.ElementType> = {
   'menu:requerimientos':        ClipboardList,
   'menu:kanban':               Kanban,
   'menu:reportes':             BarChart2,
-  'menu:reporte-presidencial': Star,
-  'menu:usuarios':             Users,
+  'menu:reporte-presidencial':    Star,
+  'menu:reporte-desarrolladores': Code2,
+  'menu:usuarios':                Users,
   'menu:configuracion':        Settings2,
   'menu:roles':               ShieldCheck,
 }
