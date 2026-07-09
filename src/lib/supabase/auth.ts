@@ -39,5 +39,5 @@ export async function isPresidencia(): Promise<boolean> {
 
 export async function hasAdminAccess(): Promise<boolean> {
   const perfil = await getPerfil()
-  return perfil?.rol === 'ADMIN_TIN' || perfil?.rol === 'PRESIDENCIA'
+  return perfil?.rol === 'ADMIN_TIN' || perfil?.rol === 'PRESIDENCIA' || perfil?.rol === 'DIRECCION_ESTRATEGIA'
 }

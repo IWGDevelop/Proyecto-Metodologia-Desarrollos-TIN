@@ -56,7 +56,7 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
   const params = await searchParams
   const perfil = await getPerfil()
 
-  const isAdmin = perfil?.rol === 'ADMIN_TIN' || perfil?.rol === 'PRESIDENCIA'
+  const isAdmin = perfil?.rol === 'ADMIN_TIN' || perfil?.rol === 'PRESIDENCIA' || perfil?.rol === 'DIRECCION_ESTRATEGIA'
   const perfilFiltro: PerfilFiltro | null = !isAdmin && perfil
     ? { email: perfil.email, proceso_interno: perfil.proceso_interno }
     : null
