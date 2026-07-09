@@ -26,7 +26,7 @@ const createSchema = z.object({
   cargo: z.string().optional(),
   proceso_interno: z.string().optional(),
   empresa: z.string().optional(),
-  rol: z.enum(['USUARIO', 'ADMIN_TIN', 'PRESIDENCIA'] as const),
+  rol: z.string().min(1),
   password: z.string().min(8, 'Mínimo 8 caracteres'),
 })
 type CreateForm = z.infer<typeof createSchema>
@@ -36,7 +36,7 @@ const editSchema = z.object({
   cargo: z.string().optional(),
   proceso_interno: z.string().optional(),
   empresa: z.string().optional(),
-  rol: z.enum(['USUARIO', 'ADMIN_TIN', 'PRESIDENCIA'] as const),
+  rol: z.string().min(1),
   activo: z.boolean(),
 })
 type EditForm = z.infer<typeof editSchema>
@@ -55,9 +55,21 @@ function AvatarLetra({ nombre }: { nombre: string }) {
   )
 }
 
-interface Props { usuarios: Perfil[] }
+interface RolItem { nombre: string; descripcion: string | null }
 
-export function GestionUsuariosClient({ usuarios: initial }: Props) {
+const ROL_LABEL: Record<string, string> = {
+  ADMIN_TIN:   'Admin TIN',
+  PRESIDENCIA: 'Presidencia',
+  USUARIO:     'Usuario',
+}
+
+function rolLabel(nombre: string) {
+  return ROL_LABEL[nombre] ?? nombre.replace(/_/g, ' ')
+}
+
+interface Props { usuarios: Perfil[]; roles: RolItem[] }
+
+export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
   const router = useRouter()
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState<Perfil | null>(null)
@@ -178,15 +190,19 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
                   <td className="px-4 py-3">
                     {u.rol === 'ADMIN_TIN' ? (
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 gap-1">
-                        <Shield size={10} /> ADMIN TIN
+                        <Shield size={10} /> Admin TIN
                       </Badge>
                     ) : u.rol === 'PRESIDENCIA' ? (
                       <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100 gap-1">
-                        <Star size={10} /> PRESIDENCIA
+                        <Star size={10} /> Presidencia
+                      </Badge>
+                    ) : u.rol === 'USUARIO' ? (
+                      <Badge variant="secondary" className="gap-1">
+                        <User size={10} /> Usuario
                       </Badge>
                     ) : (
-                      <Badge variant="secondary" className="gap-1">
-                        <User size={10} /> USUARIO
+                      <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100 gap-1">
+                        <Shield size={10} /> {rolLabel(u.rol)}
                       </Badge>
                     )}
                   </td>
@@ -263,12 +279,12 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
               </div>
               <div className="space-y-1">
                 <Label>Rol</Label>
-                <Select defaultValue="USUARIO" onValueChange={(v: string | null) => createForm.setValue('rol', (v ?? 'USUARIO') as any)}>
+                <Select defaultValue="USUARIO" onValueChange={(v: string | null) => createForm.setValue('rol', v ?? 'USUARIO')}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="USUARIO">Usuario</SelectItem>
-                    <SelectItem value="PRESIDENCIA">Presidencia</SelectItem>
-                    <SelectItem value="ADMIN_TIN">Admin TIN</SelectItem>
+                    {roles.map(r => (
+                      <SelectItem key={r.nombre} value={r.nombre}>{rolLabel(r.nombre)}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -337,12 +353,12 @@ export function GestionUsuariosClient({ usuarios: initial }: Props) {
                 </div>
                 <div className="space-y-1">
                   <Label>Rol</Label>
-                  <Select defaultValue={editUser.rol} onValueChange={(v: string | null) => editForm.setValue('rol', (v ?? 'USUARIO') as any)}>
+                  <Select defaultValue={editUser.rol} onValueChange={(v: string | null) => editForm.setValue('rol', v ?? 'USUARIO')}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="USUARIO">Usuario</SelectItem>
-                      <SelectItem value="PRESIDENCIA">Presidencia</SelectItem>
-                      <SelectItem value="ADMIN_TIN">Admin TIN</SelectItem>
+                      {roles.map(r => (
+                        <SelectItem key={r.nombre} value={r.nombre}>{rolLabel(r.nombre)}</SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
