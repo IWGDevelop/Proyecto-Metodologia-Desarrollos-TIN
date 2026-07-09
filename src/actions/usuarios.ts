@@ -9,7 +9,7 @@ export async function crearUsuario(data: {
   cargo?: string
   proceso_interno?: string
   empresa?: string
-  rol: 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA'
+  rol: string
   password: string
 }): Promise<{ ok: boolean; error?: string }> {
   try {
@@ -61,7 +61,7 @@ export async function actualizarPerfil(id: string, data: Partial<{
   cargo: string | null
   proceso_interno: string | null
   empresa: string | null
-  rol: 'ADMIN_TIN' | 'USUARIO' | 'PRESIDENCIA'
+  rol: string
   activo: boolean
 }>): Promise<{ ok: boolean; error?: string }> {
   try {
