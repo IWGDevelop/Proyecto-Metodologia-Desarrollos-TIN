@@ -16,6 +16,7 @@ import { ReporteIncumplimiento } from '@/components/reportes/ReporteIncumplimien
 import { ReporteTipoSolicitud } from '@/components/reportes/ReporteTipoSolicitud'
 import { ReporteFinalizados } from '@/components/reportes/ReporteFinalizados'
 import { ReporteTareasAbiertas } from '@/components/reportes/ReporteTareasAbiertas'
+import { ReportePrioridadProceso } from '@/components/reportes/ReportePrioridadProceso'
 import { useReportesData, FILTROS_INIT, type FiltrosReportes as TFiltros } from '@/hooks/useReportesData'
 import { exportarReporteCompleto } from '@/lib/exportar'
 import { ESTADOS, PRIORIDADES, SLA_DIAS } from '@/lib/constants'
@@ -118,6 +119,8 @@ export default function AdminReportesPage() {
       <FiltrosReportes filtros={filtros} onChange={setFiltros} total={datos.length} />
 
       <div className="space-y-10">
+        <section><ReportePrioridadProceso datos={datos} isLoading={isLoading} /></section>
+        <div className="border-t border-slate-200" />
         <section><ReporteTipoSolicitud datos={datos} isLoading={isLoading} /></section>
         <div className="border-t border-slate-200" />
         <section><ReporteImpactoEconomico datos={datos} isLoading={isLoading} /></section>
