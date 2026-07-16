@@ -205,7 +205,7 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
                         <span
-                          className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', estadoCfg?.badge ?? 'bg-slate-100 text-slate-600 border-slate-200')}
+                          className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', estadoCfg?.bgColor ?? 'bg-slate-100', estadoCfg?.textColor ?? 'text-slate-600', estadoCfg?.borderColor ?? 'border-slate-200')}
                         >
                           {ESTADO_LABEL[r.estado] ?? r.estado}
                         </span>
