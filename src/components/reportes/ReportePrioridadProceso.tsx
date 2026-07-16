@@ -140,9 +140,9 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
           <XAxis dataKey="prioridad" tick={{ fontSize: 12, fill: '#64748b' }} />
           <YAxis allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
           <Tooltip
-            formatter={(value: number, name: string) => [
-              value,
-              name === 'SIN_PROCESO' ? 'Sin proceso' : (PROCESO_LABEL[name] ?? name),
+            formatter={(value: any, name: any) => [
+              value as number,
+              name === 'SIN_PROCESO' ? 'Sin proceso' : (PROCESO_LABEL[name as string] ?? name),
             ]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
           />
