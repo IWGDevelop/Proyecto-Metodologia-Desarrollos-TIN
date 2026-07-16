@@ -4,6 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { Plus, Calendar, MapPin, Clock, DollarSign } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { PublicarRequerimientoBtn } from '@/components/requerimientos/PublicarRequerimientoBtn'
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -96,9 +97,12 @@ function CardRequerimiento({ req, tipo }: { req: Requerimiento; tipo: TipoRelaci
           <Button size="sm" variant="outline" className="w-full text-xs">Ver detalle →</Button>
         </Link>
         {req.es_borrador && tipo === 'propietario' && (
-          <Link href={`/mis-requerimientos/${req.id}`}>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs">Editar borrador</Button>
-          </Link>
+          <>
+            <Link href={`/mis-requerimientos/${req.id}`}>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-xs">Editar borrador</Button>
+            </Link>
+            <PublicarRequerimientoBtn requerimientoId={req.id} />
+          </>
         )}
       </div>
     </div>

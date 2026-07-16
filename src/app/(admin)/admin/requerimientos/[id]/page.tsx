@@ -18,6 +18,7 @@ import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
+import { PublicarRequerimientoBtn } from '@/components/requerimientos/PublicarRequerimientoBtn'
 import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq, getDesarrolladoresDisponibles } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
@@ -118,7 +119,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               </Badge>
             )}
             {req.es_borrador && (
-              <Badge variant="outline" className="border-slate-300 text-slate-500">Borrador</Badge>
+              <>
+                <Badge variant="outline" className="border-slate-300 text-slate-500">Borrador</Badge>
+                <PublicarRequerimientoBtn requerimientoId={id} />
+              </>
             )}
           </div>
         </div>
