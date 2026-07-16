@@ -3,7 +3,7 @@
 import { useState, useTransition } from 'react'
 import { Layers, Lock, Unlock, Plus, X, AlertTriangle, CheckCircle2, Package } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { setConfigBloqueo, crearLote, cerrarLote } from '@/actions/lotes'
+import { setConfigBloqueo, crearLote, cerrarLote, reabrirLote, activarLote } from '@/actions/lotes'
 import type { LoteConStats } from '@/actions/lotes'
 
 function formatFecha(iso: string) {
@@ -26,6 +26,7 @@ export function GestionLotes({ lotes: initialLotes, bloqueoActivo: initialBloque
   const [nombreLote, setNombreLote] = useState('')
   const [descripcionLote, setDescripcionLote] = useState('')
   const [confirmCerrar, setConfirmCerrar] = useState<string | null>(null)
+  const [confirmActivar, setConfirmActivar] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   const handleToggleBloqueo = () => {
@@ -66,6 +67,36 @@ export function GestionLotes({ lotes: initialLotes, bloqueoActivo: initialBloque
         setLotes(prev => prev.map(l => l.id === id ? { ...l, cerrado: true, activo: false } : l))
       } catch (e: any) {
         setError(e?.message ?? 'Error al cerrar el lote')
+      }
+    })
+  }
+
+  const handleReabrirLote = (id: string) => {
+    setError(null)
+    startTransition(async () => {
+      try {
+        await reabrirLote(id)
+        setLotes(prev => prev.map(l => l.id === id ? { ...l, cerrado: false, fecha_cierre: null } : l))
+      } catch (e: any) {
+        setError(e?.message ?? 'Error al reabrir el lote')
+      }
+    })
+  }
+
+  const handleActivarLote = (id: string) => {
+    setError(null)
+    setConfirmActivar(null)
+    startTransition(async () => {
+      try {
+        await activarLote(id)
+        setLotes(prev => prev.map(l => ({
+          ...l,
+          activo: l.id === id,
+          cerrado: l.id === id ? false : l.cerrado,
+          fecha_cierre: l.id === id ? null : l.fecha_cierre,
+        })))
+      } catch (e: any) {
+        setError(e?.message ?? 'Error al activar el lote')
       }
     })
   }
@@ -170,41 +201,60 @@ export function GestionLotes({ lotes: initialLotes, bloqueoActivo: initialBloque
                 </div>
               </div>
 
-              {/* Acción cerrar (solo si activo o no cerrado) */}
-              {!lote.cerrado && (
-                confirmCerrar === lote.id ? (
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs text-red-600">¿Confirmar cierre?</span>
-                    <button
-                      onClick={() => handleCerrarLote(lote.id)}
-                      disabled={isPending}
-                      className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-60"
-                    >
-                      Sí, cerrar
+              {/* Acciones según estado del lote */}
+              <div className="flex items-center gap-2">
+                {/* Lote activo → solo cerrar */}
+                {lote.activo && !lote.cerrado && (
+                  confirmCerrar === lote.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-red-600">¿Confirmar cierre?</span>
+                      <button onClick={() => handleCerrarLote(lote.id)} disabled={isPending}
+                        className="rounded-lg bg-red-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-red-600 disabled:opacity-60">
+                        Sí, cerrar
+                      </button>
+                      <button onClick={() => setConfirmCerrar(null)}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmCerrar(lote.id)}
+                      className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 flex items-center gap-1.5">
+                      <Lock size={12} /> Cerrar lote
                     </button>
-                    <button
-                      onClick={() => setConfirmCerrar(null)}
-                      className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                ) : (
-                  <button
-                    onClick={() => setConfirmCerrar(lote.id)}
-                    className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-100 flex items-center gap-1.5"
-                  >
-                    <Lock size={12} /> Cerrar lote
-                  </button>
-                )
-              )}
+                  )
+                )}
 
-              {lote.cerrado && (
-                <div className="flex items-center gap-1 text-xs text-slate-400">
-                  <CheckCircle2 size={13} className="text-slate-300" />
-                  Congelado
-                </div>
-              )}
+                {/* Lote cerrado → reabrir */}
+                {lote.cerrado && (
+                  <button onClick={() => handleReabrirLote(lote.id)} disabled={isPending}
+                    className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-1.5 text-xs font-medium text-amber-700 hover:bg-amber-100 flex items-center gap-1.5 disabled:opacity-60">
+                    <Unlock size={12} /> Reabrir lote
+                  </button>
+                )}
+
+                {/* Lote abierto pero no activo → activar */}
+                {!lote.cerrado && !lote.activo && (
+                  confirmActivar === lote.id ? (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-blue-600">¿Activar este lote?</span>
+                      <button onClick={() => handleActivarLote(lote.id)} disabled={isPending}
+                        className="rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-60">
+                        Sí, activar
+                      </button>
+                      <button onClick={() => setConfirmActivar(null)}
+                        className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50">
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <button onClick={() => setConfirmActivar(lote.id)}
+                      className="rounded-lg border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-medium text-blue-700 hover:bg-blue-100 flex items-center gap-1.5">
+                      <CheckCircle2 size={12} /> Activar lote
+                    </button>
+                  )
+                )}
+              </div>
             </div>
           </div>
         ))}

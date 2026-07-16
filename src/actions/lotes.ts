@@ -100,6 +100,35 @@ export async function cerrarLote(id: string) {
   revalidatePath('/admin/requerimientos')
 }
 
+export async function reabrirLote(id: string) {
+  const supabase = createAdminClient()
+  const { error } = await (supabase as any).from('lotes').update({
+    cerrado: false,
+    fecha_cierre: null,
+  }).eq('id', id)
+
+  if (error) throw new Error(`Error al reabrir lote: ${error.message}`)
+  revalidatePath('/admin/lotes')
+  revalidatePath('/admin/requerimientos')
+}
+
+export async function activarLote(id: string) {
+  const supabase = createAdminClient()
+
+  // Desactivar cualquier lote activo
+  await (supabase as any).from('lotes').update({ activo: false }).eq('activo', true)
+
+  const { error } = await (supabase as any).from('lotes').update({
+    activo: true,
+    cerrado: false,
+    fecha_cierre: null,
+  }).eq('id', id)
+
+  if (error) throw new Error(`Error al activar lote: ${error.message}`)
+  revalidatePath('/admin/lotes')
+  revalidatePath('/admin/requerimientos')
+}
+
 export async function getLoteActivo(): Promise<Lote | null> {
   try {
     const supabase = createAdminClient()
