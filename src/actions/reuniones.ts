@@ -2,7 +2,16 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
+import { sendEmail } from '@/lib/email'
+import { subjectReq, templateNuevaReunion } from '@/lib/email-templates'
+import { getEmailsActivos } from '@/actions/config-email'
 import type { Reunion, TareaReunion, AnexoReunion } from '@/lib/supabase/types'
+
+function getAppUrl(): string {
+  if (process.env.APP_URL) return process.env.APP_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return ''
+}
 
 export async function getReuniones(requerimientoId: string): Promise<Reunion[]> {
   try {
@@ -65,6 +74,32 @@ export async function crearReunion(
           fecha_compromiso: t.fecha_compromiso || null,
         })))
       if (errT) return { ok: false, error: errT.message }
+    }
+
+    // Notificación por correo (sin bloquear)
+    const { data: req } = await (supabase as any)
+      .from('requerimientos')
+      .select('nombre_desarrollo, identificacion')
+      .eq('id', requerimientoId)
+      .single()
+
+    if (req) {
+      getEmailsActivos().then(destinatarios => {
+        if (destinatarios.length === 0) return
+        const appUrl = getAppUrl()
+        return sendEmail({
+          to: destinatarios,
+          subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? ''),
+          html: templateNuevaReunion({
+            nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+            tituloReunion:    datos.titulo,
+            fechaReunion:     datos.fecha_reunion,
+            tareas,
+            enlace: appUrl ? `${appUrl}/admin/requerimientos/${requerimientoId}` : undefined,
+          }),
+          requerimientoId,
+        })
+      }).catch(err => console.error('[email] Error al notificar reunión:', err))
     }
 
     return { ok: true }

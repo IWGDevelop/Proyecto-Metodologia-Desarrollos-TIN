@@ -104,6 +104,120 @@ export function templateNuevoComentario({
   `)
 }
 
+export function templateNuevaReunion({
+  nombreDesarrollo,
+  tituloReunion,
+  fechaReunion,
+  tareas,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  tituloReunion: string
+  fechaReunion: string
+  tareas: { descripcion: string; responsable_email?: string | null; fecha_compromiso?: string | null }[]
+  enlace?: string
+}) {
+  const fecha = new Date(fechaReunion).toLocaleDateString('es-CO', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })
+  const tareasHtml = tareas.length > 0
+    ? `<table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:24px;border-collapse:collapse">
+        ${tareas.map((t, i) => `
+          <tr style="background:${i % 2 === 0 ? '#f8fafc' : '#fff'}">
+            <td style="padding:10px 12px;font-size:13px;color:#1e293b;border-bottom:1px solid #e2e8f0">
+              ${t.descripcion}
+              ${t.responsable_email ? `<span style="display:block;font-size:11px;color:#94a3b8;margin-top:2px">${t.responsable_email}</span>` : ''}
+              ${t.fecha_compromiso ? `<span style="display:block;font-size:11px;color:#94a3b8">Compromiso: ${t.fecha_compromiso}</span>` : ''}
+            </td>
+          </tr>`).join('')}
+      </table>`
+    : ''
+
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Nueva reunión registrada</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Se agendó una reunión para el desarrollo <strong>${nombreDesarrollo}</strong>.</p>
+
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;font-size:14px">
+      <tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b;width:40%">Reunión</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${tituloReunion}</td></tr>
+      <tr><td style="padding:10px 12px;color:#64748b">Fecha</td><td style="padding:10px 12px;color:#1e293b">${fecha}</td></tr>
+    </table>
+
+    ${tareas.length > 0 ? `<p style="margin:0 0 12px;font-size:13px;font-weight:bold;color:#1e293b">Compromisos (${tareas.length})</p>${tareasHtml}` : ''}
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
+export function templateNuevaTarea({
+  nombreDesarrollo,
+  tituloTarea,
+  fechaCompromiso,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  tituloTarea: string
+  fechaCompromiso?: string | null
+  enlace?: string
+}) {
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Nueva tarea de desarrollo</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Se registró una tarea técnica en el desarrollo <strong>${nombreDesarrollo}</strong>.</p>
+
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;font-size:14px">
+      <tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b;width:40%">Tarea</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${tituloTarea}</td></tr>
+      ${fechaCompromiso ? `<tr><td style="padding:10px 12px;color:#64748b">Fecha compromiso</td><td style="padding:10px 12px;color:#1e293b">${fechaCompromiso}</td></tr>` : ''}
+    </table>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
+export function templateTareaVenceHoy({
+  nombreDesarrollo,
+  descripcionTarea,
+  fechaCompromiso,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  descripcionTarea: string
+  fechaCompromiso: string
+  enlace?: string
+}) {
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#d97706">⏰ Tarea vence hoy</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Una tarea del desarrollo <strong>${nombreDesarrollo}</strong> vence <strong>hoy (${fechaCompromiso})</strong>.</p>
+
+    <div style="background:#fffbeb;border-left:3px solid #f59e0b;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#b45309">Tarea pendiente</p>
+      <p style="margin:0;font-size:14px;color:#1e293b;font-weight:bold">${descripcionTarea}</p>
+    </div>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
+export function templateTareaVencida({
+  nombreDesarrollo,
+  descripcionTarea,
+  fechaCompromiso,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  descripcionTarea: string
+  fechaCompromiso: string
+  enlace?: string
+}) {
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#dc2626">🚨 Tarea vencida</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">Una tarea del desarrollo <strong>${nombreDesarrollo}</strong> no fue completada antes de su fecha límite <strong>${fechaCompromiso}</strong>.</p>
+
+    <div style="background:#fef2f2;border-left:3px solid #ef4444;border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#b91c1c">Tarea vencida</p>
+      <p style="margin:0;font-size:14px;color:#1e293b;font-weight:bold">${descripcionTarea}</p>
+    </div>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#dc2626;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
 export function templateNuevoRequerimiento({
   nombreDesarrollo,
   identificacion,

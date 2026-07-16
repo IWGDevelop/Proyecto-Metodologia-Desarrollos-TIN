@@ -2,7 +2,16 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
+import { sendEmail } from '@/lib/email'
+import { subjectReq, templateNuevaTarea } from '@/lib/email-templates'
+import { getEmailsActivos } from '@/actions/config-email'
 import type { TareaTecnica, RegistroHorasTarea, CategoriaTarea, CargoTIN } from '@/lib/supabase/types'
+
+function getAppUrl(): string {
+  if (process.env.APP_URL) return process.env.APP_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return ''
+}
 
 export async function getTareas(requerimientoId: string): Promise<TareaTecnica[]> {
   const supabase = createAdminClient()
@@ -77,6 +86,32 @@ export async function crearTarea(data: {
       .single()
 
     if (error) return { ok: false, error: error.message }
+
+    // Notificación por correo (sin bloquear)
+    const { data: req } = await (supabase as any)
+      .from('requerimientos')
+      .select('nombre_desarrollo, identificacion')
+      .eq('id', data.requerimiento_id)
+      .single()
+
+    if (req) {
+      getEmailsActivos().then(destinatarios => {
+        if (destinatarios.length === 0) return
+        const appUrl = getAppUrl()
+        return sendEmail({
+          to: destinatarios,
+          subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? ''),
+          html: templateNuevaTarea({
+            nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+            tituloTarea:      data.titulo,
+            fechaCompromiso:  data.fecha_compromiso ?? null,
+            enlace: appUrl ? `${appUrl}/admin/requerimientos/${data.requerimiento_id}` : undefined,
+          }),
+          requerimientoId: data.requerimiento_id,
+        })
+      }).catch(err => console.error('[email] Error al notificar tarea:', err))
+    }
+
     return { ok: true, tarea: { ...tarea, registros_horas: [] } }
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'Error al crear tarea' }
