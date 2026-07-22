@@ -149,7 +149,7 @@ export async function cambiarEstado(
   // Obtener datos del requerimiento antes del cambio
   const { data: req } = await (supabase as any)
     .from('requerimientos')
-    .select('nombre_desarrollo, identificacion, estado, partes_interesadas')
+    .select('nombre_desarrollo, identificacion, estado, partes_interesadas, responsable')
     .eq('id', id)
     .single()
 
@@ -190,8 +190,9 @@ export async function cambiarEstado(
       const partesInteresadas: string[] = notifPI === 'true'
         ? (req.partes_interesadas ?? [])
         : []
+      const emailResponsable: string[] = req.responsable ? [req.responsable] : []
 
-      const destinatarios = [...new Set([...globales, ...partesInteresadas])]
+      const destinatarios = [...new Set([...globales, ...partesInteresadas, ...emailResponsable])]
       if (destinatarios.length === 0) return
 
       const appUrl = getAppUrl()
@@ -275,7 +276,7 @@ export async function agregarComentario(
   // Enviar correo de notificación (sin bloquear si falla)
   const { data: req } = await (supabase as any)
     .from('requerimientos')
-    .select('nombre_desarrollo, identificacion, partes_interesadas')
+    .select('nombre_desarrollo, identificacion, partes_interesadas, responsable')
     .eq('id', requerimientoId)
     .single()
 
@@ -287,7 +288,9 @@ export async function agregarComentario(
       const partesInteresadas: string[] = notifPI === 'true'
         ? (req.partes_interesadas ?? [])
         : []
-      const destinatarios = [...new Set([...globales, ...partesInteresadas])]
+      const emailResponsable: string[] = req.responsable ? [req.responsable] : []
+
+      const destinatarios = [...new Set([...globales, ...partesInteresadas, ...emailResponsable])]
       if (destinatarios.length === 0) return
       const appUrl = getAppUrl()
       return sendEmail({
