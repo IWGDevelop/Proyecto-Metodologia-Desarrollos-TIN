@@ -4,7 +4,7 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
-  ResponsiveContainer, PieChart, Pie, Cell,
+  ResponsiveContainer, Cell,
 } from 'recharts'
 import { ExternalLink, AlertTriangle, Filter, X } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
@@ -34,7 +34,7 @@ const PROCESO_COLORS = [
 ]
 
 const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION: 'Sin gestión', ANALISIS: 'En análisis', EN_DEFINICION_USUARIO: 'En definición',
+  SIN_GESTION: 'Sin gestión', ANALISIS: 'En estudio y evaluación técnica', EN_DEFINICION_USUARIO: 'En definición',
   EN_DESARROLLO: 'En desarrollo', PRUEBAS_USUARIO: 'Pruebas', STAND_BY: 'Stand By',
   ENTREGADO: 'Entregado', CERRADO: 'Cerrado', DESISTIDO: 'Desistido',
 }
@@ -316,44 +316,69 @@ export function ReportePrioridades({ datos }: Props) {
 
       <div className="border-t border-slate-200" />
 
-      {/* ── SECCIÓN 3 y 4 ───────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <div>
-          {seccionTitle('3. Desarrollos por estado')}
-          <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-            <ResponsiveContainer width="100%" height={260}>
-              <PieChart>
-                <Pie data={datosPorEstado} dataKey="cantidad" nameKey="label" cx="50%" cy="50%" outerRadius={90}
-                  label={(props: any) => `${props.label}: ${props.cantidad}`} labelLine={false}>
-                  {datosPorEstado.map((_, i) => <Cell key={i} fill={ESTADO_COLORS[i % ESTADO_COLORS.length]} />)}
-                </Pie>
-                <Tooltip formatter={(v: any) => [v, 'Desarrollos']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
-
-        <div>
-          {seccionTitle('4. Impacto económico por proceso')}
-          {impactoPorProceso.length === 0 ? (
-            <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Sin datos de impacto</div>
-          ) : (
-            <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-              <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={impactoPorProceso} layout="vertical" margin={{ left: 8, right: 24 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
-                  <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} tickFormatter={v => `$${(v/1_000_000).toFixed(0)}M`} />
-                  <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} width={90} />
-                  <Tooltip formatter={(v: any) => [formatCOP(v as number), 'Impacto anual']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
-                  <Bar dataKey="total" radius={[0, 4, 4, 0]}>
-                    {impactoPorProceso.map((_, i) => <Cell key={i} fill={PROCESO_COLORS[i % PROCESO_COLORS.length]} />)}
-                  </Bar>
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </div>
+      {/* ── SECCIÓN 3: Gráfico de barras por estado ─────────────────────── */}
+      {seccionTitle('3. Desarrollos por estado')}
+      <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        {datosPorEstado.length === 0 ? (
+          <p className="text-center text-sm text-slate-400 py-8">Sin datos</p>
+        ) : (
+          <ResponsiveContainer width="100%" height={260}>
+            <BarChart data={datosPorEstado} layout="vertical" margin={{ left: 16, right: 32, top: 4, bottom: 4 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
+              <XAxis type="number" allowDecimals={false} tick={{ fontSize: 11, fill: '#94a3b8' }} />
+              <YAxis type="category" dataKey="label" tick={{ fontSize: 11, fill: '#64748b' }} width={195} />
+              <Tooltip formatter={(v: any) => [v, 'Desarrollos']} contentStyle={{ fontSize: 12, borderRadius: 8 }} />
+              <Bar dataKey="cantidad" radius={[0, 4, 4, 0]}>
+                {datosPorEstado.map((_, i) => <Cell key={i} fill={ESTADO_COLORS[i % ESTADO_COLORS.length]} />)}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
       </div>
+
+      <div className="border-t border-slate-200" />
+
+      {/* ── SECCIÓN 4: Tabla impacto por proceso ────────────────────────── */}
+      {seccionTitle('4. Impacto económico por proceso')}
+      {impactoPorProceso.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Sin datos de impacto</div>
+      ) : (
+        <div className="rounded-xl border border-slate-200 bg-white overflow-hidden shadow-sm">
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-4 py-3 text-xs font-semibold text-slate-500">Proceso</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500">Impacto total / año</th>
+                <th className="text-right px-4 py-3 text-xs font-semibold text-slate-500 w-24">% del total</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {impactoPorProceso.map((row, i) => {
+                const pct = totalImpacto > 0 ? (row.total / totalImpacto * 100) : 0
+                return (
+                  <tr key={row.proceso} className="hover:bg-slate-50 transition-colors">
+                    <td className="px-4 py-2.5 flex items-center gap-2">
+                      <span className="inline-block h-2.5 w-2.5 rounded-full shrink-0" style={{ background: PROCESO_COLORS[i % PROCESO_COLORS.length] }} />
+                      <span className="font-medium text-slate-700">{row.label}</span>
+                    </td>
+                    <td className="px-4 py-2.5 text-right font-semibold text-emerald-700">{formatCOP(row.total)}</td>
+                    <td className="px-4 py-2.5 text-right">
+                      <span className="text-xs font-medium text-slate-500">{pct.toFixed(1)}%</span>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-slate-50 border-t-2 border-slate-300">
+                <td className="px-4 py-3 text-xs font-bold text-slate-700">Total ({impactoPorProceso.length} procesos)</td>
+                <td className="px-4 py-3 text-right text-xs font-bold text-emerald-700">{formatCOP(totalImpacto)}</td>
+                <td className="px-4 py-3 text-right text-xs font-bold text-slate-500">100%</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
 
       <div className="border-t border-slate-200" />
 
