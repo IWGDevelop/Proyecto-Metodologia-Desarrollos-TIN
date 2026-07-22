@@ -266,7 +266,7 @@ export function ReportePrioridades({ datos }: Props) {
           <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
             <ResponsiveContainer width="100%" height={260}>
               <PieChart>
-                <Pie data={datosPorEstado} dataKey="cantidad" nameKey="label" cx="50%" cy="50%" outerRadius={90} label={({ label, cantidad }) => `${label}: ${cantidad}`} labelLine={false}>
+                <Pie data={datosPorEstado} dataKey="cantidad" nameKey="label" cx="50%" cy="50%" outerRadius={90} label={(props: any) => `${props.label}: ${props.cantidad}`} labelLine={false}>
                   {datosPorEstado.map((_, i) => (
                     <Cell key={i} fill={ESTADO_COLORS[i]} />
                   ))}
