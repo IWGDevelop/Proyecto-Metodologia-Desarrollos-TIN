@@ -95,11 +95,18 @@ export async function crearTarea(data: {
       .single()
 
     if (req) {
-      getEmailsActivos().then(destinatarios => {
-        if (destinatarios.length === 0) return
+      Promise.all([
+        getEmailsActivos(),
+        data.responsable_id
+          ? (supabase as any).from('perfiles').select('email').eq('id', data.responsable_id).single()
+              .then((r: any) => r.data?.email as string | null ?? null)
+          : Promise.resolve(null),
+      ]).then(([destinatarios, emailResponsable]) => {
+        const todos = [...new Set([...destinatarios, ...(emailResponsable ? [emailResponsable] : [])])]
+        if (todos.length === 0) return
         const appUrl = getAppUrl()
         return sendEmail({
-          to: destinatarios,
+          to: todos,
           subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? ''),
           html: templateNuevaTarea({
             nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',

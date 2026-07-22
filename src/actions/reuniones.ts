@@ -84,11 +84,15 @@ export async function crearReunion(
       .single()
 
     if (req) {
+      const emailsResponsables = [...new Set(
+        tareas.map(t => t.responsable_email).filter(Boolean) as string[]
+      )]
       getEmailsActivos().then(destinatarios => {
-        if (destinatarios.length === 0) return
+        const todos = [...new Set([...destinatarios, ...emailsResponsables])]
+        if (todos.length === 0) return
         const appUrl = getAppUrl()
         return sendEmail({
-          to: destinatarios,
+          to: todos,
           subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? ''),
           html: templateNuevaReunion({
             nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
