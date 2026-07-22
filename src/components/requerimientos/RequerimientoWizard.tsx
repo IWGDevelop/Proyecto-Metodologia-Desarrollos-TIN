@@ -1,22 +1,22 @@
 'use client'
 
-import { useState, useEffect, useTransition, useCallback } from 'react'
+import { useState, useTransition } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useRouter } from 'next/navigation'
 import {
   ClipboardList, User, FileText, Target,
-  DollarSign, CheckSquare, Check, Save,
+  DollarSign, CheckSquare, Check,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { toast } from 'sonner'
-import { cn, formatFechaRelativa } from '@/lib/utils'
+import { cn } from '@/lib/utils'
 import {
   wizardSchema, defaultWizardValues, calcularActividad,
   calcValorAnual, calcTotalCualitativos,
   CAMPOS_POR_PASO, BENEFICIOS_CONFIG, type WizardData,
 } from '@/lib/schemas/requerimiento'
-import { crearRequerimiento, actualizarRequerimiento, guardarBorrador } from '@/actions/requerimientos'
+import { crearRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
 import { registrarAnexo } from '@/actions/historial'
 import { Paso1Encabezado } from './pasos/Paso1Encabezado'
 import { Paso2Solicitante } from './pasos/Paso2Solicitante'
@@ -37,8 +37,6 @@ const PASOS = [
   { num: 5, titulo: 'Impacto HH', icono: DollarSign },
   { num: 6, titulo: 'Revisión', icono: CheckSquare },
 ]
-
-const STORAGE_KEY = 'requerimiento-wizard-draft'
 
 function wizardDataToRequerimiento(data: WizardData, ahorroMensual: number, ahorroAnual: number, totalHorasMes: number) {
   const actividades_impacto = (data.actividades ?? []).map(act => {
@@ -128,7 +126,6 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
   const [pasoActual, setPasoActual] = useState(1)
   const [confirmado, setConfirmado] = useState(false)
   const [anexos, setAnexos] = useState<AnexoLocal[]>([])
-  const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isPending, startTransition] = useTransition()
   const [usuarios, setUsuarios] = useState<Perfil[]>([])
   const carpetaTemporal = requerimiento?.id ?? `temp_${Date.now()}`
@@ -205,32 +202,6 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
     mode: 'onChange',
   })
 
-  // ─── Auto-save localStorage ───────────────────────────────────────────────
-  const guardarLocalStorage = useCallback(() => {
-    if (requerimiento) return // no guardar en localStorage en modo edición
-    const data = form.getValues()
-    localStorage.setItem(STORAGE_KEY, JSON.stringify({ data, paso: pasoActual }))
-    setLastSaved(new Date())
-  }, [form, pasoActual, requerimiento])
-
-  useEffect(() => {
-    // Restaurar borrador si existe (solo en modo nuevo)
-    if (!requerimiento) {
-      try {
-        const saved = localStorage.getItem(STORAGE_KEY)
-        if (saved) {
-          const { data, paso } = JSON.parse(saved)
-          form.reset(data)
-          setPasoActual(paso ?? 1)
-          toast.info('Borrador restaurado', { description: 'Se recuperó tu progreso anterior' })
-        }
-      } catch {}
-    }
-
-    const interval = setInterval(guardarLocalStorage, 30_000)
-    return () => clearInterval(interval)
-  }, []) // eslint-disable-line react-hooks/exhaustive-deps
-
   // ─── Cálculos globales ────────────────────────────────────────────────────
   const actividades  = form.watch('actividades') ?? []
   const salario      = form.watch('salario_promedio_cargo') ?? 0
@@ -257,7 +228,6 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
       const ok = await form.trigger(campos)
       if (!ok) return
     }
-    guardarLocalStorage()
     setPasoActual(p => Math.min(p + 1, 6))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -268,8 +238,8 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
   }
 
   // ─── Submit ───────────────────────────────────────────────────────────────
-  const handleSubmit = (esBorrador: boolean) => {
-    if (pasoActual === 6 && !confirmado && !esBorrador) {
+  const handleSubmit = () => {
+    if (!confirmado) {
       toast.error('Confirma que la información es correcta antes de enviar')
       return
     }
@@ -281,14 +251,13 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
 
         let id: string
         if (requerimiento) {
-          await actualizarRequerimiento(requerimiento.id, { ...payload, es_borrador: esBorrador })
+          await actualizarRequerimiento(requerimiento.id, { ...payload, es_borrador: false })
           id = requerimiento.id
         } else {
-          const result = await crearRequerimiento({ ...payload, es_borrador: esBorrador })
+          const result = await crearRequerimiento({ ...payload, es_borrador: false })
           id = result.id
         }
 
-        // Guardar URLs de anexos en la tabla 'anexos' de Supabase
         if (anexos.length > 0) {
           await Promise.allSettled(
             anexos.map(a =>
@@ -302,13 +271,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
           )
         }
 
-        // Limpiar localStorage
-        if (!esBorrador) localStorage.removeItem(STORAGE_KEY)
-
-        toast.success(
-          esBorrador ? 'Borrador guardado' : 'Solicitud enviada correctamente',
-          { description: esBorrador ? 'Puedes continuar más tarde' : 'El equipo TIN ha sido notificado' }
-        )
+        toast.success('Solicitud enviada correctamente', { description: 'El equipo TIN ha sido notificado' })
         router.push(`${redirectBasePath}/${id}`)
       } catch (err: any) {
         toast.error('Error al guardar', { description: err?.message })
@@ -319,12 +282,6 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
   // ─── Render ───────────────────────────────────────────────────────────────
   return (
     <div className="mx-auto max-w-3xl space-y-6 p-6">
-      {/* Indicador de auto-guardado */}
-      {lastSaved && (
-        <p className="text-xs text-slate-400">
-          💾 Borrador guardado {formatFechaRelativa(lastSaved)}
-        </p>
-      )}
 
       {/* Barra de progreso */}
       <div className="relative flex items-center justify-between">
@@ -424,26 +381,15 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
 
         <div className="flex gap-2">
           {pasoActual === 6 ? (
-            <>
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => handleSubmit(true)}
-                disabled={isPending}
-                className="gap-1.5"
-              >
-                <Save size={15} /> Guardar borrador
-              </Button>
-              <Button
-                type="button"
-                onClick={() => handleSubmit(false)}
-                disabled={isPending || !confirmado}
-                className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
-              >
-                <Check size={15} />
-                {isPending ? 'Enviando...' : 'Enviar solicitud'}
-              </Button>
-            </>
+            <Button
+              type="button"
+              onClick={handleSubmit}
+              disabled={isPending || !confirmado}
+              className="gap-1.5 bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Check size={15} />
+              {isPending ? 'Enviando...' : 'Enviar solicitud'}
+            </Button>
           ) : (
             <Button
               type="button"
