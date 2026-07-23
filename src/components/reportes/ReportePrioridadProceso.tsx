@@ -54,12 +54,13 @@ const PROCESO_LABEL: Record<string, string> = {
 
 const ESTADO_LABEL: Record<string, string> = {
   SIN_GESTION:           'Sin gestión',
-  ANALISIS:              'En análisis',
+  ANALISIS:              'En estudio y evaluación técnica',
   EN_DEFINICION_USUARIO: 'En definición',
   EN_DESARROLLO:         'En desarrollo',
   PRUEBAS_USUARIO:       'Pruebas usuario',
   STAND_BY:              'Stand By',
-  ENTREGADO:             'Entregado',
+  AJUSTES_TECNICOS:      'Ajustes técnicos',
+  ENTREGADO:             'Prog. salida en vivo',
   CERRADO:               'Cerrado',
   DESISTIDO:             'Desistido',
 }

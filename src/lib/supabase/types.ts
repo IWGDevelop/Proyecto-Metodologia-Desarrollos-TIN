@@ -85,6 +85,7 @@ export type Estado =
   | 'EN_DESARROLLO'
   | 'PRUEBAS_USUARIO'
   | 'STAND_BY'
+  | 'AJUSTES_TECNICOS'
   | 'ENTREGADO'
   | 'CERRADO'
   | 'DESISTIDO'

@@ -4,6 +4,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
+import { AVANCE_POR_ESTADO } from '@/lib/constants'
 import { sendEmail } from '@/lib/email'
 import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
@@ -20,8 +21,9 @@ const ESTADO_LABEL: Record<string, string> = {
   EN_DEFINICION_USUARIO:    'En definición de usuario',
   EN_DESARROLLO:            'En desarrollo',
   PRUEBAS_USUARIO:          'Pruebas usuario',
-  EN_ESPERA_POR_TERCEROS:   'En espera por terceros',
-  ENTREGADO:                'Entregado',
+  STAND_BY:                 'Stand By',
+  AJUSTES_TECNICOS:         'Ajustes técnicos',
+  ENTREGADO:                'Programado para salida en vivo',
   CERRADO:                  'Cerrado',
   DESISTIDO:                'Desistido',
 }
@@ -157,7 +159,10 @@ export async function cambiarEstado(
 
   const hoy = new Date().toISOString().split('T')[0]
   const fecha = fechaTransicion ?? hoy
-  if (estado === 'ENTREGADO' || estado === 'CERRADO') updates.porcentaje_avance = 100
+
+  // Avance automático según etapa
+  if (estado in AVANCE_POR_ESTADO) updates.porcentaje_avance = AVANCE_POR_ESTADO[estado]
+
   if (estado === 'EN_DESARROLLO') updates.fecha_inicio_desarrollo = fecha
   if (estado === 'ENTREGADO')     updates.fecha_real_entrega       = fecha
   if (estado === 'CERRADO')       updates.fecha_cierre             = fecha

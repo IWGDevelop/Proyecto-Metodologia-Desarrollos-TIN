@@ -118,14 +118,23 @@ export const ESTADOS: Record<
     borderColor: 'border-orange-300',
     icon: 'PauseCircle',
   },
+  AJUSTES_TECNICOS: {
+    label: 'Ajustes técnicos',
+    descripcion: 'El desarrollo está en fase de ajustes técnicos finales',
+    color: 'cyan',
+    bgColor: 'bg-cyan-100',
+    textColor: 'text-cyan-700',
+    borderColor: 'border-cyan-300',
+    icon: 'Wrench',
+  },
   ENTREGADO: {
-    label: 'Entregado',
-    descripcion: 'El desarrollo fue entregado al usuario',
+    label: 'Programado para salida en vivo',
+    descripcion: 'El desarrollo está programado para salir en vivo',
     color: 'green',
     bgColor: 'bg-green-100',
     textColor: 'text-green-700',
     borderColor: 'border-green-300',
-    icon: 'CheckCircle',
+    icon: 'Rocket',
   },
   CERRADO: {
     label: 'Cerrado',
@@ -163,6 +172,20 @@ export function getEstadoCfg(estado: string) {
   if (cfg) return cfg
   // Estado dinámico: mostrar el nombre legible como fallback
   return { ...ESTADO_FALLBACK, label: estado.replace(/_/g, ' ') }
+}
+
+// ─── Avance automático por estado ────────────────────────────────────────────
+export const AVANCE_POR_ESTADO: Record<string, number> = {
+  SIN_GESTION:           0,
+  EN_DEFINICION_USUARIO: 25,
+  ANALISIS:              40,
+  STAND_BY:              40,
+  EN_DESARROLLO:         75,
+  PRUEBAS_USUARIO:       85,
+  AJUSTES_TECNICOS:      95,
+  ENTREGADO:             100,
+  CERRADO:               100,
+  DESISTIDO:             0,
 }
 
 // ─── Prioridades ─────────────────────────────────────────────────────────────

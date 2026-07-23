@@ -37,7 +37,7 @@ const PROCESO_COLORS = [
 const ESTADO_LABEL: Record<string, string> = {
   SIN_GESTION: 'Sin gestión', ANALISIS: 'En estudio y evaluación técnica', EN_DEFINICION_USUARIO: 'En definición',
   EN_DESARROLLO: 'En desarrollo', PRUEBAS_USUARIO: 'Pruebas', STAND_BY: 'Stand By',
-  ENTREGADO: 'Entregado', CERRADO: 'Cerrado', DESISTIDO: 'Desistido',
+  AJUSTES_TECNICOS: 'Ajustes técnicos', ENTREGADO: 'Prog. salida en vivo', CERRADO: 'Cerrado', DESISTIDO: 'Desistido',
 }
 
 const ORIGEN_LABEL: Record<string, string> = {
