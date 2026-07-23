@@ -46,8 +46,10 @@ const PROCESO_LABEL: Record<string, string> = {
   DATOS:            'Datos',
   TI:               'TI',
   GENERAL:          'General',
-  PRICING:          'Pricing',
-  ESTRATEGIA:       'Estrategia',
+  PRICING:           'Pricing',
+  ESTRATEGIA:        'Estrategia',
+  MARKETING:         'Marketing',
+  TRAFICO_SEGURIDAD: 'Tráfico y Seguridad',
 }
 
 const ESTADO_LABEL: Record<string, string> = {

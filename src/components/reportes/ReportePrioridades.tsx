@@ -26,6 +26,7 @@ const PROCESO_LABEL: Record<string, string> = {
   CARGA: 'Carga', SISTEMAS_GESTION: 'Sistemas Gestión', SERVICIO_CLIENTE: 'Serv. Cliente',
   COMPRAS: 'Compras', SEGUROS: 'Seguros', DATOS: 'Datos', TI: 'TI',
   GENERAL: 'General', PRICING: 'Pricing', ESTRATEGIA: 'Estrategia',
+  MARKETING: 'Marketing', TRAFICO_SEGURIDAD: 'Tráfico y Seguridad',
 }
 
 const PROCESO_COLORS = [

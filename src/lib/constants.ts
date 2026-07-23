@@ -266,9 +266,11 @@ export const PROCESOS_INTERNOS: Array<{ value: ProcesoInterno; label: string }> 
   { value: 'DATOS',            label: 'Datos' },
   { value: 'TI',               label: 'TI' },
   { value: 'PRICING',          label: 'Pricing' },
-  { value: 'ESTRATEGIA',       label: 'Estrategia' },
+  { value: 'ESTRATEGIA',         label: 'Estrategia' },
+  { value: 'MARKETING',          label: 'Marketing' },
+  { value: 'TRAFICO_SEGURIDAD',  label: 'Tráfico y Seguridad' },
   // GENERAL mantenido para compatibilidad con registros existentes; muestra como Estrategia
-  { value: 'GENERAL',          label: 'Estrategia (legacy)' },
+  { value: 'GENERAL',            label: 'Estrategia (legacy)' },
 ]
 
 // ─── Tipos de cliente ─────────────────────────────────────────────────────────
