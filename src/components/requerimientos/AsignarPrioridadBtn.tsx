@@ -5,8 +5,7 @@ import { useRouter } from 'next/navigation'
 import { ChevronDown, TrendingUp, AlertTriangle } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
-import { actualizarRequerimiento } from '@/actions/requerimientos'
-import { getPrioridadesProceso, type PrioridadOcupada } from '@/actions/requerimientos-admin'
+import { getPrioridadesProceso, asignarPrioridadConDesplazamiento, type PrioridadOcupada } from '@/actions/requerimientos-admin'
 import { PRIORIDADES, SLA_DIAS, formatPrioridad } from '@/lib/constants'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -65,19 +64,15 @@ export function AsignarPrioridadBtn({
   }
 
   const handleGuardar = () => {
-    if (conflicto) return
     startT(async () => {
-      try {
-        await actualizarRequerimiento(requerimientoId, {
-          prioridad:     selPrioridad,
-          sub_prioridad: selSubPrioridad,
-        } as any)
+      const res = await asignarPrioridadConDesplazamiento(requerimientoId, selPrioridad, selSubPrioridad)
+      if (res.ok) {
         const label = formatPrioridad(selPrioridad, selSubPrioridad)
         toast.success(selPrioridad ? `Prioridad ${label} asignada` : 'Prioridad removida')
         setOpen(false)
         router.refresh()
-      } catch (e: any) {
-        toast.error(e?.message ?? 'Error al asignar prioridad')
+      } else {
+        toast.error(res.error ?? 'Error al asignar prioridad')
       }
     })
   }
@@ -205,14 +200,14 @@ export function AsignarPrioridadBtn({
             </div>
           )}
 
-          {/* Advertencia de conflicto */}
+          {/* Aviso de desplazamiento automático */}
           {conflicto && (
-            <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5">
-              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-red-500" />
-              <p className="text-xs text-red-700">
-                Esta prioridad ya está asignada a otro requerimiento del mismo proceso
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-amber-500" />
+              <p className="text-xs text-amber-700">
+                Esta posición ya está ocupada. Al guardar, las prioridades existentes se desplazarán automáticamente.
                 {getNombreConflicto() && (
-                  <span className="block font-semibold mt-0.5">"{getNombreConflicto()}"</span>
+                  <span className="block font-semibold mt-0.5">Ocupada por: "{getNombreConflicto()}"</span>
                 )}
               </p>
             </div>
@@ -234,7 +229,7 @@ export function AsignarPrioridadBtn({
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Cancelar</Button>
             <Button
               onClick={handleGuardar}
-              disabled={isPending || sinCambios || conflicto || faltaSubPrioridad}
+              disabled={isPending || sinCambios || faltaSubPrioridad}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isPending ? 'Guardando...' : 'Guardar prioridad'}

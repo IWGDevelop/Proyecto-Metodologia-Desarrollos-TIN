@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export interface FiltrosAdmin {
@@ -178,4 +179,49 @@ export async function getPrioridadesProceso(
     sub_prioridad: r.sub_prioridad ?? null,
     nombre: r.nombre_desarrollo ?? r.identificacion ?? '',
   }))
+}
+
+export async function asignarPrioridadConDesplazamiento(
+  reqId: string,
+  prioridad: number | null,
+  subPrioridad: number | null
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+
+    if (prioridad !== null && subPrioridad !== null) {
+      // Obtener todos los reqs con misma prioridad y sub_prioridad >= nueva (excepto el actual)
+      // Orden descendente para evitar colisiones al actualizar uno a uno
+      const { data: afectados } = await (supabase as any)
+        .from('requerimientos')
+        .select('id, sub_prioridad')
+        .eq('prioridad', prioridad)
+        .gte('sub_prioridad', subPrioridad)
+        .neq('id', reqId)
+        .order('sub_prioridad', { ascending: false })
+
+      for (const r of afectados ?? []) {
+        const { error } = await (supabase as any)
+          .from('requerimientos')
+          .update({ sub_prioridad: (r.sub_prioridad as number) + 1 })
+          .eq('id', r.id)
+        if (error) return { ok: false, error: `Error al desplazar: ${error.message}` }
+      }
+    }
+
+    const { error: errUpdate } = await (supabase as any)
+      .from('requerimientos')
+      .update({ prioridad, sub_prioridad: subPrioridad })
+      .eq('id', reqId)
+
+    if (errUpdate) return { ok: false, error: errUpdate.message }
+
+    revalidatePath('/admin/requerimientos')
+    revalidatePath(`/admin/requerimientos/${reqId}`)
+    revalidatePath('/admin/reporte-prioridades')
+
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
 }
