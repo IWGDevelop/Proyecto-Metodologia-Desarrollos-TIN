@@ -177,12 +177,10 @@ export function AsignarPrioridadBtn({
                         'rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-all',
                         sel
                           ? cn(cfg.bgColor, cfg.borderColor, cfg.textColor)
-                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300',
-                        ocupado && !sel ? 'opacity-40' : ''
+                          : 'border-slate-200 bg-white text-slate-500 hover:border-slate-300'
                       )}
                     >
                       {selPrioridad}.{sp}
-                      {ocupado && !sel && <span className="ml-0.5 text-red-400">✕</span>}
                     </button>
                   )
                 })}
