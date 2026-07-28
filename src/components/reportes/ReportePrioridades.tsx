@@ -10,6 +10,7 @@ import { ExternalLink, AlertTriangle, Filter, X } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
 import { ESTADOS } from '@/lib/constants'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
+import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 
 interface Props { datos: MetricaRequerimiento[] }
 
@@ -48,22 +49,6 @@ const ORIGEN_LABEL: Record<string, string> = {
 
 // sub_prioridad null = 0 para ordenar primero
 function subNum(sp: number | null) { return sp ?? 0 }
-
-// Etiqueta jerárquica completa recorriendo árbol de padres
-function labelJerarquico(
-  id: string,
-  allReqs: { id: string; prioridad: number | null; sub_prioridad?: number | null; parent_id?: string | null }[]
-): string {
-  const req = allReqs.find(r => r.id === id)
-  if (!req?.prioridad) return '—'
-  if (!req.parent_id) {
-    return req.sub_prioridad != null
-      ? `${req.prioridad}.${req.sub_prioridad}`
-      : `${req.prioridad}.0`
-  }
-  const parentLabel = labelJerarquico(req.parent_id, allReqs)
-  return `${parentLabel}.${req.sub_prioridad ?? 0}`
-}
 
 // Ordenamiento DFS: raíces ordenadas por prioridad, hijos siguen a su padre
 function sortByTree(reqs: MetricaRequerimiento[]): MetricaRequerimiento[] {
@@ -216,22 +201,25 @@ export function ReportePrioridades({ datos }: Props) {
 
   // ── Fila de tabla reutilizable ────────────────────────────────────────────
   function FilaReq({ r, esPrimero }: { r: MetricaRequerimiento; esPrimero: boolean }) {
-    const p = r.prioridad
     const impacto = (r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop ?? 0
     const estadoCfg = ESTADOS[r.estado as Estado]
     const origen = (r as any).origen_requerimiento as string | null
     const esHijo = !!(r as any).parent_id
-    const etiqueta = labelJerarquico(r.id, filtrados)
 
     return (
       <tr className={cn('hover:bg-slate-50 transition-colors', esPrimero && !esHijo && 'border-t-2 border-slate-300')}>
         <td className="px-3 py-2.5">
           <div className={cn('flex items-center gap-1', esHijo && 'pl-4')}>
             {esHijo && <span className="text-slate-300 text-xs">↳</span>}
-            <span className={cn('inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-bold border min-w-[2.8rem]',
-              p ? (PRIORIDAD_BG[p] ?? 'bg-slate-100 text-slate-600 border-slate-200') : 'bg-slate-100 text-slate-400 border-slate-200')}>
-              {etiqueta}
-            </span>
+            <AsignarPrioridadBtn
+              requerimientoId={r.id}
+              prioridadActual={r.prioridad ?? null}
+              subPrioridadActual={(r as any).sub_prioridad ?? null}
+              impactoHH={r.ahorro_anual_cop ?? null}
+              impactoCualitativos={r.total_beneficios_cualitativos_anual ?? null}
+              impactoTotal={(r as any).impacto_economico_total_anual ?? null}
+              proceso_interno={r.proceso_interno ?? null}
+            />
           </div>
         </td>
         <td className="px-3 py-2.5">
