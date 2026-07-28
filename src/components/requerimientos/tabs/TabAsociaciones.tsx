@@ -18,6 +18,7 @@ interface Props {
   requerimientoId: string
   padre: ReqBasico | null
   hijos: ReqBasico[]
+  etiquetaActual: string  // label completo del req actual, ej. "P1.2"
 }
 
 function BuscadorReq({
@@ -105,7 +106,7 @@ function BuscadorReq({
   )
 }
 
-export function TabAsociaciones({ requerimientoId, padre, hijos }: Props) {
+export function TabAsociaciones({ requerimientoId, padre, hijos, etiquetaActual }: Props) {
   const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showAddHijo, setShowAddHijo]     = useState(false)
@@ -221,6 +222,8 @@ export function TabAsociaciones({ requerimientoId, padre, hijos }: Props) {
           <div className="space-y-2">
             {hijos.map(hijo => {
               const estadoCfg = getEstadoCfg(hijo.estado)
+              // etiqueta del hijo = etiqueta del padre actual + "." + posición del hijo
+              const etiquetaHijo = `${etiquetaActual}.${hijo.sub_prioridad ?? 0}`
               return (
                 <div key={hijo.id}
                   className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-2.5">
@@ -228,7 +231,7 @@ export function TabAsociaciones({ requerimientoId, padre, hijos }: Props) {
                     <ChevronRight size={14} className="shrink-0 text-slate-300" />
                     {hijo.prioridad && (
                       <span className="shrink-0 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-600">
-                        {formatPrioridad(hijo.prioridad, hijo.sub_prioridad)}
+                        {etiquetaHijo}
                       </span>
                     )}
                     <div className="min-w-0">

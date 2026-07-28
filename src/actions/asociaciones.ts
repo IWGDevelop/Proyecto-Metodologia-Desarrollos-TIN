@@ -100,6 +100,29 @@ export async function getHijosRequerimiento(parentId: string): Promise<ReqBasico
   return data ?? []
 }
 
+// Recorre la cadena de ancestros y devuelve la etiqueta completa: "P1.2.1", "P1.0", etc.
+export async function getEtiquetaJerarquica(reqId: string): Promise<string> {
+  const supabase = createAdminClient()
+  const chain: { prioridad: number | null; sub_prioridad: number | null; parent_id: string | null }[] = []
+  let currentId: string | null = reqId
+
+  while (currentId && chain.length < 10) {
+    const { data } = await (supabase as any)
+      .from('requerimientos')
+      .select('id, prioridad, sub_prioridad, parent_id')
+      .eq('id', currentId)
+      .single()
+    if (!data) break
+    chain.unshift(data)          // la raíz queda en índice 0
+    currentId = data.parent_id
+  }
+
+  if (!chain.length || !chain[0].prioridad) return 'Sin prioridad'
+  if (chain.length === 1) return `P${chain[0].prioridad}.0`
+  const subParts = chain.slice(1).map(n => n.sub_prioridad ?? 0)
+  return `P${chain[0].prioridad}.${subParts.join('.')}`
+}
+
 export async function getRequerimientosDisponibles(excludeId: string): Promise<ReqBasico[]> {
   const supabase = createAdminClient()
   const { data } = await (supabase as any)

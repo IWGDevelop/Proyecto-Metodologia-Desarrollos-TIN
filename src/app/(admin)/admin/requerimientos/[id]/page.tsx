@@ -15,7 +15,7 @@ import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { TabInformacion } from '@/components/requerimientos/tabs/TabInformacion'
 import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
 import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociaciones'
-import { getHijosRequerimiento } from '@/actions/asociaciones'
+import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
@@ -35,7 +35,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -44,6 +44,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getDesarrolladoresDisponibles(),
     getPerfil(),
     getHijosRequerimiento(id),
+    getEtiquetaJerarquica(id),
   ])
 
   if (error || !req) notFound()
@@ -121,7 +122,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             </span>
             {prioridadCfg && (
               <span className={cn('rounded-full px-3 py-1 text-xs font-bold', prioridadCfg.bgColor, prioridadCfg.textColor)}>
-                {formatPrioridad(req.prioridad, (req as any).sub_prioridad)} {prioridadCfg.label}
+                {etiquetaJerarquica} {prioridadCfg.label}
               </span>
             )}
             {req.alcance && (
@@ -289,6 +290,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             requerimientoId={id}
             padre={padreReq}
             hijos={hijosReq}
+            etiquetaActual={etiquetaJerarquica}
           />
         </TabsContent>
       </Tabs>
