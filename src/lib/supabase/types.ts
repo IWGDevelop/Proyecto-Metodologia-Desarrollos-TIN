@@ -161,6 +161,7 @@ export interface Requerimiento {
   proceso_interno: ProcesoInterno | null
   responsable: string | null
   partes_interesadas: string[] | null
+  parent_id: string | null
   nombre_desarrollo: string | null
   tipo_solucion: TipoSolucion | null
   viabilidad_tecnica: boolean | null

@@ -14,6 +14,8 @@ import { TabPenalizaciones } from '@/components/requerimientos/tabs/TabPenalizac
 import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { TabInformacion } from '@/components/requerimientos/tabs/TabInformacion'
 import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
+import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociaciones'
+import { getHijosRequerimiento } from '@/actions/asociaciones'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
@@ -33,7 +35,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -41,9 +43,22 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getDesarrolladoresReq(id),
     getDesarrolladoresDisponibles(),
     getPerfil(),
+    getHijosRequerimiento(id),
   ])
 
   if (error || !req) notFound()
+
+  // Fetch requerimiento padre si existe
+  const parentId: string | null = (req as any).parent_id ?? null
+  let padreReq = null
+  if (parentId) {
+    const { data: p } = await (supabase as any)
+      .from('requerimientos')
+      .select('id, numero, identificacion, nombre_desarrollo, prioridad, sub_prioridad, parent_id, estado')
+      .eq('id', parentId)
+      .single()
+    padreReq = p ?? null
+  }
 
   const isAdmin = perfilAdmin?.rol === 'ADMIN_TIN'
   const permisos = isAdmin ? {} : await getPermisosUsuario(perfilAdmin?.rol ?? 'USUARIO')
@@ -178,6 +193,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:penalizaciones') && <TabsTrigger value="penalizaciones">Penalizaciones</TabsTrigger>}
           {pv('req:comentarios')    && <TabsTrigger value="comentarios">Comentarios</TabsTrigger>}
           {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
+          <TabsTrigger value="asociaciones">Asociaciones</TabsTrigger>
         </TabsList>
 
         {pv('req:informacion') && (
@@ -267,6 +283,14 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             <TabAnexos requerimientoId={id} />
           </TabsContent>
         )}
+
+        <TabsContent value="asociaciones">
+          <TabAsociaciones
+            requerimientoId={id}
+            padre={padreReq}
+            hijos={hijosReq}
+          />
+        </TabsContent>
       </Tabs>
     </div>
   )

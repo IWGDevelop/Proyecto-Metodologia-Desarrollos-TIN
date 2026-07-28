@@ -49,10 +49,40 @@ const ORIGEN_LABEL: Record<string, string> = {
 // sub_prioridad null = 0 para ordenar primero
 function subNum(sp: number | null) { return sp ?? 0 }
 
-// Etiqueta: null → "X.0", valor → "X.Y"
-function labelPrioridad(p: number | null, sp: number | null) {
-  if (!p) return '—'
-  return `${p}.${sp ?? 0}`
+// Etiqueta jerárquica completa recorriendo árbol de padres
+function labelJerarquico(
+  id: string,
+  allReqs: { id: string; prioridad: number | null; sub_prioridad?: number | null; parent_id?: string | null }[]
+): string {
+  const req = allReqs.find(r => r.id === id)
+  if (!req?.prioridad) return '—'
+  if (!req.parent_id) return `${req.prioridad}.0`
+  const parentLabel = labelJerarquico(req.parent_id, allReqs)
+  return `${parentLabel}.${req.sub_prioridad ?? 0}`
+}
+
+// Ordenamiento DFS: raíces ordenadas por prioridad, hijos siguen a su padre
+function sortByTree(reqs: MetricaRequerimiento[]): MetricaRequerimiento[] {
+  const childrenOf = new Map<string | null, MetricaRequerimiento[]>()
+  reqs.forEach(r => {
+    const pid = (r as any).parent_id ?? null
+    if (!childrenOf.has(pid)) childrenOf.set(pid, [])
+    childrenOf.get(pid)!.push(r)
+  })
+  childrenOf.forEach(arr => arr.sort((a, b) => {
+    const pa = a.prioridad ?? 99, pb = b.prioridad ?? 99
+    if (pa !== pb) return pa - pb
+    return subNum((a as any).sub_prioridad) - subNum((b as any).sub_prioridad)
+  }))
+  const result: MetricaRequerimiento[] = []
+  function dfs(parentId: string | null) {
+    for (const r of childrenOf.get(parentId) ?? []) {
+      result.push(r)
+      dfs(r.id)
+    }
+  }
+  dfs(null)
+  return result
 }
 
 function Select({ label, value, onChange, options }: {
@@ -96,18 +126,15 @@ export function ReportePrioridades({ datos }: Props) {
 
   // ── Datos filtrados ───────────────────────────────────────────────────────
   const filtrados = useMemo(() => {
-    return datos.filter(r => {
-      if (fEmpresa   && r.alcance          !== fEmpresa)                              return false
-      if (fPrioridad && String(r.prioridad) !== fPrioridad)                           return false
-      if (fEstado    && r.estado            !== fEstado)                              return false
-      if (fProceso   && r.proceso_interno   !== fProceso)                             return false
-      if (fOrigen    && (r as any).origen_requerimiento !== fOrigen)                  return false
+    const base = datos.filter(r => {
+      if (fEmpresa   && r.alcance          !== fEmpresa)                  return false
+      if (fPrioridad && String(r.prioridad) !== fPrioridad)               return false
+      if (fEstado    && r.estado            !== fEstado)                  return false
+      if (fProceso   && r.proceso_interno   !== fProceso)                 return false
+      if (fOrigen    && (r as any).origen_requerimiento !== fOrigen)      return false
       return true
-    }).sort((a, b) => {
-      const pa = a.prioridad ?? 99, pb = b.prioridad ?? 99
-      if (pa !== pb) return pa - pb
-      return subNum((a as any).sub_prioridad) - subNum((b as any).sub_prioridad)
     })
+    return sortByTree(base)
   }, [datos, fEmpresa, fPrioridad, fEstado, fProceso, fOrigen])
 
   // ── 1. Conteos por prioridad ──────────────────────────────────────────────
@@ -186,18 +213,22 @@ export function ReportePrioridades({ datos }: Props) {
   // ── Fila de tabla reutilizable ────────────────────────────────────────────
   function FilaReq({ r, esPrimero }: { r: MetricaRequerimiento; esPrimero: boolean }) {
     const p = r.prioridad
-    const sp = (r as any).sub_prioridad ?? null
     const impacto = (r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop ?? 0
     const estadoCfg = ESTADOS[r.estado as Estado]
     const origen = (r as any).origen_requerimiento as string | null
+    const esHijo = !!(r as any).parent_id
+    const etiqueta = labelJerarquico(r.id, filtrados)
 
     return (
-      <tr className={cn('hover:bg-slate-50 transition-colors', esPrimero && 'border-t-2 border-slate-300')}>
+      <tr className={cn('hover:bg-slate-50 transition-colors', esPrimero && !esHijo && 'border-t-2 border-slate-300')}>
         <td className="px-3 py-2.5">
-          <span className={cn('inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-bold border min-w-[2.8rem]',
-            p ? (PRIORIDAD_BG[p] ?? 'bg-slate-100 text-slate-600 border-slate-200') : 'bg-slate-100 text-slate-400 border-slate-200')}>
-            {labelPrioridad(p, sp)}
-          </span>
+          <div className={cn('flex items-center gap-1', esHijo && 'pl-4')}>
+            {esHijo && <span className="text-slate-300 text-xs">↳</span>}
+            <span className={cn('inline-flex items-center justify-center rounded-md px-2 py-0.5 text-xs font-bold border min-w-[2.8rem]',
+              p ? (PRIORIDAD_BG[p] ?? 'bg-slate-100 text-slate-600 border-slate-200') : 'bg-slate-100 text-slate-400 border-slate-200')}>
+              {etiqueta}
+            </span>
+          </div>
         </td>
         <td className="px-3 py-2.5">
           <Link href={`/admin/requerimientos/${r.id}`} className="font-medium text-slate-800 hover:text-blue-600 transition-colors line-clamp-2 text-sm">
@@ -297,11 +328,11 @@ export function ReportePrioridades({ datos }: Props) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100">
-            {[1,2,3,4,5].map(p => {
-              const reqs = grupos.grupos.get(p) ?? []
-              return reqs.map((r, idx) => <FilaReq key={r.id} r={r} esPrimero={idx === 0} />)
+            {filtrados.map((r, idx) => {
+              const esHijo = !!(r as any).parent_id
+              const esPrimero = !esHijo && (idx === 0 || !!(filtrados[idx - 1] && (filtrados[idx - 1].prioridad !== r.prioridad || !!(filtrados[idx - 1] as any).parent_id)))
+              return <FilaReq key={r.id} r={r} esPrimero={esPrimero} />
             })}
-            {grupos.sinPrioridad.map((r, idx) => <FilaReq key={r.id} r={r} esPrimero={idx === 0} />)}
           </tbody>
           <tfoot>
             <tr className="bg-slate-50 border-t-2 border-slate-300">

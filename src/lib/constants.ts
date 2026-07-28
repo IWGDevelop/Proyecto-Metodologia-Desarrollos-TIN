@@ -245,6 +245,19 @@ export function formatPrioridad(prioridad: number | null, subPrioridad?: number 
   return `P${prioridad}.${subPrioridad}`
 }
 
+// Computa la etiqueta jerárquica completa (ej. "1.2.3") recorriendo el árbol de padres.
+// Requiere que el arreglo contenga todos los ancestros del nodo.
+export function computeEtiquetaJerarquica(
+  id: string,
+  reqs: { id: string; prioridad: number | null; sub_prioridad?: number | null; parent_id?: string | null }[]
+): string {
+  const req = reqs.find(r => r.id === id)
+  if (!req?.prioridad) return '—'
+  if (!req.parent_id) return `${req.prioridad}.0`
+  const parentLabel = computeEtiquetaJerarquica(req.parent_id, reqs)
+  return `${parentLabel}.${req.sub_prioridad ?? 0}`
+}
+
 // ─── Tipos de solución ────────────────────────────────────────────────────────
 export const TIPOS_SOLUCION: Record<TipoSolucion, { label: string; descripcion: string }> = {
   DESARROLLO: {
