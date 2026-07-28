@@ -37,6 +37,7 @@ export function AsignarPrioridadBtn({
   const total      = impactoTotal ?? ((impactoHH ?? 0) + (impactoCualitativos ?? 0))
   const cfgActual  = prioridadActual ? PRIORIDADES[prioridadActual] : null
   const sinCambios = selPrioridad === prioridadActual && selSubPrioridad === subPrioridadActual
+  const faltaSubPrioridad = selPrioridad !== null && selSubPrioridad === null
 
   const isOcupada = (p: number | null, sp: number | null) =>
     p !== null && ocupadas.some(o => o.prioridad === p && o.sub_prioridad === sp)
@@ -45,7 +46,7 @@ export function AsignarPrioridadBtn({
 
   const handleOpen = async () => {
     setSelP(prioridadActual)
-    setSelSub(subPrioridadActual)
+    setSelSub(subPrioridadActual ?? (prioridadActual ? 1 : null))
     setOpen(true)
     if (proceso_interno) {
       const data = await getPrioridadesProceso(proceso_interno, requerimientoId)
@@ -59,7 +60,7 @@ export function AsignarPrioridadBtn({
       setSelSub(null)
     } else {
       setSelP(p)
-      setSelSub(null)
+      setSelSub(1)
     }
   }
 
@@ -166,22 +167,9 @@ export function AsignarPrioridadBtn({
           {selPrioridad && (
             <div>
               <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-slate-400">
-                Sub-prioridad <span className="normal-case font-normal text-slate-400">(opcional)</span>
+                Sub-prioridad
               </p>
               <div className="flex flex-wrap gap-1.5">
-                <button
-                  onClick={() => setSelSub(null)}
-                  className={cn(
-                    'rounded-lg border px-3 py-1.5 text-xs font-medium transition-all',
-                    selSubPrioridad === null && selPrioridad !== null
-                      ? 'border-slate-400 bg-slate-100 text-slate-700 ring-1 ring-slate-300'
-                      : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300',
-                    isOcupada(selPrioridad, null) ? 'opacity-50 cursor-not-allowed' : ''
-                  )}
-                >
-                  Sin sub
-                  {isOcupada(selPrioridad, null) && <span className="ml-1 text-red-500">✕</span>}
-                </button>
                 {SUB_PRIORIDADES.map(sp => {
                   const cfg = PRIORIDADES[selPrioridad]
                   const sel = selSubPrioridad === sp
@@ -189,7 +177,7 @@ export function AsignarPrioridadBtn({
                   return (
                     <button
                       key={sp}
-                      onClick={() => setSelSub(sel ? null : sp)}
+                      onClick={() => setSelSub(sp)}
                       className={cn(
                         'rounded-lg border-2 px-3 py-1.5 text-xs font-bold transition-all',
                         sel
@@ -236,11 +224,17 @@ export function AsignarPrioridadBtn({
             </p>
           )}
 
+          {faltaSubPrioridad && (
+            <p className="text-xs text-center text-amber-600">
+              Debes elegir una sub-prioridad (ej. {selPrioridad}.1, {selPrioridad}.2...)
+            </p>
+          )}
+
           <DialogFooter className="gap-2">
             <Button variant="outline" onClick={() => setOpen(false)} disabled={isPending}>Cancelar</Button>
             <Button
               onClick={handleGuardar}
-              disabled={isPending || sinCambios || conflicto}
+              disabled={isPending || sinCambios || conflicto || faltaSubPrioridad}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {isPending ? 'Guardando...' : 'Guardar prioridad'}
