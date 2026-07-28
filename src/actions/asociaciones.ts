@@ -34,20 +34,32 @@ export async function asociarRequerimiento(
     // Evitar referencia circular: el padre no puede ser un descendiente del hijo
     if (parent.parent_id === childId) return { ok: false, error: 'Referencia circular detectada' }
 
-    // Posición entre hermanos actuales
+    // Posición entre hermanos actuales (excluye al hijo si ya estaba vinculado)
     const { count } = await (supabase as any)
       .from('requerimientos')
       .select('id', { count: 'exact', head: true })
       .eq('parent_id', parentId)
+      .neq('id', childId)
 
     const nextPosition = (count ?? 0) + 1
 
-    const { error } = await (supabase as any)
+    // Actualizar en dos pasos para aislar errores: primero parent_id y sub_prioridad
+    const { error: errLink } = await (supabase as any)
       .from('requerimientos')
-      .update({ parent_id: parentId, prioridad: parent.prioridad, sub_prioridad: nextPosition })
+      .update({ parent_id: parentId, sub_prioridad: nextPosition })
       .eq('id', childId)
 
-    if (error) return { ok: false, error: error.message }
+    if (errLink) return { ok: false, error: `Error al vincular: ${errLink.message}` }
+
+    // Luego actualizar prioridad solo si el padre tiene una asignada
+    if (parent.prioridad !== null) {
+      const { error: errPrio } = await (supabase as any)
+        .from('requerimientos')
+        .update({ prioridad: parent.prioridad })
+        .eq('id', childId)
+
+      if (errPrio) return { ok: false, error: `Vinculado pero error al heredar prioridad: ${errPrio.message}` }
+    }
 
     revalidatePath('/admin/requerimientos')
     revalidatePath(`/admin/requerimientos/${childId}`)

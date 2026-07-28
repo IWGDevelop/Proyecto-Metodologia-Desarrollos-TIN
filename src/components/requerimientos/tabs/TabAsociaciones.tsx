@@ -115,8 +115,13 @@ export function TabAsociaciones({ requerimientoId, padre, hijos, etiquetaActual 
   function exec(fn: () => Promise<{ ok: boolean; error?: string }>, successMsg: string) {
     startTransition(async () => {
       const res = await fn()
-      if (res.ok) { toast.success(successMsg); router.refresh() }
-      else toast.error(res.error ?? 'Error')
+      if (res.ok) {
+        toast.success(successMsg)
+        // Reload completo para reflejar cambios de prioridad en el server component
+        window.location.reload()
+      } else {
+        toast.error(res.error ?? 'Error')
+      }
     })
   }
 
