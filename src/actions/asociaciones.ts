@@ -131,9 +131,23 @@ export async function getEtiquetaJerarquica(reqId: string): Promise<string> {
   }
 
   if (!chain.length || !chain[0].prioridad) return 'Sin prioridad'
-  if (chain.length === 1) return `P${chain[0].prioridad}.0`
-  const subParts = chain.slice(1).map(n => n.sub_prioridad ?? 0)
-  return `P${chain[0].prioridad}.${subParts.join('.')}`
+
+  const rootPrio = chain[0].prioridad
+
+  // Si chain[0] tiene sub_prioridad propio (es un nodo posicionado sin padre registrado),
+  // incluirlo en el path. Ej: P1.2 sin parent → base "1.2"
+  let path = chain[0].sub_prioridad != null
+    ? `${rootPrio}.${chain[0].sub_prioridad}`
+    : `${rootPrio}`
+
+  for (let i = 1; i < chain.length; i++) {
+    path += `.${chain[i].sub_prioridad ?? 0}`
+  }
+
+  // Raíz verdadera (sin sub_prioridad) sola → mostrar ".0"
+  if (chain.length === 1 && chain[0].sub_prioridad == null) path += '.0'
+
+  return `P${path}`
 }
 
 export async function getRequerimientosDisponibles(excludeId: string): Promise<ReqBasico[]> {

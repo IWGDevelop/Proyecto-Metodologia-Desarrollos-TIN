@@ -56,7 +56,11 @@ function labelJerarquico(
 ): string {
   const req = allReqs.find(r => r.id === id)
   if (!req?.prioridad) return '—'
-  if (!req.parent_id) return `${req.prioridad}.0`
+  if (!req.parent_id) {
+    return req.sub_prioridad != null
+      ? `${req.prioridad}.${req.sub_prioridad}`
+      : `${req.prioridad}.0`
+  }
   const parentLabel = labelJerarquico(req.parent_id, allReqs)
   return `${parentLabel}.${req.sub_prioridad ?? 0}`
 }
