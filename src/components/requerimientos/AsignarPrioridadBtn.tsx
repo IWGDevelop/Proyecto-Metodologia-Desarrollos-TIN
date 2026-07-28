@@ -20,11 +20,12 @@ interface Props {
   impactoCualitativos?: number | null
   impactoTotal?: number | null
   proceso_interno?: string | null
+  etiqueta?: string
 }
 
 export function AsignarPrioridadBtn({
   requerimientoId, prioridadActual, subPrioridadActual = null,
-  impactoHH, impactoCualitativos, impactoTotal, proceso_interno,
+  impactoHH, impactoCualitativos, impactoTotal, proceso_interno, etiqueta,
 }: Props) {
   const router = useRouter()
   const [open, setOpen]               = useState(false)
@@ -95,7 +96,7 @@ export function AsignarPrioridadBtn({
         )}
       >
         {cfgActual
-          ? `${formatPrioridad(prioridadActual, subPrioridadActual)} ${cfgActual.label}`
+          ? `${etiqueta ?? formatPrioridad(prioridadActual, subPrioridadActual)} ${cfgActual.label}`
           : 'Sin prioridad'}
         <ChevronDown size={12} />
       </button>

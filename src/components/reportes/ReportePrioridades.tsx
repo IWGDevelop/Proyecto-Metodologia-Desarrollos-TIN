@@ -1,12 +1,12 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useEffect } from 'react'
 import Link from 'next/link'
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Cell,
 } from 'recharts'
-import { ExternalLink, AlertTriangle, Filter, X } from 'lucide-react'
+import { ExternalLink, AlertTriangle, Filter, X, ChevronDown } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
 import { ESTADOS } from '@/lib/constants'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
@@ -49,6 +49,21 @@ const ORIGEN_LABEL: Record<string, string> = {
 
 // sub_prioridad null = 0 para ordenar primero
 function subNum(sp: number | null) { return sp ?? 0 }
+
+// Etiqueta jerárquica recorriendo árbol de padres
+function labelJerarquico(
+  id: string,
+  allReqs: { id: string; prioridad: number | null; sub_prioridad?: number | null; parent_id?: string | null }[]
+): string {
+  const req = allReqs.find(r => r.id === id)
+  if (!req?.prioridad) return '—'
+  const sp = (req as any).sub_prioridad ?? null
+  if (!(req as any).parent_id) {
+    return sp != null ? `${req.prioridad}.${sp}` : `${req.prioridad}.0`
+  }
+  const parentLabel = labelJerarquico((req as any).parent_id, allReqs)
+  return `${parentLabel}.${sp ?? 0}`
+}
 
 // Ordenamiento DFS: raíces ordenadas por prioridad, hijos siguen a su padre
 function sortByTree(reqs: MetricaRequerimiento[]): MetricaRequerimiento[] {
@@ -95,6 +110,61 @@ function Select({ label, value, onChange, options }: {
   )
 }
 
+function MultiSelect({ label, values, onChange, options }: {
+  label: string
+  values: string[]
+  onChange: (v: string[]) => void
+  options: { value: string; label: string }[]
+}) {
+  const [open, setOpen] = useState(false)
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const toggle = (v: string) =>
+    onChange(values.includes(v) ? values.filter(x => x !== v) : [...values, v])
+
+  const displayLabel = values.length === 0
+    ? 'Todos'
+    : values.length === 1
+    ? (options.find(o => o.value === values[0])?.label ?? values[0])
+    : `${values.length} seleccionados`
+
+  return (
+    <div ref={ref} className="flex flex-col gap-1 relative">
+      <label className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">{label}</label>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs text-left flex items-center justify-between gap-1 focus:outline-none focus:ring-2 focus:ring-blue-300"
+      >
+        <span className={values.length === 0 ? 'text-slate-400' : 'text-slate-700 truncate'}>{displayLabel}</span>
+        <ChevronDown size={11} className="shrink-0 text-slate-400" />
+      </button>
+      {open && (
+        <div className="absolute top-full left-0 z-30 mt-1 min-w-[210px] rounded-lg border border-slate-200 bg-white shadow-lg max-h-60 overflow-y-auto">
+          {options.map(o => (
+            <label key={o.value} className="flex items-center gap-2.5 px-3 py-2 hover:bg-slate-50 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={values.includes(o.value)}
+                onChange={() => toggle(o.value)}
+                className="rounded border-slate-300 text-blue-600 focus:ring-blue-300"
+              />
+              <span className="text-xs text-slate-700">{o.label}</span>
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
 function seccionTitle(title: string) {
   return (
     <div className="flex items-center gap-3 mb-4">
@@ -107,24 +177,24 @@ function seccionTitle(title: string) {
 export function ReportePrioridades({ datos }: Props) {
   const [fEmpresa,   setFEmpresa]   = useState('')
   const [fPrioridad, setFPrioridad] = useState('')
-  const [fEstado,    setFEstado]    = useState('')
+  const [fEstados,   setFEstados]   = useState<string[]>([])
   const [fProceso,   setFProceso]   = useState('')
   const [fOrigen,    setFOrigen]    = useState('')
 
-  const hayFiltros = fEmpresa || fPrioridad || fEstado || fProceso || fOrigen
+  const hayFiltros = fEmpresa || fPrioridad || fEstados.length > 0 || fProceso || fOrigen
 
   // ── Datos filtrados ───────────────────────────────────────────────────────
   const filtrados = useMemo(() => {
     const base = datos.filter(r => {
-      if (fEmpresa   && r.alcance          !== fEmpresa)                  return false
-      if (fPrioridad && String(r.prioridad) !== fPrioridad)               return false
-      if (fEstado    && r.estado            !== fEstado)                  return false
-      if (fProceso   && r.proceso_interno   !== fProceso)                 return false
-      if (fOrigen    && (r as any).origen_requerimiento !== fOrigen)      return false
+      if (fEmpresa              && r.alcance          !== fEmpresa)                  return false
+      if (fPrioridad            && String(r.prioridad) !== fPrioridad)               return false
+      if (fEstados.length > 0   && !fEstados.includes(r.estado))                    return false
+      if (fProceso              && r.proceso_interno   !== fProceso)                 return false
+      if (fOrigen               && (r as any).origen_requerimiento !== fOrigen)      return false
       return true
     })
     return sortByTree(base)
-  }, [datos, fEmpresa, fPrioridad, fEstado, fProceso, fOrigen])
+  }, [datos, fEmpresa, fPrioridad, fEstados, fProceso, fOrigen])
 
   // ── 1. Conteos por prioridad ──────────────────────────────────────────────
   const conteosPrioridad = useMemo(() => {
@@ -205,6 +275,7 @@ export function ReportePrioridades({ datos }: Props) {
     const estadoCfg = ESTADOS[r.estado as Estado]
     const origen = (r as any).origen_requerimiento as string | null
     const esHijo = !!(r as any).parent_id
+    const etiqueta = labelJerarquico(r.id, datos)
 
     return (
       <tr className={cn('hover:bg-slate-50 transition-colors', esPrimero && !esHijo && 'border-t-2 border-slate-300')}>
@@ -219,6 +290,7 @@ export function ReportePrioridades({ datos }: Props) {
               impactoCualitativos={r.total_beneficios_cualitativos_anual ?? null}
               impactoTotal={(r as any).impacto_economico_total_anual ?? null}
               proceso_interno={r.proceso_interno ?? null}
+              etiqueta={etiqueta !== '—' ? etiqueta : undefined}
             />
           </div>
         </td>
@@ -262,7 +334,7 @@ export function ReportePrioridades({ datos }: Props) {
           <Filter size={13} className="text-slate-400" />
           <span className="text-xs font-semibold text-slate-500">Filtros</span>
           {hayFiltros && (
-            <button onClick={() => { setFEmpresa(''); setFPrioridad(''); setFEstado(''); setFProceso(''); setFOrigen('') }}
+            <button onClick={() => { setFEmpresa(''); setFPrioridad(''); setFEstados([]); setFProceso(''); setFOrigen('') }}
               className="ml-auto flex items-center gap-1 text-xs text-slate-400 hover:text-red-500">
               <X size={11} /> Limpiar
             </button>
@@ -273,7 +345,7 @@ export function ReportePrioridades({ datos }: Props) {
             options={[{ value: 'IWF', label: 'IWF' }, { value: 'ILT', label: 'ILT' }, { value: 'IWG', label: 'IWG' }]} />
           <Select label="Prioridad" value={fPrioridad} onChange={setFPrioridad}
             options={[1,2,3,4,5].map(p => ({ value: String(p), label: `P${p}` }))} />
-          <Select label="Estado" value={fEstado} onChange={setFEstado} options={estadosDisponibles} />
+          <MultiSelect label="Estado" values={fEstados} onChange={setFEstados} options={estadosDisponibles} />
           <Select label="Proceso" value={fProceso} onChange={setFProceso} options={procesosDisponibles} />
           <Select label="Origen" value={fOrigen} onChange={setFOrigen} options={origenesDisponibles} />
         </div>
