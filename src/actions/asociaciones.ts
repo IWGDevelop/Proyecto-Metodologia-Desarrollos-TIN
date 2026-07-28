@@ -107,15 +107,15 @@ export async function getEtiquetaJerarquica(reqId: string): Promise<string> {
   let currentId: string | null = reqId
 
   while (currentId && chain.length < 10) {
-    const result = await (supabase as any)
-      .from('requerimientos')
-      .select('id, prioridad, sub_prioridad, parent_id')
-      .eq('id', currentId)
-      .single()
-    const row: { prioridad: number | null; sub_prioridad: number | null; parent_id: string | null } | null = result.data
-    if (!row) break
-    chain.unshift(row)
-    currentId = row.parent_id
+    const result: { data: { prioridad: number | null; sub_prioridad: number | null; parent_id: string | null } | null } =
+      await (supabase as any)
+        .from('requerimientos')
+        .select('id, prioridad, sub_prioridad, parent_id')
+        .eq('id', currentId)
+        .single()
+    if (!result.data) break
+    chain.unshift(result.data)
+    currentId = result.data.parent_id
   }
 
   if (!chain.length || !chain[0].prioridad) return 'Sin prioridad'
