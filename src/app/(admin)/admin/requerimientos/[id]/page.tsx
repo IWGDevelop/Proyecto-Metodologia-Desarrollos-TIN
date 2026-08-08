@@ -15,7 +15,9 @@ import { TabImpactoReal } from '@/components/requerimientos/tabs/TabImpactoReal'
 import { TabInformacion } from '@/components/requerimientos/tabs/TabInformacion'
 import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
 import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociaciones'
+import { TabFechas } from '@/components/requerimientos/tabs/TabFechas'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
+import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
@@ -35,7 +37,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -45,6 +47,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getPerfil(),
     getHijosRequerimiento(id),
     getEtiquetaJerarquica(id),
+    getHistorialFechas(id),
   ])
 
   if (error || !req) notFound()
@@ -195,6 +198,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:comentarios')    && <TabsTrigger value="comentarios">Comentarios</TabsTrigger>}
           {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
           <TabsTrigger value="asociaciones">Asociaciones</TabsTrigger>
+          <TabsTrigger value="fechas">Fechas</TabsTrigger>
         </TabsList>
 
         {pv('req:informacion') && (
@@ -291,6 +295,21 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             padre={padreReq}
             hijos={hijosReq}
             etiquetaActual={etiquetaJerarquica}
+          />
+        </TabsContent>
+
+        <TabsContent value="fechas">
+          <TabFechas
+            requerimientoId={id}
+            fechasActuales={{
+              fecha_estimada_entrega:          (req as any).fecha_estimada_entrega ?? null,
+              fecha_real_entrega:              (req as any).fecha_real_entrega ?? null,
+              fecha_estimada_feedback_pruebas: (req as any).fecha_estimada_feedback_pruebas ?? null,
+              fecha_real_feedback_pruebas:     (req as any).fecha_real_feedback_pruebas ?? null,
+              fecha_estimada_salida_vivo:      (req as any).fecha_estimada_salida_vivo ?? null,
+              fecha_salida_vivo:               (req as any).fecha_salida_vivo ?? null,
+            }}
+            historial={historialFechas}
           />
         </TabsContent>
       </Tabs>

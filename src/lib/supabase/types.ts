@@ -194,8 +194,11 @@ export interface Requerimiento {
   fecha_inicio_desarrollo: string | null
   fecha_estimada_entrega: string | null
   fecha_real_entrega: string | null
+  fecha_estimada_feedback_pruebas: string | null
+  fecha_real_feedback_pruebas: string | null
   inicio_pruebas_usuario: string | null
   fin_pruebas_usuario: string | null
+  fecha_estimada_salida_vivo: string | null
   fecha_salida_vivo: string | null
   fecha_cierre: string | null
   horas_hombre_ahorradas: number | null
