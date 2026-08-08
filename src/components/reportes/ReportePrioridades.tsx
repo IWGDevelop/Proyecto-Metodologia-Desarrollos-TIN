@@ -36,10 +36,20 @@ const PROCESO_COLORS = [
 ]
 
 const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION: 'Sin gestión', ANALISIS: 'En estudio y evaluación técnica', EN_DEFINICION_USUARIO: 'En definición',
-  EN_DESARROLLO: 'En desarrollo', PRUEBAS_USUARIO: 'Pruebas', STAND_BY: 'Stand By',
-  AJUSTES_TECNICOS: 'Ajustes técnicos', ENTREGADO: 'Prog. salida en vivo', CERRADO: 'Cerrado', DESISTIDO: 'Desistido',
+  SIN_GESTION:          'Sin gestión',
+  ANALISIS:             'En estudio y evaluación técnica',
+  EN_DEFINICION_USUARIO:'En definición',
+  EN_DESARROLLO:        'En desarrollo',
+  PRUEBAS_USUARIO:      'Pruebas',
+  AJUSTES_TECNICOS:     'Ajustes técnicos',
+  STAND_BY:             'Stand By',
+  ENTREGADO:            'Prog. salida en vivo',
+  CERRADO:              'Cerrado',
+  DESISTIDO:            'Desistido',
 }
+
+// Lista fija con todos los estados en orden de flujo, con sus labels
+const ESTADOS_OPCIONES = Object.entries(ESTADO_LABEL).map(([value, label]) => ({ value, label }))
 
 const ORIGEN_LABEL: Record<string, string> = {
   LISTA_MEJORAS_PENDIENTES: 'Lista mejoras',
@@ -259,10 +269,7 @@ export function ReportePrioridades({ datos }: Props) {
     return Array.from(set).sort().map(p => ({ value: p, label: PROCESO_LABEL[p] ?? p }))
   }, [datos])
 
-  const estadosDisponibles = useMemo(() => {
-    const set = new Set(datos.map(r => r.estado).filter(Boolean) as string[])
-    return Array.from(set).map(e => ({ value: e, label: ESTADO_LABEL[e] ?? e }))
-  }, [datos])
+  const estadosDisponibles = ESTADOS_OPCIONES
 
   const origenesDisponibles = useMemo(() => {
     const set = new Set(datos.map(r => (r as any).origen_requerimiento).filter(Boolean) as string[])
