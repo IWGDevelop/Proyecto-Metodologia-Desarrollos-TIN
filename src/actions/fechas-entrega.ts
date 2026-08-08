@@ -89,7 +89,7 @@ export async function actualizarFechasEntrega(
     // Obtener usuario actual
     let userName = 'Sistema'
     try {
-      const clientUser = createClient()
+      const clientUser = await createClient()
       const { data: { user } } = await clientUser.auth.getUser()
       userName = user?.email ?? 'Sistema'
     } catch { /* no session in server action */ }
