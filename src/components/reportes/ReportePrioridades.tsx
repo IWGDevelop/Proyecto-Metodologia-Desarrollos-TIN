@@ -36,16 +36,20 @@ const PROCESO_COLORS = [
 ]
 
 const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION:          'Sin gestión',
-  ANALISIS:             'En estudio y evaluación técnica',
-  EN_DEFINICION_USUARIO:'En definición',
-  EN_DESARROLLO:        'En desarrollo',
-  PRUEBAS_USUARIO:      'Pruebas',
-  AJUSTES_TECNICOS:     'Ajustes técnicos',
-  STAND_BY:             'Stand By',
-  ENTREGADO:            'Prog. salida en vivo',
-  CERRADO:              'Cerrado',
-  DESISTIDO:            'Desistido',
+  SIN_GESTION:                        'Recibido',
+  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'En espera de comité de prioridades',
+  ANALISIS:                           'En estudio y evaluación técnica',
+  EN_DEFINICION_USUARIO:              'Definición de usuario',
+  EN_DESARROLLO:                      'Desarrollo',
+  PRUEBAS_USUARIO:                    'Pruebas usuario',
+  STAND_BY:                           'Stand By',
+  EN_ESPERA_POR_TERCEROS:             'En espera por terceros',
+  AJUSTES_TECNICOS:                   'Ajustes técnicos',
+  PROGRAMADO_PARA_SALIDA_EN_VIVO:     'Programado para salida en vivo',
+  ENTREGADO:                          'Entregado y en funcionamiento',
+  CERRADO:                            'Cerrado',
+  DESISTIDO:                          'Desistido',
+  NO_VIABLE:                          'No viable',
 }
 
 // Lista fija con todos los estados en orden de flujo, con sus labels

@@ -85,10 +85,14 @@ export type Estado =
   | 'EN_DESARROLLO'
   | 'PRUEBAS_USUARIO'
   | 'STAND_BY'
+  | 'EN_ESPERA_POR_TERCEROS'
   | 'AJUSTES_TECNICOS'
   | 'ENTREGADO'
+  | 'PROGRAMADO_PARA_SALIDA_EN_VIVO'
+  | 'EN_ESPERA_DE_COMITE_DE_PRIORIDADES'
   | 'CERRADO'
   | 'DESISTIDO'
+  | 'NO_VIABLE'
   | (string & {})   // permite estados personalizados dinámicos
 
 export interface EstadoKanban {

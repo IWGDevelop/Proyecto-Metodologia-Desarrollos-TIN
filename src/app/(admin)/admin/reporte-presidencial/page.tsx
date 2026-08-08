@@ -218,9 +218,20 @@ function Seccion({ titulo, icono: Icon, children, className }: { titulo: string;
 
 /* ── Colores ─────────────────────────────────────────────────────────────── */
 const ESTADO_BAR: Record<string, string> = {
-  SIN_GESTION: 'bg-slate-400', ANALISIS: 'bg-blue-500', EN_DEFINICION_USUARIO: 'bg-violet-500',
-  EN_DESARROLLO: 'bg-indigo-500', PRUEBAS_USUARIO: 'bg-amber-500', STAND_BY: 'bg-orange-400',
-  ENTREGADO: 'bg-emerald-500', CERRADO: 'bg-teal-500',
+  SIN_GESTION:                        'bg-slate-400',
+  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'bg-slate-300',
+  ANALISIS:                           'bg-blue-500',
+  EN_DEFINICION_USUARIO:              'bg-violet-500',
+  EN_DESARROLLO:                      'bg-indigo-500',
+  PRUEBAS_USUARIO:                    'bg-amber-500',
+  STAND_BY:                           'bg-orange-400',
+  EN_ESPERA_POR_TERCEROS:             'bg-slate-400',
+  AJUSTES_TECNICOS:                   'bg-cyan-500',
+  PROGRAMADO_PARA_SALIDA_EN_VIVO:     'bg-emerald-500',
+  ENTREGADO:                          'bg-green-500',
+  CERRADO:                            'bg-teal-500',
+  DESISTIDO:                          'bg-red-400',
+  NO_VIABLE:                          'bg-rose-400',
 }
 const TIPO_BAR: Record<string, string> = { NUEVO_DESARROLLO: 'bg-blue-500', MEJORA: 'bg-violet-500', INTEGRACION: 'bg-cyan-500', INFORME: 'bg-amber-500' }
 const TIPO_BADGE: Record<string, string> = { NUEVO_DESARROLLO: 'bg-blue-100 text-blue-700 border-blue-200', MEJORA: 'bg-violet-100 text-violet-700 border-violet-200', INTEGRACION: 'bg-cyan-100 text-cyan-700 border-cyan-200', INFORME: 'bg-amber-100 text-amber-700 border-amber-200' }

@@ -65,8 +65,8 @@ export const ESTADOS: Record<
   }
 > = {
   SIN_GESTION: {
-    label: 'Sin gestión',
-    descripcion: 'El requerimiento aún no ha sido atendido',
+    label: 'Recibido',
+    descripcion: 'El requerimiento fue recibido y aún no ha sido atendido',
     color: 'slate',
     bgColor: 'bg-slate-100',
     textColor: 'text-slate-700',
@@ -83,7 +83,7 @@ export const ESTADOS: Record<
     icon: 'Search',
   },
   EN_DEFINICION_USUARIO: {
-    label: 'En definición de usuario',
+    label: 'Definición de usuario',
     descripcion: 'Se está definiendo y validando con los usuarios',
     color: 'purple',
     bgColor: 'bg-purple-100',
@@ -92,7 +92,7 @@ export const ESTADOS: Record<
     icon: 'Users',
   },
   EN_DESARROLLO: {
-    label: 'En desarrollo',
+    label: 'Desarrollo',
     descripcion: 'El desarrollo está en curso',
     color: 'indigo',
     bgColor: 'bg-indigo-100',
@@ -118,6 +118,15 @@ export const ESTADOS: Record<
     borderColor: 'border-orange-300',
     icon: 'PauseCircle',
   },
+  EN_ESPERA_POR_TERCEROS: {
+    label: 'En espera por terceros',
+    descripcion: 'El requerimiento está bloqueado por un tercero',
+    color: 'slate',
+    bgColor: 'bg-slate-100',
+    textColor: 'text-slate-600',
+    borderColor: 'border-slate-300',
+    icon: 'PauseCircle',
+  },
   AJUSTES_TECNICOS: {
     label: 'Ajustes técnicos',
     descripcion: 'El desarrollo está en fase de ajustes técnicos finales',
@@ -128,13 +137,31 @@ export const ESTADOS: Record<
     icon: 'Wrench',
   },
   ENTREGADO: {
-    label: 'Programado para salida en vivo',
-    descripcion: 'El desarrollo está programado para salir en vivo',
+    label: 'Entregado y en funcionamiento',
+    descripcion: 'El desarrollo fue entregado y está en funcionamiento',
     color: 'green',
     bgColor: 'bg-green-100',
     textColor: 'text-green-700',
     borderColor: 'border-green-300',
+    icon: 'CheckCircle',
+  },
+  PROGRAMADO_PARA_SALIDA_EN_VIVO: {
+    label: 'Programado para salida en vivo',
+    descripcion: 'El desarrollo está programado para salir en vivo',
+    color: 'emerald',
+    bgColor: 'bg-emerald-100',
+    textColor: 'text-emerald-700',
+    borderColor: 'border-emerald-300',
     icon: 'Rocket',
+  },
+  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: {
+    label: 'En espera de comité de prioridades',
+    descripcion: 'Pendiente de revisión por el comité de prioridades',
+    color: 'slate',
+    bgColor: 'bg-slate-100',
+    textColor: 'text-slate-600',
+    borderColor: 'border-slate-300',
+    icon: 'Clock',
   },
   CERRADO: {
     label: 'Cerrado',
@@ -152,6 +179,15 @@ export const ESTADOS: Record<
     bgColor: 'bg-red-100',
     textColor: 'text-red-700',
     borderColor: 'border-red-300',
+    icon: 'Ban',
+  },
+  NO_VIABLE: {
+    label: 'No viable',
+    descripcion: 'El requerimiento fue evaluado como no viable',
+    color: 'red',
+    bgColor: 'bg-rose-100',
+    textColor: 'text-rose-700',
+    borderColor: 'border-rose-300',
     icon: 'Ban',
   },
 }
@@ -176,16 +212,20 @@ export function getEstadoCfg(estado: string) {
 
 // ─── Avance automático por estado ────────────────────────────────────────────
 export const AVANCE_POR_ESTADO: Record<string, number> = {
-  SIN_GESTION:           0,
-  EN_DEFINICION_USUARIO: 25,
-  ANALISIS:              40,
-  STAND_BY:              40,
-  EN_DESARROLLO:         75,
-  PRUEBAS_USUARIO:       85,
-  AJUSTES_TECNICOS:      95,
-  ENTREGADO:             100,
-  CERRADO:               100,
-  DESISTIDO:             0,
+  SIN_GESTION:                        0,
+  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 5,
+  EN_DEFINICION_USUARIO:              25,
+  ANALISIS:                           40,
+  STAND_BY:                           40,
+  EN_ESPERA_POR_TERCEROS:             60,
+  EN_DESARROLLO:                      75,
+  PRUEBAS_USUARIO:                    85,
+  AJUSTES_TECNICOS:                   95,
+  PROGRAMADO_PARA_SALIDA_EN_VIVO:     100,
+  ENTREGADO:                          100,
+  CERRADO:                            100,
+  DESISTIDO:                          0,
+  NO_VIABLE:                          0,
 }
 
 // ─── Prioridades ─────────────────────────────────────────────────────────────
