@@ -7,6 +7,7 @@ import {
   toggleTareaReunion, eliminarTareaReunion, eliminarReunion,
   guardarRespuestaTarea, registrarAnexoTarea, eliminarAnexoTarea,
   actualizarMotivoYPenalizacion, registrarAnexoReunion, eliminarAnexoReunion,
+  enviarRecordatorioTarea,
 } from '@/actions/reuniones'
 import { getPerfilesActivos } from '@/actions/perfiles'
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage'
@@ -16,7 +17,7 @@ import {
   Video, PlayCircle, Plus, Trash2, CheckSquare, Square, Lock,
   ChevronDown, ChevronUp, CalendarCheck, Calendar, UserCheck, X, Link2,
   Paperclip, MessageSquare, AlertCircle, FileText, Image, File,
-  Download, DollarSign, Clock, Pencil, Check,
+  Download, DollarSign, Clock, Pencil, Check, Bell,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn, formatCOP } from '@/lib/utils'
@@ -431,8 +432,9 @@ function FilaTarea({
 }: {
   tarea: TareaReunion; perfiles: Perfil[]; isAdmin: boolean; onRefresh: () => void
 }) {
-  const [expanded, setExpanded] = useState(false)
-  const [isPending, startT]     = useTransition()
+  const [expanded, setExpanded]       = useState(false)
+  const [isPending, startT]           = useTransition()
+  const [sendingReminder, setSending] = useState(false)
 
   const tieneEvidencia = !!(tarea.respuesta?.trim() || tarea.anexos.length > 0)
   const badge          = badgeFechaCompromiso(tarea.fecha_compromiso, tarea.completada)
@@ -460,6 +462,14 @@ function FilaTarea({
       await eliminarTareaReunion(tarea.id)
       onRefresh()
     })
+  }
+
+  const handleRecordatorio = async () => {
+    setSending(true)
+    const res = await enviarRecordatorioTarea(tarea.id)
+    setSending(false)
+    if (res.ok) toast.success('Recordatorio enviado por correo')
+    else toast.error(res.error ?? 'Error al enviar el recordatorio')
   }
 
   return (
@@ -546,6 +556,19 @@ function FilaTarea({
           title={expanded ? 'Cerrar panel' : 'Respuesta y anexos'}>
           {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
         </button>
+        {!tarea.completada && (
+          <button
+            onClick={handleRecordatorio}
+            disabled={sendingReminder}
+            title="Enviar recordatorio por correo"
+            className="mt-0.5 shrink-0 rounded-lg p-1 text-slate-300 hover:bg-amber-50 hover:text-amber-500 disabled:opacity-40"
+          >
+            {sendingReminder
+              ? <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-amber-400 border-t-transparent" />
+              : <Bell size={13} />
+            }
+          </button>
+        )}
         <button onClick={handleEliminar} disabled={isPending}
           className="mt-0.5 shrink-0 text-slate-200 hover:text-red-400">
           <X size={13} />

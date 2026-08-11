@@ -3,7 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { sendEmail } from '@/lib/email'
-import { subjectReq, templateNuevaReunion } from '@/lib/email-templates'
+import { subjectReq, templateNuevaReunion, templateRecordatorioTarea } from '@/lib/email-templates'
 import { getEmailsActivos } from '@/actions/config-email'
 import type { Reunion, TareaReunion, AnexoReunion } from '@/lib/supabase/types'
 
@@ -328,5 +328,54 @@ export async function eliminarAnexoReunion(id: string): Promise<{ ok: boolean }>
     return { ok: !error }
   } catch {
     return { ok: false }
+  }
+}
+
+export async function enviarRecordatorioTarea(
+  tareaId: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+
+    // Fetch tarea + reunion + requerimiento en una sola consulta
+    const { data: tarea } = await (supabase as any)
+      .from('tareas_reunion')
+      .select('*, reuniones(titulo, requerimiento_id, requerimientos(nombre_desarrollo, identificacion))')
+      .eq('id', tareaId)
+      .single()
+
+    if (!tarea) return { ok: false, error: 'Tarea no encontrada' }
+
+    const reunion = tarea.reuniones
+    const req = reunion?.requerimientos
+    const requerimientoId = reunion?.requerimiento_id
+
+    if (!req || !requerimientoId) return { ok: false, error: 'No se encontró el requerimiento asociado' }
+
+    const appUrl = getAppUrl()
+    const enlace = appUrl ? `${appUrl}/admin/requerimientos/${requerimientoId}` : undefined
+
+    const globales = await getEmailsActivos()
+    const responsable = tarea.responsable_email ? [tarea.responsable_email] : []
+    const todos = [...new Set([...globales, ...responsable])]
+
+    if (todos.length === 0) return { ok: false, error: 'No hay destinatarios configurados' }
+
+    await sendEmail({
+      to: todos,
+      subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? ''),
+      html: templateRecordatorioTarea({
+        nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+        tituloReunion:    reunion.titulo ?? '',
+        descripcionTarea: tarea.descripcion,
+        fechaCompromiso:  tarea.fecha_compromiso ?? null,
+        enlace,
+      }),
+      requerimientoId,
+    })
+
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
   }
 }

@@ -218,6 +218,60 @@ export function templateTareaVencida({
   `)
 }
 
+export function templateRecordatorioTarea({
+  nombreDesarrollo,
+  tituloReunion,
+  descripcionTarea,
+  fechaCompromiso,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  tituloReunion: string
+  descripcionTarea: string
+  fechaCompromiso?: string | null
+  enlace?: string
+}) {
+  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
+  const fechaDate = fechaCompromiso ? new Date(fechaCompromiso + 'T12:00:00') : null
+  const vencida = fechaDate ? fechaDate < hoy : false
+  const diasRetraso = vencida && fechaDate
+    ? Math.ceil((hoy.getTime() - fechaDate.getTime()) / 86400000)
+    : 0
+  const fechaStr = fechaDate
+    ? fechaDate.toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric' })
+    : null
+
+  const headerColor = vencida ? '#dc2626' : '#d97706'
+  const bannerBg    = vencida ? '#fef2f2' : '#fffbeb'
+  const bannerBorder = vencida ? '#ef4444' : '#f59e0b'
+  const bannerLabel  = vencida ? '#991b1b' : '#92400e'
+  const titulo = vencida ? '🚨 Recordatorio: tarea vencida' : '⏰ Recordatorio: tarea pendiente'
+  const btnColor = vencida ? '#dc2626' : '#2563eb'
+
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${headerColor}">${titulo}</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">
+      Tienes una tarea pendiente en el desarrollo <strong>${nombreDesarrollo}</strong>${tituloReunion ? `, reunión <strong>${tituloReunion}</strong>` : ''}.
+    </p>
+
+    <div style="background:${bannerBg};border-left:3px solid ${bannerBorder};border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:${bannerLabel}">Tarea pendiente</p>
+      <p style="margin:0;font-size:14px;color:#1e293b;font-weight:bold">${descripcionTarea}</p>
+      ${fechaStr ? `<p style="margin:6px 0 0;font-size:12px;color:${bannerLabel}">
+        ${vencida
+          ? `Venció el ${fechaStr} · ${diasRetraso} día${diasRetraso !== 1 ? 's' : ''} de retraso`
+          : `Fecha compromiso: ${fechaStr}`}
+      </p>` : ''}
+    </div>
+
+    <p style="margin:0 0 20px;font-size:14px;color:#475569">
+      Por favor, ingresa al sistema para registrar la evidencia o respuesta de esta tarea.
+    </p>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:${btnColor};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
 export function templateNuevoRequerimiento({
   nombreDesarrollo,
   identificacion,
