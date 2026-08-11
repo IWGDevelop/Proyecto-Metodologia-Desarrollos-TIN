@@ -222,12 +222,14 @@ export function templateRecordatorioTarea({
   nombreDesarrollo,
   tituloReunion,
   descripcionTarea,
+  responsableEmail,
   fechaCompromiso,
   enlace,
 }: {
   nombreDesarrollo: string
   tituloReunion: string
   descripcionTarea: string
+  responsableEmail?: string | null
   fechaCompromiso?: string | null
   enlace?: string
 }) {
@@ -257,6 +259,7 @@ export function templateRecordatorioTarea({
     <div style="background:${bannerBg};border-left:3px solid ${bannerBorder};border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
       <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:${bannerLabel}">Tarea pendiente</p>
       <p style="margin:0;font-size:14px;color:#1e293b;font-weight:bold">${descripcionTarea}</p>
+      ${responsableEmail ? `<p style="margin:6px 0 0;font-size:12px;color:#64748b">👤 Responsable: <strong>${responsableEmail}</strong></p>` : ''}
       ${fechaStr ? `<p style="margin:6px 0 0;font-size:12px;color:${bannerLabel}">
         ${vencida
           ? `Venció el ${fechaStr} · ${diasRetraso} día${diasRetraso !== 1 ? 's' : ''} de retraso`

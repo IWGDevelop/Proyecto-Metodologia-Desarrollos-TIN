@@ -368,6 +368,7 @@ export async function enviarRecordatorioTarea(
         nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
         tituloReunion:    reunion.titulo ?? '',
         descripcionTarea: tarea.descripcion,
+        responsableEmail: tarea.responsable_email ?? null,
         fechaCompromiso:  tarea.fecha_compromiso ?? null,
         enlace,
       }),
