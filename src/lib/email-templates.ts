@@ -218,6 +218,35 @@ export function templateTareaVencida({
   `)
 }
 
+export function templateAsignacionDesarrollador({
+  nombreDesarrollador,
+  nombreDesarrollo,
+  identificacion,
+  numero,
+  enlace,
+}: {
+  nombreDesarrollador: string
+  nombreDesarrollo: string
+  identificacion: string
+  numero?: number | null
+  enlace?: string
+}) {
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Se te asignó un desarrollo</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">
+      Hola <strong>${nombreDesarrollador}</strong>, has sido asignado como desarrollador del siguiente requerimiento:
+    </p>
+
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;font-size:14px">
+      ${numero ? `<tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b;width:40%">Número</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">#${numero}</td></tr>` : ''}
+      <tr ${numero ? '' : 'style="background:#f8fafc"'}><td style="padding:10px 12px;color:#64748b;width:40%">Identificación</td><td style="padding:10px 12px;color:#1e293b">${identificacion}</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b">Nombre</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${nombreDesarrollo}</td></tr>
+    </table>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
 export function templateRecordatorioTarea({
   nombreDesarrollo,
   tituloReunion,
