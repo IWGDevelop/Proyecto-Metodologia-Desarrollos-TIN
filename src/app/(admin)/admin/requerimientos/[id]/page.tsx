@@ -16,6 +16,7 @@ import { TabInformacion } from '@/components/requerimientos/tabs/TabInformacion'
 import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
 import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociaciones'
 import { TabFechas } from '@/components/requerimientos/tabs/TabFechas'
+import { TabFlujo } from '@/components/requerimientos/tabs/TabFlujo'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
@@ -199,6 +200,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
           <TabsTrigger value="asociaciones">Asociaciones</TabsTrigger>
           <TabsTrigger value="fechas">Fechas</TabsTrigger>
+          <TabsTrigger value="flujo">Flujo</TabsTrigger>
         </TabsList>
 
         {pv('req:informacion') && (
@@ -296,6 +298,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             hijos={hijosReq}
             etiquetaActual={etiquetaJerarquica}
           />
+        </TabsContent>
+
+        <TabsContent value="flujo">
+          <TabFlujo requerimientoId={id} />
         </TabsContent>
 
         <TabsContent value="fechas">
