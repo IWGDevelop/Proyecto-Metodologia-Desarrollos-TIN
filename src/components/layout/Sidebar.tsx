@@ -19,6 +19,7 @@ import {
   Layers,
   Code2,
   ListOrdered,
+  GanttChartSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -39,7 +40,8 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/reportes',             label: 'Reportes',          Icon: BarChart2,        menuResource: 'menu:reportes' },
   { href: '/admin/reporte-presidencial',  label: 'Rep. Presidencial',  Icon: Star,  menuResource: 'menu:reporte-presidencial' },
   { href: '/admin/reporte-desarrolladores', label: 'Rep. Desarrolladores', Icon: Code2,        menuResource: 'menu:reporte-desarrolladores' },
-  { href: '/admin/reporte-prioridades',   label: 'Rep. Prioridades',    Icon: ListOrdered,   menuResource: 'menu:reporte-prioridades' },
+  { href: '/admin/reporte-prioridades',   label: 'Rep. Prioridades',    Icon: ListOrdered,      menuResource: 'menu:reporte-prioridades' },
+  { href: '/admin/cronograma',            label: 'Cronograma',           Icon: GanttChartSquare, menuResource: 'menu:cronograma' },
   { href: '/admin/usuarios',             label: 'Usuarios',              Icon: Users,         menuResource: 'menu:usuarios' },
   { href: '/admin/sesiones',            label: 'Sesiones',          Icon: Monitor,          menuResource: 'menu:sesiones' },
   { href: '/admin/lotes',              label: 'Lotes',             Icon: Layers,           menuResource: 'menu:lotes' },
