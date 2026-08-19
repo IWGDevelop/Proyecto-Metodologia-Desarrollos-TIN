@@ -26,38 +26,61 @@ export interface ReqGantt {
 
 interface Props { requerimientos: ReqGantt[] }
 
-// ── Layout constants ────────────────────────────────────────────────────────
-const LEFT_W    = 300
-const HEADER_H  = 48
-const ROW_H     = 54
-const BAR_H     = 20
-const BAR_Y     = (ROW_H - BAR_H) / 2   // 17
+// ── Layout constants ─────────────────────────────────────────────────────────
+const LEFT_W   = 300
+const YEAR_H   = 20
+const MONTH_H  = 22
+const WEEK_H   = 18
+const HEADER_H = YEAR_H + MONTH_H + WEEK_H   // 60
+const ROW_H    = 54
+const BAR_H    = 20
+const BAR_Y    = (ROW_H - BAR_H) / 2         // 17
 
-// ── Bar color palette ───────────────────────────────────────────────────────
+// ── Bar color palette ────────────────────────────────────────────────────────
 const C = {
-  devEst:   '#93c5fd',   // blue-300
-  devReal:  '#1d4ed8',   // blue-700
-  prbEst:   '#fcd34d',   // amber-300
-  prbReal:  '#b45309',   // amber-700
-  salEst:   '#6ee7b7',   // emerald-300
-  salReal:  '#047857',   // emerald-700
-  hoy:      '#f87171',   // red-400
+  devEst:  '#93c5fd',
+  devReal: '#1d4ed8',
+  prbEst:  '#fcd34d',
+  prbReal: '#b45309',
+  salEst:  '#6ee7b7',
+  salReal: '#047857',
+  hoy:     '#f87171',
 }
 
-// ── Date helpers ────────────────────────────────────────────────────────────
+// ── Date helpers ─────────────────────────────────────────────────────────────
 const toD  = (s: string)              => new Date(s + 'T12:00:00')
 const getX = (d: Date, o: Date, px: number) => Math.round((d.getTime() - o.getTime()) / 86400000 * px)
 
 function monthStart(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
 function monthEnd  (d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59) }
 
+function isoWeek(d: Date): number {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7))
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1))
+  return Math.ceil((((date.getTime() - yearStart.getTime()) / 86400000) + 1) / 7)
+}
+
 function allDates(r: ReqGantt): Date[] {
   return [
     r.fecha_inicio_desarrollo,
-    r.fecha_estimada_entrega,       r.fecha_real_entrega,
+    r.fecha_estimada_entrega,          r.fecha_real_entrega,
     r.fecha_estimada_feedback_pruebas, r.fecha_real_feedback_pruebas,
-    r.fecha_estimada_salida_vivo,   r.fecha_salida_vivo,
+    r.fecha_estimada_salida_vivo,      r.fecha_salida_vivo,
   ].filter(Boolean).map(s => toD(s!))
+}
+
+function buildYears(origin: Date, end: Date, pxDay: number) {
+  const out: { year: number; x: number; w: number }[] = []
+  for (let yr = origin.getFullYear(); yr <= end.getFullYear(); yr++) {
+    const yStart = new Date(Math.max(new Date(yr, 0, 1).getTime(), origin.getTime()))
+    const yEnd   = new Date(Math.min(new Date(yr, 11, 31, 23, 59, 59).getTime(), end.getTime()))
+    if (yStart > yEnd) continue
+    const x = getX(yStart, origin, pxDay)
+    const w = getX(yEnd, origin, pxDay) - x + pxDay
+    out.push({ year: yr, x: Math.max(0, x), w })
+  }
+  return out
 }
 
 function buildMonths(origin: Date, end: Date, pxDay: number) {
@@ -66,12 +89,24 @@ function buildMonths(origin: Date, end: Date, pxDay: number) {
   while (cur <= end) {
     const days = new Date(cur.getFullYear(), cur.getMonth() + 1, 0).getDate()
     out.push({
-      label:      cur.toLocaleDateString('es-CO', { month: 'long', year: 'numeric' }),
-      shortLabel: cur.toLocaleDateString('es-CO', { month: 'short', year: '2-digit' }),
+      label:      cur.toLocaleDateString('es-CO', { month: 'long' }),
+      shortLabel: cur.toLocaleDateString('es-CO', { month: 'short' }),
       x:   getX(cur, origin, pxDay),
       w:   days * pxDay,
     })
     cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1)
+  }
+  return out
+}
+
+function buildWeeks(origin: Date, end: Date, pxDay: number) {
+  const out: { weekNum: number; x: number; w: number }[] = []
+  const dow = origin.getDay()
+  const daysBack = dow === 0 ? 6 : dow - 1
+  let cur = new Date(origin.getFullYear(), origin.getMonth(), origin.getDate() - daysBack)
+  while (cur <= end) {
+    out.push({ weekNum: isoWeek(cur), x: getX(cur, origin, pxDay), w: 7 * pxDay })
+    cur = new Date(cur.getFullYear(), cur.getMonth(), cur.getDate() + 7)
   }
   return out
 }
@@ -81,7 +116,7 @@ function formatFecha(s: string | null) {
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-// ── Bar & marker computation ────────────────────────────────────────────────
+// ── Bar & marker computation ─────────────────────────────────────────────────
 interface Bar { x: number; w: number; color: string; opacity: number; title: string; radius: number }
 interface Mrk { x: number; color: string; title: string; shape: 'circle' | 'diamond'; size: number }
 
@@ -98,7 +133,6 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
   const estS = d(req.fecha_estimada_salida_vivo)
   const rlS  = d(req.fecha_salida_vivo)
 
-  // ── Barra 1: Desarrollo (inicio → entrega estimada) ────────────────────
   if (ini && estE) {
     const x = getX(ini, origin, px)
     const w = Math.max(getX(estE, origin, px) - x, 6)
@@ -107,12 +141,10 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
     mrks.push({ x: getX(ini, origin, px), color: C.devEst, title: `Inicio: ${formatFecha(req.fecha_inicio_desarrollo)}`, shape: 'diamond', size: 10 })
   }
 
-  // Marcador entrega real
   if (rlE) {
     mrks.push({ x: getX(rlE, origin, px), color: C.devReal, title: `Entrega real: ${formatFecha(req.fecha_real_entrega)}`, shape: 'circle', size: 12 })
   }
 
-  // ── Barra 2: Pruebas (entrega → feedback) ─────────────────────────────
   const prbStart = estE ?? ini
   if (prbStart && estF) {
     const x = getX(prbStart, origin, px)
@@ -122,12 +154,10 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
     mrks.push({ x: getX(estF, origin, px), color: C.prbEst, title: `Feedback est.: ${formatFecha(req.fecha_estimada_feedback_pruebas)}`, shape: 'diamond', size: 10 })
   }
 
-  // Marcador feedback real
   if (rlF) {
     mrks.push({ x: getX(rlF, origin, px), color: C.prbReal, title: `Feedback real: ${formatFecha(req.fecha_real_feedback_pruebas)}`, shape: 'circle', size: 12 })
   }
 
-  // ── Barra 3: Pre-salida (feedback → salida) ───────────────────────────
   const salStart = estF ?? prbStart
   if (salStart && estS) {
     const x = getX(salStart, origin, px)
@@ -137,7 +167,6 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
     mrks.push({ x: getX(estS, origin, px), color: C.salEst, title: `Salida est.: ${formatFecha(req.fecha_estimada_salida_vivo)}`, shape: 'diamond', size: 10 })
   }
 
-  // Marcador salida real
   if (rlS) {
     mrks.push({ x: getX(rlS, origin, px), color: C.salReal, title: `Salida real: ${formatFecha(req.fecha_salida_vivo)}`, shape: 'circle', size: 12 })
   }
@@ -145,7 +174,7 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
   return { bars, mrks }
 }
 
-// ── Fila individual ─────────────────────────────────────────────────────────
+// ── Fila individual ──────────────────────────────────────────────────────────
 function GanttRow({
   req, origin, pxDay, months, totalWidth, isEven, todayX,
 }: {
@@ -258,13 +287,12 @@ function GanttRow({
   )
 }
 
-// ── Componente principal ────────────────────────────────────────────────────
+// ── Componente principal ─────────────────────────────────────────────────────
 export function GanttCronograma({ requerimientos }: Props) {
   const [pxDay,  setPxDay]  = useState(4)
   const [search, setSearch] = useState('')
   const [estado, setEstado] = useState('')
 
-  // Filtrado
   const filtered = useMemo(() => requerimientos.filter(r => {
     if (allDates(r).length === 0) return false
     if (search) {
@@ -275,21 +303,21 @@ export function GanttCronograma({ requerimientos }: Props) {
     return true
   }), [requerimientos, search, estado])
 
-  // Rango del timeline
+  // Timeline: siempre inicia en 2026-01-01
   const { origin, end, totalDays } = useMemo(() => {
-    const all = filtered.flatMap(allDates)
+    const base = new Date(2026, 0, 1)
+    const all  = filtered.flatMap(allDates)
     if (!all.length) {
-      const now = new Date()
-      return { origin: monthStart(now), end: monthEnd(new Date(now.getFullYear(), now.getMonth() + 2, 1)), totalDays: 90 }
+      return { origin: base, end: new Date(2026, 11, 31, 23, 59, 59), totalDays: 365 }
     }
-    const minD = new Date(Math.min(...all.map(d => d.getTime())))
     const maxD = new Date(Math.max(...all.map(d => d.getTime())))
-    const o = monthStart(new Date(minD.getFullYear(), minD.getMonth() - 1, 1))
-    const e = monthEnd(new Date(maxD.getFullYear(), maxD.getMonth() + 1, 1))
-    return { origin: o, end: e, totalDays: Math.ceil((e.getTime() - o.getTime()) / 86400000) }
+    const e    = monthEnd(new Date(maxD.getFullYear(), maxD.getMonth() + 1, 1))
+    return { origin: base, end: e, totalDays: Math.ceil((e.getTime() - base.getTime()) / 86400000) }
   }, [filtered])
 
+  const years      = useMemo(() => buildYears(origin, end, pxDay),  [origin, end, pxDay])
   const months     = useMemo(() => buildMonths(origin, end, pxDay), [origin, end, pxDay])
+  const weeks      = useMemo(() => buildWeeks(origin, end, pxDay),  [origin, end, pxDay])
   const totalWidth = totalDays * pxDay
   const todayX     = getX(new Date(), origin, pxDay)
 
@@ -364,7 +392,7 @@ export function GanttCronograma({ requerimientos }: Props) {
           </span>
         ))}
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3 w-px" style={{ backgroundColor: C.hoy, width: 2 }} />
+          <span className="inline-block h-3" style={{ backgroundColor: C.hoy, width: 2 }} />
           Hoy
         </span>
       </div>
@@ -374,36 +402,85 @@ export function GanttCronograma({ requerimientos }: Props) {
         style={{ maxHeight: 'calc(100vh - 310px)', minHeight: 200 }}>
         <div style={{ minWidth: LEFT_W + totalWidth + 1 }}>
 
-          {/* Cabecera de meses */}
-          <div className="sticky top-0 z-20 flex border-b border-slate-200 bg-slate-50"
-            style={{ height: HEADER_H }}>
-            <div
-              className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500"
-              style={{ width: LEFT_W, minWidth: LEFT_W }}
-            >
-              {filtered.length} desarrollo{filtered.length !== 1 ? 's' : ''}
+          {/* Cabecera 3 niveles: Año / Mes / Semana */}
+          <div className="sticky top-0 z-20 border-b border-slate-200" style={{ height: HEADER_H }}>
+
+            {/* Fila 1: Año */}
+            <div className="flex" style={{ height: YEAR_H }}>
+              <div
+                className="sticky left-0 z-30 shrink-0 border-r border-slate-300 bg-slate-100"
+                style={{ width: LEFT_W, minWidth: LEFT_W }}
+              />
+              <div className="relative shrink-0 bg-slate-100" style={{ width: totalWidth, height: YEAR_H }}>
+                {years.map((y, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-y-0 flex items-center justify-center border-l border-slate-300 text-[10px] font-bold text-slate-600"
+                    style={{ left: y.x, width: y.w }}
+                  >
+                    {y.year}
+                  </div>
+                ))}
+              </div>
             </div>
-            <div className="relative shrink-0" style={{ width: totalWidth, height: HEADER_H }}>
-              {months.map((m, i) => (
-                <div
-                  key={i}
-                  className="absolute inset-y-0 flex items-center justify-center border-l border-slate-200 text-[11px] font-semibold text-slate-500"
-                  style={{ left: m.x, width: m.w }}
-                >
-                  {m.w > 60 ? m.label : m.shortLabel}
-                </div>
-              ))}
-              {/* Línea de hoy en cabecera */}
-              {todayX >= 0 && todayX <= totalWidth && (
-                <div
-                  className="absolute inset-y-0 w-0.5"
-                  style={{ left: todayX, backgroundColor: C.hoy }}
-                >
-                  <span className="absolute -top-0 left-1 whitespace-nowrap rounded bg-red-400 px-1 py-px text-[9px] font-bold text-white">
-                    Hoy
-                  </span>
-                </div>
-              )}
+
+            {/* Fila 2: Mes */}
+            <div className="flex border-t border-slate-200" style={{ height: MONTH_H }}>
+              <div
+                className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3"
+                style={{ width: LEFT_W, minWidth: LEFT_W }}
+              >
+                <span className="text-xs font-semibold text-slate-400">
+                  {filtered.length} desarrollo{filtered.length !== 1 ? 's' : ''}
+                </span>
+              </div>
+              <div className="relative shrink-0 bg-slate-50" style={{ width: totalWidth, height: MONTH_H }}>
+                {months.map((m, i) => (
+                  <div
+                    key={i}
+                    className="absolute inset-y-0 flex items-center justify-center border-l border-slate-200 text-[10px] font-semibold text-slate-500"
+                    style={{ left: m.x, width: m.w }}
+                  >
+                    {m.w > 52 ? m.label : m.w > 22 ? m.shortLabel : ''}
+                  </div>
+                ))}
+                {/* Línea de hoy */}
+                {todayX >= 0 && todayX <= totalWidth && (
+                  <div
+                    className="absolute inset-y-0 w-0.5"
+                    style={{ left: todayX, backgroundColor: C.hoy }}
+                  >
+                    <span className="absolute top-0 left-1 whitespace-nowrap rounded bg-red-400 px-1 py-px text-[8px] font-bold text-white">
+                      Hoy
+                    </span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Fila 3: Semana */}
+            <div className="flex border-t border-slate-100" style={{ height: WEEK_H }}>
+              <div
+                className="sticky left-0 z-30 shrink-0 border-r border-slate-200 bg-white"
+                style={{ width: LEFT_W, minWidth: LEFT_W }}
+              />
+              <div className="relative shrink-0 bg-white" style={{ width: totalWidth, height: WEEK_H }}>
+                {weeks.map((wk, i) => {
+                  const rawX = wk.x
+                  const x    = Math.max(0, rawX)
+                  const w    = rawX < 0 ? wk.w + rawX : wk.w
+                  if (w <= 0) return null
+                  return (
+                    <div
+                      key={i}
+                      className="absolute inset-y-0 flex items-center justify-center border-l border-slate-100 text-[9px] text-slate-400"
+                      style={{ left: x, width: w }}
+                    >
+                      {w > 16 ? `S${wk.weekNum}` : ''}
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
 
