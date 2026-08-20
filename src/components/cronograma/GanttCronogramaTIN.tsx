@@ -8,22 +8,31 @@ import type { AsignacionCronograma } from '@/actions/desarrolladores-req'
 
 interface Props { asignaciones: AsignacionCronograma[] }
 
-interface DevGroup {
-  perfil_id: string
-  nombre: string
-  cargo: string | null
-  asignaciones: AsignacionCronograma[]
+interface ReqGroup {
+  requerimiento_id: string
+  nombre_desarrollo: string | null
+  identificacion: string
+  numero: string | null
+  estado: string
+  prioridad: number | null
+  sub_prioridad: number | null
+  parent_id: string | null
+  devs: AsignacionCronograma[]
 }
 
 // ── Layout constants ─────────────────────────────────────────────────────────
-const LEFT_W   = 280
+const REQ_COL_W = 260
+const DEV_COL_W = 200
+const LEFT_W    = REQ_COL_W + DEV_COL_W
+
 const YEAR_H   = 20
 const MONTH_H  = 22
 const WEEK_H   = 18
 const HEADER_H = YEAR_H + MONTH_H + WEEK_H   // 60
-const BAR_H    = 26
-const LANE_GAP = 4
-const ROW_PAD  = 8   // top and bottom padding inside each dev row
+
+const ROW_H = 44
+const BAR_H = 26
+const BAR_Y = (ROW_H - BAR_H) / 2
 
 // ── Bar color palette ─────────────────────────────────────────────────────────
 const PALETTE = [
@@ -97,130 +106,122 @@ function fmtCorta(s: string | null) {
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
 }
 
-// ── Lane assignment (greedy interval scheduling) ──────────────────────────────
-interface LanedItem {
-  asig: AsignacionCronograma
-  lane: number
-  x: number
-  w: number
-}
-
-function assignLanes(asigs: AsignacionCronograma[], origin: Date, pxDay: number): LanedItem[] {
-  const items = asigs
-    .map(a => {
-      const startD = a.fecha_inicio_estimada ? toD(a.fecha_inicio_estimada)
-        : a.fecha_fin_estimada ? toD(a.fecha_fin_estimada) : null
-      const endD = a.fecha_fin_estimada ? toD(a.fecha_fin_estimada)
-        : a.fecha_inicio_estimada ? toD(a.fecha_inicio_estimada) : null
-      if (!startD || !endD) return null
-      const x = getX(startD, origin, pxDay)
-      const w = Math.max(getX(endD, origin, pxDay) - x + pxDay, 6)
-      return { asig: a, x, w }
-    })
-    .filter((v): v is { asig: AsignacionCronograma; x: number; w: number } => v !== null)
-
-  items.sort((a, b) => a.x - b.x)
-
-  const laneEnds: number[] = []
-  return items.map(item => {
-    const lane = laneEnds.findIndex(end => end <= item.x)
-    const assignedLane = lane === -1 ? laneEnds.length : lane
-    laneEnds[assignedLane] = item.x + item.w
-    return { ...item, lane: assignedLane }
-  })
-}
-
-function rowHeightForLanes(numLanes: number): number {
-  return ROW_PAD + numLanes * BAR_H + Math.max(0, numLanes - 1) * LANE_GAP + ROW_PAD
-}
-
-// ── Fila por desarrollador ────────────────────────────────────────────────────
-function DevRow({
+// ── Fila de requerimiento (una sub-fila por desarrollador) ────────────────────
+function ReqRow({
   group, origin, pxDay, weeks, totalWidth, isEven, todayX,
 }: {
-  group: DevGroup; origin: Date; pxDay: number
+  group: ReqGroup; origin: Date; pxDay: number
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
-  const initials = group.nombre.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
-  const laned    = assignLanes(group.asignaciones, origin, pxDay)
-  const numLanes = laned.length > 0 ? Math.max(...laned.map(l => l.lane)) + 1 : 1
-  const rowH     = rowHeightForLanes(numLanes)
+  const bgLeft  = isEven ? 'bg-slate-50'     : 'bg-white'
+  const bgGantt = isEven ? 'bg-slate-50/30'  : 'bg-white'
 
   return (
-    <div className="flex" style={{ height: rowH }}>
-      {/* Panel izquierdo (sticky) */}
-      <div
-        className={cn(
-          'sticky left-0 z-10 flex shrink-0 items-center gap-2.5 border-b border-r border-slate-200 px-3',
-          isEven ? 'bg-slate-50' : 'bg-white'
-        )}
-        style={{ width: LEFT_W, minWidth: LEFT_W, height: rowH }}
-      >
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
-          {initials}
-        </div>
-        <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-700">{group.nombre}</p>
-          {group.cargo && (
-            <span className="mt-0.5 inline-block rounded-full bg-indigo-50 px-1.5 py-px text-[10px] font-medium text-indigo-500 leading-tight">
-              {group.cargo}
-            </span>
-          )}
-        </div>
-        <span className="shrink-0 text-[10px] text-slate-300">{group.asignaciones.length}</span>
-      </div>
+    <>
+      {group.devs.map((asig, devIdx) => {
+        const isFirst = devIdx === 0
 
-      {/* Área de barras */}
-      <div
-        className={cn('relative shrink-0 border-b border-slate-200', isEven ? 'bg-slate-50/30' : 'bg-white')}
-        style={{ width: totalWidth, height: rowH }}
-      >
-        {/* Líneas de semana */}
-        {weeks.map((wk, i) => wk.x > 0 && (
-          <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
-        ))}
+        const startD = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
+        const endD   = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
+        const hasBar = !!(startD && endD)
+        const x      = hasBar ? getX(startD!, origin, pxDay) : 0
+        const w      = hasBar ? Math.max(getX(endD!, origin, pxDay) - x + pxDay, 6) : 0
+        const color  = PALETTE[devIdx % PALETTE.length]
+        const hereda = asig.fechas_heredadas
+        const label  = asig.nombre_desarrollo ?? asig.identificacion
+        const barTitle = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.nombre_desarrollador}\n${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
 
-        {/* Línea de hoy */}
-        {todayX >= 0 && todayX <= totalWidth && (
-          <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
-        )}
+        return (
+          <div key={`${asig.requerimiento_id}-${asig.perfil_id}`} className="flex" style={{ height: ROW_H }}>
 
-        {/* Barras en carriles independientes para evitar solapamiento */}
-        {laned.map(({ asig, lane, x, w }, i) => {
-          const color  = PALETTE[i % PALETTE.length]
-          const hereda = asig.fechas_heredadas
-          const barTop = ROW_PAD + lane * (BAR_H + LANE_GAP)
-          const label  = asig.nombre_desarrollo ?? asig.identificacion
-          const title  = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.numero ? '#' + asig.numero + ' · ' : ''}${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
-
-          return (
-            <Link
-              key={asig.requerimiento_id}
-              href={`/admin/requerimientos/${asig.requerimiento_id}`}
-              title={title}
-              className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
-              style={{
-                left: x, width: w,
-                top: barTop, height: BAR_H,
-                backgroundColor: hereda ? 'transparent' : color,
-                opacity: hereda ? 0.75 : 1,
-                boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
-                border: hereda ? `2px dashed ${color}` : 'none',
-              } as React.CSSProperties}
-            >
-              {w > 44 && (
-                <span
-                  className="px-2 text-[10px] font-semibold leading-none truncate"
-                  style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
-                >
-                  {label}
-                </span>
+            {/* Columna 1: nombre del requerimiento (solo en primer dev) */}
+            <div
+              className={cn(
+                'sticky left-0 z-10 flex shrink-0 items-center border-b border-r border-slate-200 px-3',
+                bgLeft
               )}
-            </Link>
-          )
-        })}
-      </div>
-    </div>
+              style={{ width: REQ_COL_W, minWidth: REQ_COL_W }}
+            >
+              {isFirst ? (
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-center gap-1.5">
+                    {group.numero && (
+                      <span className="shrink-0 text-[10px] font-bold text-indigo-400">#{group.numero}</span>
+                    )}
+                    <p className="truncate text-sm font-semibold text-slate-700">
+                      {group.nombre_desarrollo ?? group.identificacion}
+                    </p>
+                  </div>
+                  {group.parent_id && (
+                    <span className="text-[10px] text-slate-400">Sub-requerimiento</span>
+                  )}
+                </div>
+              ) : (
+                <div className="ml-6 h-full w-px bg-slate-100" />
+              )}
+            </div>
+
+            {/* Columna 2: desarrollador + cargo */}
+            <div
+              className={cn(
+                'sticky z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-200 px-3',
+                bgLeft
+              )}
+              style={{ left: REQ_COL_W, width: DEV_COL_W, minWidth: DEV_COL_W }}
+            >
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-xs font-semibold text-slate-700">{asig.nombre_desarrollador}</p>
+                {asig.cargo && (
+                  <span className="block truncate text-[10px] text-slate-400">{asig.cargo}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Área Gantt */}
+            <div
+              className={cn('relative shrink-0 border-b border-slate-200', bgGantt)}
+              style={{ width: totalWidth, height: ROW_H }}
+            >
+              {/* Líneas de semana */}
+              {weeks.map((wk, i) => wk.x > 0 && (
+                <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
+              ))}
+
+              {/* Línea de hoy */}
+              {todayX >= 0 && todayX <= totalWidth && (
+                <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
+              )}
+
+              {/* Barra de fechas */}
+              {hasBar && (
+                <Link
+                  href={`/admin/requerimientos/${asig.requerimiento_id}`}
+                  title={barTitle}
+                  className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
+                  style={{
+                    left: x, width: w,
+                    top: BAR_Y, height: BAR_H,
+                    backgroundColor: hereda ? 'transparent' : color,
+                    opacity:    hereda ? 0.75 : 1,
+                    boxShadow:  hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
+                    border:     hereda ? `2px dashed ${color}` : 'none',
+                  } as React.CSSProperties}
+                >
+                  {w > 80 && (
+                    <span
+                      className="px-2 text-[10px] font-semibold leading-none truncate"
+                      style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
+                    >
+                      {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
+                    </span>
+                  )}
+                </Link>
+              )}
+            </div>
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -229,30 +230,50 @@ export function GanttCronogramaTIN({ asignaciones }: Props) {
   const [pxDay,  setPxDay]  = useState(4)
   const [search, setSearch] = useState('')
 
-  // Agrupar por desarrollador
-  const groups = useMemo<DevGroup[]>(() => {
-    const map = new Map<string, DevGroup>()
+  // Agrupar por requerimiento
+  const groups = useMemo<ReqGroup[]>(() => {
+    const map = new Map<string, ReqGroup>()
     asignaciones.forEach(a => {
-      if (!map.has(a.perfil_id)) {
-        map.set(a.perfil_id, { perfil_id: a.perfil_id, nombre: a.nombre_desarrollador, cargo: a.cargo, asignaciones: [] })
+      if (!map.has(a.requerimiento_id)) {
+        map.set(a.requerimiento_id, {
+          requerimiento_id: a.requerimiento_id,
+          nombre_desarrollo: a.nombre_desarrollo,
+          identificacion:    a.identificacion,
+          numero:            a.numero,
+          estado:            a.estado,
+          prioridad:         a.prioridad,
+          sub_prioridad:     a.sub_prioridad,
+          parent_id:         a.parent_id,
+          devs: [],
+        })
       }
-      map.get(a.perfil_id)!.asignaciones.push(a)
+      map.get(a.requerimiento_id)!.devs.push(a)
     })
-    return [...map.values()].sort((a, b) => a.nombre.localeCompare(b.nombre))
+
+    return [...map.values()].sort((a, b) => {
+      // Padres antes que hijos
+      if (!a.parent_id && b.parent_id) return -1
+      if (a.parent_id && !b.parent_id) return 1
+      const pa = a.prioridad     ?? 9999
+      const pb = b.prioridad     ?? 9999
+      if (pa !== pb) return pa - pb
+      const sa = a.sub_prioridad ?? 9999
+      const sb = b.sub_prioridad ?? 9999
+      return sa - sb
+    })
   }, [asignaciones])
 
   const filtered = useMemo(() => {
     if (!search.trim()) return groups
     const q = search.toLowerCase()
     return groups
-      .map(g => ({
-        ...g,
-        asignaciones: g.asignaciones.filter(a =>
-          (a.nombre_desarrollo ?? a.identificacion).toLowerCase().includes(q) ||
-          g.nombre.toLowerCase().includes(q)
-        ),
-      }))
-      .filter(g => g.asignaciones.length > 0)
+      .map(g => {
+        const reqMatch = (g.nombre_desarrollo ?? g.identificacion).toLowerCase().includes(q)
+        if (reqMatch) return g
+        const devs = g.devs.filter(d => d.nombre_desarrollador.toLowerCase().includes(q))
+        return devs.length > 0 ? { ...g, devs } : null
+      })
+      .filter(Boolean) as ReqGroup[]
   }, [groups, search])
 
   // Timeline: siempre inicia en 2026-01-01
@@ -285,6 +306,8 @@ export function GanttCronogramaTIN({ asignaciones }: Props) {
     )
   }
 
+  const totalRows = filtered.reduce((acc, g) => acc + g.devs.length, 0)
+
   return (
     <div className="space-y-3">
       {/* Controles */}
@@ -293,7 +316,7 @@ export function GanttCronogramaTIN({ asignaciones }: Props) {
           <Search size={13} className="shrink-0 text-slate-400" />
           <input
             value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Buscar desarrollador o requerimiento..."
+            placeholder="Buscar requerimiento o desarrollador..."
             className="flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
         </div>
@@ -329,14 +352,25 @@ export function GanttCronogramaTIN({ asignaciones }: Props) {
               </div>
             </div>
 
-            {/* Mes */}
+            {/* Mes — cabeceras de columnas izquierdas */}
             <div className="flex border-t border-slate-200" style={{ height: MONTH_H }}>
-              <div className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3"
-                style={{ width: LEFT_W, minWidth: LEFT_W }}>
-                <span className="text-xs font-semibold text-slate-400">
-                  {filtered.length} desarrollador{filtered.length !== 1 ? 'es' : ''}
+              {/* Encabezado col 1 */}
+              <div
+                className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3"
+                style={{ width: REQ_COL_W, minWidth: REQ_COL_W }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Requerimiento</span>
+              </div>
+              {/* Encabezado col 2 */}
+              <div
+                className="sticky z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3"
+                style={{ left: REQ_COL_W, width: DEV_COL_W, minWidth: DEV_COL_W }}
+              >
+                <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                  Desarrollador · {totalRows} fila{totalRows !== 1 ? 's' : ''}
                 </span>
               </div>
+              {/* Meses */}
               <div className="relative shrink-0 bg-slate-50" style={{ width: totalWidth, height: MONTH_H }}>
                 {months.map((m, i) => (
                   <div key={i}
@@ -383,8 +417,8 @@ export function GanttCronogramaTIN({ asignaciones }: Props) {
             </div>
           ) : (
             filtered.map((group, i) => (
-              <DevRow
-                key={group.perfil_id}
+              <ReqRow
+                key={group.requerimiento_id}
                 group={group}
                 origin={origin}
                 pxDay={pxDay}
