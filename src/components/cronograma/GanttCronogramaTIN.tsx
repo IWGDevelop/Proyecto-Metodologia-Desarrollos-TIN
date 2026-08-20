@@ -106,125 +106,124 @@ function fmtCorta(s: string | null) {
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
 }
 
-// ── Fila de requerimiento (una sub-fila por desarrollador) ────────────────────
+// ── Fila de requerimiento (col-1 combina todas las filas de dev) ─────────────
 function ReqRow({
   group, origin, pxDay, weeks, totalWidth, isEven, todayX,
 }: {
   group: ReqGroup; origin: Date; pxDay: number
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
-  // Even groups use a light blue tint; odd groups stay white
-  const bgLeft  = isEven ? 'bg-indigo-50/40' : 'bg-white'
-  const bgGantt = isEven ? 'bg-indigo-50/20' : 'bg-white'
+  const bg      = isEven ? 'bg-indigo-50'  : 'bg-white'
+  const bgGantt = isEven ? 'bg-indigo-50'  : 'bg-white'
+  const groupH  = group.devs.length * ROW_H
 
   return (
-    <>
-      {group.devs.map((asig, devIdx) => {
-        const isFirst = devIdx === 0
-        // Stronger top border on the first row of every group to mark the boundary
-        const groupBorder = isFirst ? 'border-t-2 border-t-slate-300' : ''
+    <div className="flex border-t-2 border-slate-300" style={{ height: groupH }}>
 
-        const startD = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
-        const endD   = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
-        const hasBar = !!(startD && endD)
-        const x      = hasBar ? getX(startD!, origin, pxDay) : 0
-        const w      = hasBar ? Math.max(getX(endD!, origin, pxDay) - x + pxDay, 6) : 0
-        const color  = PALETTE[devIdx % PALETTE.length]
-        const hereda = asig.fechas_heredadas
-        const label  = asig.nombre_desarrollo ?? asig.identificacion
-        const barTitle = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.nombre_desarrollador}\n${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
+      {/* Columna 1: nombre del requerimiento — abarca todas las filas del grupo */}
+      <div
+        className={cn(
+          'sticky left-0 z-10 flex shrink-0 items-start border-b border-r border-slate-300 px-3 pt-3',
+          bg
+        )}
+        style={{ width: REQ_COL_W, minWidth: REQ_COL_W, height: groupH }}
+      >
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            {group.numero && (
+              <span className="shrink-0 text-[10px] font-bold text-indigo-500">#{group.numero}</span>
+            )}
+            <p className="truncate text-sm font-semibold text-slate-700">
+              {group.nombre_desarrollo ?? group.identificacion}
+            </p>
+          </div>
+          {group.parent_id && (
+            <span className="mt-0.5 block text-[10px] text-slate-400">Sub-requerimiento</span>
+          )}
+        </div>
+      </div>
 
-        return (
-          <div key={`${asig.requerimiento_id}-${asig.perfil_id}`} className="flex" style={{ height: ROW_H }}>
+      {/* Columna 2 + Gantt: una sub-fila por desarrollador */}
+      <div className="flex flex-1 flex-col">
+        {group.devs.map((asig, devIdx) => {
+          const isLastDev   = devIdx === group.devs.length - 1
+          const devBorderB  = isLastDev ? 'border-b border-slate-300' : 'border-b border-slate-200'
 
-            {/* Columna 1: nombre del requerimiento (solo en primer dev) */}
-            <div
-              className={cn(
-                'sticky left-0 z-10 flex shrink-0 items-center border-b border-r border-slate-200 px-3',
-                groupBorder, bgLeft
-              )}
-              style={{ width: REQ_COL_W, minWidth: REQ_COL_W }}
-            >
-              {isFirst ? (
+          const startD  = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
+          const endD    = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
+          const hasBar  = !!(startD && endD)
+          const x       = hasBar ? getX(startD!, origin, pxDay) : 0
+          const w       = hasBar ? Math.max(getX(endD!, origin, pxDay) - x + pxDay, 6) : 0
+          const color   = PALETTE[devIdx % PALETTE.length]
+          const hereda  = asig.fechas_heredadas
+          const label   = asig.nombre_desarrollo ?? asig.identificacion
+          const barTitle = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.nombre_desarrollador}\n${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
+
+          return (
+            <div key={`${asig.requerimiento_id}-${asig.perfil_id}`} className="flex" style={{ height: ROW_H }}>
+
+              {/* Columna 2: desarrollador + cargo */}
+              <div
+                className={cn(
+                  'sticky z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 px-3',
+                  devBorderB, bg
+                )}
+                style={{ left: REQ_COL_W, width: DEV_COL_W, minWidth: DEV_COL_W }}
+              >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    {group.numero && (
-                      <span className="shrink-0 text-[10px] font-bold text-indigo-400">#{group.numero}</span>
-                    )}
-                    <p className="truncate text-sm font-semibold text-slate-700">
-                      {group.nombre_desarrollo ?? group.identificacion}
-                    </p>
-                  </div>
-                  {group.parent_id && (
-                    <span className="text-[10px] text-slate-400">Sub-requerimiento</span>
+                  <p className="truncate text-xs font-semibold text-slate-700">{asig.nombre_desarrollador}</p>
+                  {asig.cargo && (
+                    <span className="block truncate text-[10px] text-slate-400">{asig.cargo}</span>
                   )}
                 </div>
-              ) : (
-                <div className="ml-6 h-full w-px bg-slate-200" />
-              )}
-            </div>
+              </div>
 
-            {/* Columna 2: desarrollador + cargo */}
-            <div
-              className={cn(
-                'sticky z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-200 px-3',
-                groupBorder, bgLeft
-              )}
-              style={{ left: REQ_COL_W, width: DEV_COL_W, minWidth: DEV_COL_W }}
-            >
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-xs font-semibold text-slate-700">{asig.nombre_desarrollador}</p>
-                {asig.cargo && (
-                  <span className="block truncate text-[10px] text-slate-400">{asig.cargo}</span>
+              {/* Área Gantt */}
+              <div
+                className={cn('relative shrink-0', devBorderB, bgGantt)}
+                style={{ width: totalWidth, height: ROW_H }}
+              >
+                {/* Líneas de semana */}
+                {weeks.map((wk, i) => wk.x > 0 && (
+                  <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
+                ))}
+
+                {/* Línea de hoy */}
+                {todayX >= 0 && todayX <= totalWidth && (
+                  <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
+                )}
+
+                {/* Barra de fechas */}
+                {hasBar && (
+                  <Link
+                    href={`/admin/requerimientos/${asig.requerimiento_id}`}
+                    title={barTitle}
+                    className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
+                    style={{
+                      left: x, width: w,
+                      top: BAR_Y, height: BAR_H,
+                      backgroundColor: hereda ? 'transparent' : color,
+                      opacity:   hereda ? 0.75 : 1,
+                      boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
+                      border:    hereda ? `2px dashed ${color}` : 'none',
+                    } as React.CSSProperties}
+                  >
+                    {w > 80 && (
+                      <span
+                        className="px-2 text-[10px] font-semibold leading-none truncate"
+                        style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
+                      >
+                        {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
+                      </span>
+                    )}
+                  </Link>
                 )}
               </div>
             </div>
-
-            {/* Área Gantt */}
-            <div
-              className={cn('relative shrink-0 border-b border-slate-200', groupBorder, bgGantt)}
-              style={{ width: totalWidth, height: ROW_H }}
-            >
-              {/* Líneas de semana */}
-              {weeks.map((wk, i) => wk.x > 0 && (
-                <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
-              ))}
-
-              {/* Línea de hoy */}
-              {todayX >= 0 && todayX <= totalWidth && (
-                <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
-              )}
-
-              {/* Barra de fechas */}
-              {hasBar && (
-                <Link
-                  href={`/admin/requerimientos/${asig.requerimiento_id}`}
-                  title={barTitle}
-                  className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
-                  style={{
-                    left: x, width: w,
-                    top: BAR_Y, height: BAR_H,
-                    backgroundColor: hereda ? 'transparent' : color,
-                    opacity:    hereda ? 0.75 : 1,
-                    boxShadow:  hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
-                    border:     hereda ? `2px dashed ${color}` : 'none',
-                  } as React.CSSProperties}
-                >
-                  {w > 80 && (
-                    <span
-                      className="px-2 text-[10px] font-semibold leading-none truncate"
-                      style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
-                    >
-                      {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
-                    </span>
-                  )}
-                </Link>
-              )}
-            </div>
-          </div>
-        )
-      })}
-    </>
+          )
+        })}
+      </div>
+    </div>
   )
 }
 
