@@ -178,7 +178,17 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
     }
   })
 
-  // Inherit parent dates for child entries that have no dates
+  // Map parent requerimiento_id → developer info (to replicate under their dev row)
+  const parentToDevs = new Map<string, { perfil_id: string; nombre: string; cargo: string | null }[]>()
+  rows.forEach(row => {
+    if (reqDatesMap.has(row.requerimiento_id)) {
+      if (!parentToDevs.has(row.requerimiento_id)) parentToDevs.set(row.requerimiento_id, [])
+      parentToDevs.get(row.requerimiento_id)!.push({ perfil_id: row.perfil_id, nombre: row.nombre_desarrollador, cargo: row.cargo })
+    }
+  })
+
+  // Case 1: child IN requerimiento_desarrolladores but without own dates → inherit
+  const assignedReqIds = new Set(rows.map(r => r.requerimiento_id))
   const result: AsignacionCronograma[] = []
   for (const row of rows) {
     if (row.fecha_inicio_estimada || row.fecha_fin_estimada) {
@@ -189,7 +199,40 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
         result.push({ ...row, fecha_inicio_estimada: parentDates.inicio, fecha_fin_estimada: parentDates.fin, fechas_heredadas: true })
       }
     }
-    // Entries with no dates and no parent (or parent without dates) are excluded
+  }
+
+  // Case 2: child NOT in requerimiento_desarrolladores at all → synthetic entries under parent's devs
+  const reqIdsWithDates = [...reqDatesMap.keys()]
+  if (reqIdsWithDates.length > 0) {
+    const { data: childReqs } = await (supabase as any)
+      .from('requerimientos')
+      .select('id, nombre_desarrollo, identificacion, numero, estado, prioridad, sub_prioridad, parent_id')
+      .in('parent_id', reqIdsWithDates)
+
+    for (const child of (childReqs ?? [])) {
+      if (assignedReqIds.has(child.id)) continue  // already handled in Case 1
+      const parentDates = reqDatesMap.get(child.parent_id)
+      if (!parentDates) continue
+      const devs = parentToDevs.get(child.parent_id) ?? []
+      for (const dev of devs) {
+        result.push({
+          perfil_id:             dev.perfil_id,
+          requerimiento_id:      child.id,
+          nombre_desarrollador:  dev.nombre,
+          cargo:                 dev.cargo,
+          fecha_inicio_estimada: parentDates.inicio,
+          fecha_fin_estimada:    parentDates.fin,
+          nombre_desarrollo:     child.nombre_desarrollo ?? null,
+          identificacion:        child.identificacion ?? '—',
+          numero:                child.numero ?? null,
+          estado:                child.estado ?? 'PENDIENTE',
+          prioridad:             child.prioridad ?? null,
+          sub_prioridad:         child.sub_prioridad ?? null,
+          parent_id:             child.parent_id,
+          fechas_heredadas:      true,
+        })
+      }
+    }
   }
 
   return result
