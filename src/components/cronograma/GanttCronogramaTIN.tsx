@@ -1,9 +1,9 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ZoomIn, ZoomOut, Calendar, Search, Pencil, Check, X } from 'lucide-react'
+import { ZoomIn, ZoomOut, Calendar, Search, Pencil, Check, X, ExternalLink } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AsignacionCronograma } from '@/actions/desarrolladores-req'
 import { actualizarFechasDesarrollador } from '@/actions/desarrolladores-req'
@@ -118,6 +118,52 @@ function fmtCorta(s: string | null) {
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
 }
 
+function fmtDate(d: Date) {
+  return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
+}
+
+function addDays(d: Date, n: number) {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate() + n)
+}
+
+function isoStr(d: Date) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function previewLabel(left: number, width: number, origin: Date, pxDay: number) {
+  const startDays = Math.round(left / pxDay)
+  const endDays   = Math.max(startDays, Math.round((left + width) / pxDay) - 1)
+  return `${fmtDate(addDays(origin, startDays))} → ${fmtDate(addDays(origin, endDays))}`
+}
+
+type DragType = 'move' | 'resize-left' | 'resize-right'
+interface DragState {
+  key: string
+  asig: AsignacionCronograma
+  type: DragType
+  startMouseX: number
+  origLeft: number
+  origWidth: number
+  pxDay: number
+  origin: Date
+}
+
+function calcDragResult(d: DragState, mouseX: number) {
+  const snapDx = Math.round((mouseX - d.startMouseX) / d.pxDay) * d.pxDay
+  let left  = d.origLeft
+  let width = d.origWidth
+  if (d.type === 'move') {
+    left = Math.max(0, d.origLeft + snapDx)
+  } else if (d.type === 'resize-right') {
+    width = Math.max(d.pxDay, d.origWidth + snapDx)
+  } else {
+    const shift = Math.max(-d.origLeft, Math.min(d.origWidth - d.pxDay, snapDx))
+    left  = d.origLeft + shift
+    width = d.origWidth - shift
+  }
+  return { left, width }
+}
+
 // ── Fila de requerimiento (col-1 combina todas las filas de dev) ─────────────
 function ReqRow({
   group, origin, pxDay, weeks, totalWidth, isEven, todayX,
@@ -126,6 +172,8 @@ function ReqRow({
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
   const router = useRouter()
+
+  // ── Edit state (entrada manual exacta) ────────────────────────────────────
   const [editingKey, setEditingKey] = useState<string | null>(null)
   const [editInicio, setEditInicio] = useState('')
   const [editFin,    setEditFin]    = useState('')
@@ -136,17 +184,71 @@ function ReqRow({
     setEditInicio(asig.fecha_inicio_estimada ?? '')
     setEditFin(asig.fecha_fin_estimada ?? '')
   }
-
   const cancelEdit = () => setEditingKey(null)
-
   const handleSave = async (asig: AsignacionCronograma) => {
     setSaving(true)
     const res = await actualizarFechasDesarrollador(
-      asig.requerimiento_id, asig.perfil_id,
-      editInicio || null, editFin || null
+      asig.requerimiento_id, asig.perfil_id, editInicio || null, editFin || null
     )
     setSaving(false)
     if (res.ok) { setEditingKey(null); router.refresh() }
+  }
+
+  // ── Drag state ────────────────────────────────────────────────────────────
+  const dragRef  = useRef<DragState | null>(null)
+  const [dragPreview, setDragPreview] = useState<{ key: string; left: number; width: number } | null>(null)
+
+  const onBarMouseDown = (
+    e: React.MouseEvent,
+    asig: AsignacionCronograma,
+    type: DragType,
+    barLeft: number,
+    barWidth: number,
+  ) => {
+    if (e.button !== 0) return
+    e.preventDefault()
+    e.stopPropagation()
+
+    const key = `${asig.requerimiento_id}-${asig.perfil_id}`
+    dragRef.current = { key, asig, type, startMouseX: e.clientX, origLeft: barLeft, origWidth: barWidth, pxDay, origin }
+    setDragPreview({ key, left: barLeft, width: barWidth })
+
+    document.body.style.cursor    = type === 'move' ? 'grabbing' : 'ew-resize'
+    document.body.style.userSelect = 'none'
+
+    const onMove = (ev: MouseEvent) => {
+      const d = dragRef.current
+      if (!d) return
+      const { left, width } = calcDragResult(d, ev.clientX)
+      setDragPreview({ key: d.key, left, width })
+    }
+
+    const onUp = async (ev: MouseEvent) => {
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup',   onUp)
+      document.body.style.cursor     = ''
+      document.body.style.userSelect = ''
+
+      const d = dragRef.current
+      dragRef.current = null
+      setDragPreview(null)
+      if (!d) return
+
+      const { left, width } = calcDragResult(d, ev.clientX)
+      if (left === d.origLeft && width === d.origWidth) return   // sin cambio
+
+      const startDays = Math.round(left / d.pxDay)
+      const endDays   = Math.max(startDays, Math.round((left + width) / d.pxDay) - 1)
+      await actualizarFechasDesarrollador(
+        d.asig.requerimiento_id, d.asig.perfil_id,
+        isoStr(addDays(d.origin, startDays)),
+        isoStr(addDays(d.origin, endDays)),
+      )
+      router.refresh()
+    }
+
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup',   onUp)
   }
 
   const bg      = isEven ? 'bg-indigo-50' : 'bg-white'
@@ -165,13 +267,16 @@ function ReqRow({
         style={{ width: REQ_COL_W, minWidth: REQ_COL_W, minHeight: groupH }}
       >
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-start gap-1.5">
             {group.numero && (
-              <span className="shrink-0 text-[10px] font-bold text-indigo-500">#{group.numero}</span>
+              <span className="mt-0.5 shrink-0 text-[10px] font-bold text-indigo-500">#{group.numero}</span>
             )}
-            <p className="text-sm font-semibold text-slate-700 break-words leading-snug">
+            <Link
+              href={`/admin/requerimientos/${group.requerimiento_id}`}
+              className="text-sm font-semibold text-slate-700 hover:text-indigo-600 break-words leading-snug"
+            >
               {group.nombre_desarrollo ?? group.identificacion}
-            </p>
+            </Link>
           </div>
           {group.parent_id && (
             <span className="mt-0.5 block text-[10px] text-slate-400">Sub-requerimiento</span>
@@ -186,21 +291,29 @@ function ReqRow({
           const devBorderB = isLastDev ? 'border-b border-slate-300' : 'border-b border-slate-200'
           const rowKey     = `${asig.requerimiento_id}-${asig.perfil_id}`
           const isEditing  = editingKey === rowKey
+          const isDragging = dragPreview?.key === rowKey
 
-          const startD  = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
-          const endD    = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
-          const hasBar  = !!(startD && endD)
-          const x       = hasBar ? getX(startD!, origin, pxDay) : 0
-          const w       = hasBar ? Math.max(getX(endD!, origin, pxDay) - x + pxDay, 6) : 0
-          const color   = barColor(asig.proceso_interno, devIdx)
-          const hereda  = asig.fechas_heredadas
-          const label   = asig.nombre_desarrollo ?? asig.identificacion
-          const barTitle = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.nombre_desarrollador}\n${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
+          const startD = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
+          const endD   = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
+          const hasBar = !!(startD && endD)
+          const baseX  = hasBar ? getX(startD!, origin, pxDay) : 0
+          const baseW  = hasBar ? Math.max(getX(endD!, origin, pxDay) - baseX + pxDay, pxDay) : 0
+
+          // Posición real (preview durante drag, calculada si no)
+          const barLeft  = isDragging ? dragPreview!.left  : baseX
+          const barWidth = isDragging ? dragPreview!.width : baseW
+
+          const color  = barColor(asig.proceso_interno, devIdx)
+          const hereda = asig.fechas_heredadas
+
+          const barLabel = isDragging
+            ? previewLabel(barLeft, barWidth, origin, pxDay)
+            : `${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
 
           return (
-            <div key={`${asig.requerimiento_id}-${asig.perfil_id}`} className="flex" style={{ height: ROW_H }}>
+            <div key={rowKey} className="flex" style={{ height: ROW_H }}>
 
-              {/* Columna 2: desarrollador + cargo + botón editar */}
+              {/* Columna 2: desarrollador + cargo + botón editar manual */}
               <div
                 className={cn(
                   'sticky z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 px-3',
@@ -222,7 +335,7 @@ function ReqRow({
                       ? 'bg-slate-200 text-slate-600 hover:bg-slate-300'
                       : 'text-slate-300 hover:bg-indigo-50 hover:text-indigo-500'
                   )}
-                  title={isEditing ? 'Cancelar edición' : 'Editar fechas'}
+                  title={isEditing ? 'Cancelar' : 'Editar fechas manualmente'}
                 >
                   <Pencil size={12} />
                 </button>
@@ -243,63 +356,86 @@ function ReqRow({
                   <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
                 )}
 
-                {/* Panel de edición inline */}
-                {isEditing ? (
-                  <div className="absolute inset-y-0 left-0 z-10 flex items-center gap-2 rounded-r-lg border-r border-slate-200 bg-white px-3 shadow-md"
+                {/* Panel de edición manual */}
+                {isEditing && (
+                  <div className="absolute inset-y-0 left-0 z-20 flex items-center gap-2 rounded-r-lg border-r border-slate-200 bg-white px-3 shadow-md"
                     style={{ minWidth: 340 }}>
                     <span className="shrink-0 text-[10px] font-medium text-slate-400">Inicio</span>
-                    <input
-                      type="date" value={editInicio}
-                      onChange={e => setEditInicio(e.target.value)}
-                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none"
-                    />
+                    <input type="date" value={editInicio} onChange={e => setEditInicio(e.target.value)}
+                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none" />
                     <span className="shrink-0 text-slate-300">→</span>
                     <span className="shrink-0 text-[10px] font-medium text-slate-400">Fin</span>
-                    <input
-                      type="date" value={editFin}
-                      onChange={e => setEditFin(e.target.value)}
-                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none"
-                    />
-                    <button
-                      onClick={() => handleSave(asig)} disabled={saving}
-                      className="flex shrink-0 items-center gap-1 rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
-                    >
-                      <Check size={11} />
-                      {saving ? 'Guardando…' : 'Guardar'}
+                    <input type="date" value={editFin} onChange={e => setEditFin(e.target.value)}
+                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none" />
+                    <button onClick={() => handleSave(asig)} disabled={saving}
+                      className="flex shrink-0 items-center gap-1 rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50">
+                      <Check size={11} />{saving ? 'Guardando…' : 'Guardar'}
                     </button>
-                    <button
-                      onClick={cancelEdit}
-                      className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100"
-                    >
+                    <button onClick={cancelEdit}
+                      className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100">
                       <X size={13} />
                     </button>
                   </div>
-                ) : (
-                  /* Barra de fechas */
-                  hasBar && (
-                    <Link
-                      href={`/admin/requerimientos/${asig.requerimiento_id}`}
-                      title={barTitle}
-                      className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
-                      style={{
-                        left: x, width: w,
-                        top: BAR_Y, height: BAR_H,
-                        backgroundColor: hereda ? 'transparent' : color,
-                        opacity:   hereda ? 0.75 : 1,
-                        boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
-                        border:    hereda ? `2px dashed ${color}` : 'none',
-                      } as React.CSSProperties}
-                    >
-                      {w > 80 && (
-                        <span
-                          className="px-2 text-[10px] font-semibold leading-none truncate"
-                          style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
-                        >
-                          {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
-                        </span>
-                      )}
-                    </Link>
-                  )
+                )}
+
+                {/* Barra draggable */}
+                {hasBar && !isEditing && (
+                  <div
+                    onMouseDown={(e) => onBarMouseDown(e, asig, 'move', baseX, baseW)}
+                    title={`${asig.nombre_desarrollador} · ${barLabel}${hereda ? ' (heredadas del padre)' : ''}\nArrastra para mover · Bordes para redimensionar`}
+                    className="absolute flex items-center overflow-visible select-none"
+                    style={{
+                      left:            barLeft,
+                      width:           barWidth,
+                      top:             BAR_Y,
+                      height:          BAR_H,
+                      backgroundColor: hereda ? 'transparent' : color,
+                      border:          hereda || isDragging ? `2px dashed ${color}` : 'none',
+                      opacity:         isDragging ? 0.75 : (hereda ? 0.75 : 1),
+                      boxShadow:       isDragging || hereda ? 'none' : '0 1px 3px rgba(0,0,0,0.2)',
+                      borderRadius:    6,
+                      cursor:          'grab',
+                      zIndex:          isDragging ? 20 : 1,
+                    } as React.CSSProperties}
+                  >
+                    {/* Handle izquierdo — resize inicio */}
+                    <div
+                      onMouseDown={(e) => { e.stopPropagation(); onBarMouseDown(e, asig, 'resize-left', baseX, baseW) }}
+                      className="absolute inset-y-0 left-0 z-10 flex items-center justify-center rounded-l"
+                      style={{ width: 8, cursor: 'ew-resize', backgroundColor: 'rgba(0,0,0,0.15)' }}
+                    />
+
+                    {/* Etiqueta de fechas */}
+                    {barWidth > 72 && (
+                      <span
+                        className="flex-1 truncate px-2 text-[10px] font-semibold leading-none pointer-events-none"
+                        style={{ color: hereda ? color : 'rgba(255,255,255,0.95)' }}
+                      >
+                        {barLabel}
+                      </span>
+                    )}
+
+                    {/* Enlace al requerimiento (hover) */}
+                    {barWidth > 44 && (
+                      <Link
+                        href={`/admin/requerimientos/${asig.requerimiento_id}`}
+                        onClick={e => e.stopPropagation()}
+                        onMouseDown={e => e.stopPropagation()}
+                        title="Abrir requerimiento"
+                        className="mr-1 shrink-0 rounded p-0.5 opacity-0 hover:opacity-100 group-hover:opacity-60 transition-opacity"
+                        style={{ color: hereda ? color : 'rgba(255,255,255,0.8)' }}
+                      >
+                        <ExternalLink size={10} />
+                      </Link>
+                    )}
+
+                    {/* Handle derecho — resize fin */}
+                    <div
+                      onMouseDown={(e) => { e.stopPropagation(); onBarMouseDown(e, asig, 'resize-right', baseX, baseW) }}
+                      className="absolute inset-y-0 right-0 z-10 flex items-center justify-center rounded-r"
+                      style={{ width: 8, cursor: 'ew-resize', backgroundColor: 'rgba(0,0,0,0.15)' }}
+                    />
+                  </div>
                 )}
               </div>
             </div>
