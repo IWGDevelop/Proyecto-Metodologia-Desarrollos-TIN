@@ -159,22 +159,29 @@ function DevRow({
           const w     = Math.max(getX(endD, origin, pxDay) - x + pxDay, 6)
           const color = PALETTE[i % PALETTE.length]
           const label = asig.nombre_desarrollo ?? asig.identificacion
-          const title = `${label}\n${asig.numero ? '#' + asig.numero + ' · ' : ''}${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
+          const hereda = asig.fechas_heredadas
+          const title = `${label}${hereda ? ' (fechas heredadas del padre)' : ''}\n${asig.numero ? '#' + asig.numero + ' · ' : ''}${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
 
           return (
             <Link
               key={asig.requerimiento_id}
               href={`/admin/requerimientos/${asig.requerimiento_id}`}
               title={title}
-              className="absolute flex items-center overflow-hidden rounded-md shadow-sm transition-all hover:brightness-90 hover:shadow-md"
+              className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
               style={{
                 left: x, width: w,
                 top: BAR_Y, height: BAR_H,
-                backgroundColor: color,
-              }}
+                backgroundColor: hereda ? 'transparent' : color,
+                opacity: hereda ? 0.75 : 1,
+                boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
+                border: hereda ? `2px dashed ${color}` : 'none',
+              } as React.CSSProperties}
             >
               {w > 44 && (
-                <span className="px-2 text-[10px] font-semibold leading-none text-white/90 truncate">
+                <span
+                  className="px-2 text-[10px] font-semibold leading-none truncate"
+                  style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
+                >
                   {label}
                 </span>
               )}

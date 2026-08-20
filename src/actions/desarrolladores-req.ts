@@ -129,10 +129,13 @@ export interface AsignacionCronograma {
   estado: string
   prioridad: number | null
   sub_prioridad: number | null
+  parent_id: string | null
+  fechas_heredadas: boolean
 }
 
 export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronograma[]> {
   const supabase = createAdminClient()
+  // Fetch ALL assignments (no date filter) to support date inheritance from parent reqs
   const { data, error } = await (supabase as any)
     .from('requerimiento_desarrolladores')
     .select(`
@@ -141,27 +144,55 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
       fecha_inicio_estimada,
       fecha_fin_estimada,
       perfil:perfil_id(nombre_completo, cargo),
-      requerimiento:requerimiento_id(nombre_desarrollo, identificacion, numero, estado, prioridad, sub_prioridad)
+      requerimiento:requerimiento_id(nombre_desarrollo, identificacion, numero, estado, prioridad, sub_prioridad, parent_id)
     `)
-    .or('fecha_inicio_estimada.not.is.null,fecha_fin_estimada.not.is.null')
     .order('perfil_id', { ascending: true })
 
   if (error) return []
 
-  return (data ?? []).map((r: any) => ({
+  const rows: AsignacionCronograma[] = (data ?? []).map((r: any) => ({
     perfil_id:             r.perfil_id,
     requerimiento_id:      r.requerimiento_id,
     nombre_desarrollador:  r.perfil?.nombre_completo ?? 'Sin nombre',
     cargo:                 r.perfil?.cargo ?? null,
-    fecha_inicio_estimada: r.fecha_inicio_estimada,
-    fecha_fin_estimada:    r.fecha_fin_estimada,
+    fecha_inicio_estimada: r.fecha_inicio_estimada as string | null,
+    fecha_fin_estimada:    r.fecha_fin_estimada    as string | null,
     nombre_desarrollo:     r.requerimiento?.nombre_desarrollo ?? null,
     identificacion:        r.requerimiento?.identificacion ?? '—',
     numero:                r.requerimiento?.numero ?? null,
     estado:                r.requerimiento?.estado ?? 'PENDIENTE',
     prioridad:             r.requerimiento?.prioridad ?? null,
     sub_prioridad:         r.requerimiento?.sub_prioridad ?? null,
+    parent_id:             r.requerimiento?.parent_id ?? null,
+    fechas_heredadas:      false,
   }))
+
+  // Map requerimiento_id → dates for quick lookup during inheritance
+  const reqDatesMap = new Map<string, { inicio: string | null; fin: string | null }>()
+  rows.forEach(row => {
+    if (row.fecha_inicio_estimada || row.fecha_fin_estimada) {
+      reqDatesMap.set(row.requerimiento_id, {
+        inicio: row.fecha_inicio_estimada,
+        fin:    row.fecha_fin_estimada,
+      })
+    }
+  })
+
+  // Inherit parent dates for child entries that have no dates
+  const result: AsignacionCronograma[] = []
+  for (const row of rows) {
+    if (row.fecha_inicio_estimada || row.fecha_fin_estimada) {
+      result.push(row)
+    } else if (row.parent_id) {
+      const parentDates = reqDatesMap.get(row.parent_id)
+      if (parentDates) {
+        result.push({ ...row, fecha_inicio_estimada: parentDates.inicio, fecha_fin_estimada: parentDates.fin, fechas_heredadas: true })
+      }
+    }
+    // Entries with no dates and no parent (or parent without dates) are excluded
+  }
+
+  return result
 }
 
 export async function desasignarDesarrollador(
