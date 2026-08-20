@@ -117,7 +117,7 @@ export type ProcesoInterno =
   | 'FINANCIERO' | 'OPERACIONES' | 'COMERCIAL' | 'CARGA'
   | 'SISTEMAS_GESTION' | 'SERVICIO_CLIENTE' | 'COMPRAS'
   | 'SEGUROS' | 'DATOS' | 'TI' | 'GENERAL' | 'PRICING' | 'ESTRATEGIA'
-  | 'MARKETING' | 'TRAFICO_SEGURIDAD'
+  | 'MARKETING' | 'TRAFICO_SEGURIDAD' | 'IA'
 export type Impacta = 'FUNCIONARIOS' | 'CLIENTES' | 'AMBOS'
 
 // ─── Tipos JSONB embebidos ───────────────────────────────────────────────────

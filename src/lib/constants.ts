@@ -345,6 +345,7 @@ export const PROCESOS_INTERNOS: Array<{ value: ProcesoInterno; label: string }> 
   { value: 'ESTRATEGIA',         label: 'Estrategia' },
   { value: 'MARKETING',          label: 'Marketing' },
   { value: 'TRAFICO_SEGURIDAD',  label: 'Tráfico y Seguridad' },
+  { value: 'IA',                 label: 'IA' },
   // GENERAL mantenido para compatibilidad con registros existentes; muestra como Estrategia
   { value: 'GENERAL',            label: 'Estrategia (legacy)' },
 ]
