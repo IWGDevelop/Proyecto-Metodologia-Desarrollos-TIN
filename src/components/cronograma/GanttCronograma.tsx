@@ -196,7 +196,7 @@ function GanttRow({
       {/* Panel izquierdo (sticky) */}
       <div
         className={cn(
-          'sticky left-0 z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-100 px-3',
+          'sticky left-0 z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-200 px-3',
           isEven ? 'bg-slate-50' : 'bg-white'
         )}
         style={{ width: LEFT_W, minWidth: LEFT_W }}
@@ -223,17 +223,12 @@ function GanttRow({
 
       {/* Área de barras */}
       <div
-        className={cn('relative shrink-0 border-b border-slate-100', isEven ? 'bg-slate-50/30' : 'bg-white')}
+        className={cn('relative shrink-0 border-b border-slate-200', isEven ? 'bg-slate-50/30' : 'bg-white')}
         style={{ width: totalWidth, height: ROW_H }}
       >
         {/* Líneas verticales de semanas */}
         {weeks.map((wk, i) => wk.x > 0 && (
           <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
-        ))}
-
-        {/* Líneas verticales de meses (más fuertes) */}
-        {months.map((m, i) => (
-          <div key={i} className="absolute inset-y-0 w-px bg-slate-400" style={{ left: m.x }} />
         ))}
 
         {/* Línea de hoy */}
