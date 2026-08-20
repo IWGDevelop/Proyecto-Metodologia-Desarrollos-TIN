@@ -113,13 +113,16 @@ function ReqRow({
   group: ReqGroup; origin: Date; pxDay: number
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
-  const bgLeft  = isEven ? 'bg-slate-50'     : 'bg-white'
-  const bgGantt = isEven ? 'bg-slate-50/30'  : 'bg-white'
+  // Even groups use a light blue tint; odd groups stay white
+  const bgLeft  = isEven ? 'bg-indigo-50/40' : 'bg-white'
+  const bgGantt = isEven ? 'bg-indigo-50/20' : 'bg-white'
 
   return (
     <>
       {group.devs.map((asig, devIdx) => {
         const isFirst = devIdx === 0
+        // Stronger top border on the first row of every group to mark the boundary
+        const groupBorder = isFirst ? 'border-t-2 border-t-slate-300' : ''
 
         const startD = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
         const endD   = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
@@ -138,7 +141,7 @@ function ReqRow({
             <div
               className={cn(
                 'sticky left-0 z-10 flex shrink-0 items-center border-b border-r border-slate-200 px-3',
-                bgLeft
+                groupBorder, bgLeft
               )}
               style={{ width: REQ_COL_W, minWidth: REQ_COL_W }}
             >
@@ -157,7 +160,7 @@ function ReqRow({
                   )}
                 </div>
               ) : (
-                <div className="ml-6 h-full w-px bg-slate-100" />
+                <div className="ml-6 h-full w-px bg-slate-200" />
               )}
             </div>
 
@@ -165,7 +168,7 @@ function ReqRow({
             <div
               className={cn(
                 'sticky z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-200 px-3',
-                bgLeft
+                groupBorder, bgLeft
               )}
               style={{ left: REQ_COL_W, width: DEV_COL_W, minWidth: DEV_COL_W }}
             >
@@ -179,7 +182,7 @@ function ReqRow({
 
             {/* Área Gantt */}
             <div
-              className={cn('relative shrink-0 border-b border-slate-200', bgGantt)}
+              className={cn('relative shrink-0 border-b border-slate-200', groupBorder, bgGantt)}
               style={{ width: totalWidth, height: ROW_H }}
             >
               {/* Líneas de semana */}
