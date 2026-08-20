@@ -65,6 +65,8 @@ export interface RequerimientoDesarrollador {
   requerimiento_id: string
   perfil_id: string
   asignado_at: string
+  fecha_inicio_estimada: string | null
+  fecha_fin_estimada: string | null
   perfil?: Perfil
 }
 

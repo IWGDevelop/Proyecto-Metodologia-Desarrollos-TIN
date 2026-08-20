@@ -22,7 +22,7 @@ import {
   agregarRegistroHoras, eliminarRegistroHoras, guardarHorasEstimadasDesarrollo,
 } from '@/actions/tareas'
 import { CATEGORIAS_TAREA, CARGOS_TIN } from '@/lib/constants'
-import { asignarDesarrollador, desasignarDesarrollador } from '@/actions/desarrolladores-req'
+import { asignarDesarrollador, desasignarDesarrollador, actualizarFechasDesarrollador } from '@/actions/desarrolladores-req'
 import { formatFechaRelativa, cn } from '@/lib/utils'
 import type { TareaTecnica, RequerimientoDesarrollador, Perfil, RegistroHorasTarea, CategoriaTarea, CargoTIN } from '@/lib/supabase/types'
 
@@ -730,6 +730,122 @@ function TareaRow({
   )
 }
 
+/* ── Tarjeta de desarrollador con fechas editables ───────────────────────── */
+function DevCard({
+  dev, requerimientoId, isAdmin, onDesasignar,
+}: {
+  dev: RequerimientoDesarrollador
+  requerimientoId: string
+  isAdmin: boolean
+  onDesasignar: (id: string) => void
+}) {
+  const [showFechas, setShowFechas] = useState(false)
+  const [fechaInicio, setFechaInicio] = useState(dev.fecha_inicio_estimada ?? '')
+  const [fechaFin, setFechaFin]       = useState(dev.fecha_fin_estimada ?? '')
+  const [saving, setSaving]           = useState(false)
+
+  const fmtCorta = (s: string | null) => s
+    ? new Date(s + 'T12:00:00').toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
+    : null
+
+  const handleSave = async () => {
+    setSaving(true)
+    const res = await actualizarFechasDesarrollador(
+      requerimientoId, dev.perfil_id,
+      fechaInicio || null, fechaFin || null
+    )
+    setSaving(false)
+    if (res.ok) { toast.success('Fechas guardadas'); setShowFechas(false) }
+    else toast.error(res.error ?? 'Error al guardar')
+  }
+
+  const ini = fmtCorta(dev.fecha_inicio_estimada)
+  const fin = fmtCorta(dev.fecha_fin_estimada)
+
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex items-center gap-2.5 px-3 py-2">
+        <Avatar nombre={dev.perfil?.nombre_completo ?? '?'} />
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-medium text-slate-700">{dev.perfil?.nombre_completo}</p>
+          <p className="text-xs text-slate-400">{dev.perfil?.email}</p>
+        </div>
+        {(ini || fin) && !showFechas && (
+          <span className="hidden sm:flex items-center gap-1 text-xs text-slate-400 bg-slate-50 rounded px-2 py-0.5 shrink-0">
+            <Calendar size={10} />
+            {ini ?? '—'} → {fin ?? '—'}
+          </span>
+        )}
+        {dev.perfil?.cargo && !ini && !fin && (
+          <span className="text-xs text-slate-400 hidden sm:block shrink-0">{dev.perfil.cargo}</span>
+        )}
+        {isAdmin && (
+          <>
+            <button
+              onClick={() => setShowFechas(f => !f)}
+              title="Editar fechas en cronograma TIN"
+              className={cn(
+                'rounded p-1 transition-colors',
+                showFechas
+                  ? 'bg-blue-100 text-blue-600'
+                  : 'text-slate-400 hover:bg-blue-50 hover:text-blue-500'
+              )}
+            >
+              <Calendar size={13} />
+            </button>
+            <button
+              onClick={() => onDesasignar(dev.perfil_id)}
+              className="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600"
+            >
+              <UserMinus size={14} />
+            </button>
+          </>
+        )}
+      </div>
+
+      {showFechas && (
+        <div className="border-t border-slate-100 bg-blue-50/40 px-3 pb-3 pt-2.5">
+          <p className="mb-2 text-xs font-semibold text-slate-500">
+            Fechas estimadas en Cronograma TIN
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">Inicio estimado</label>
+              <input
+                type="date" value={fechaInicio}
+                onChange={e => setFechaInicio(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs text-slate-400">Fin estimado</label>
+              <input
+                type="date" value={fechaFin}
+                onChange={e => setFechaFin(e.target.value)}
+                className="w-full rounded-md border border-slate-200 bg-white px-2 py-1.5 text-sm outline-none focus:border-blue-400"
+              />
+            </div>
+          </div>
+          <div className="mt-2 flex gap-2">
+            <button
+              onClick={handleSave} disabled={saving}
+              className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+            >
+              <Save size={11} /> {saving ? 'Guardando...' : 'Guardar'}
+            </button>
+            <button
+              onClick={() => setShowFechas(false)}
+              className="rounded-lg border border-slate-200 px-3 py-1.5 text-xs text-slate-500 hover:bg-slate-100"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 /* ── Props del componente principal ──────────────────────────────────────── */
 interface Props {
   requerimientoId: string
@@ -911,7 +1027,9 @@ export function TabDesarrollo({
     if (!perfil) return
     const newDev: RequerimientoDesarrollador = {
       requerimiento_id: requerimientoId, perfil_id: selectedDev,
-      asignado_at: new Date().toISOString(), perfil,
+      asignado_at: new Date().toISOString(),
+      fecha_inicio_estimada: null, fecha_fin_estimada: null,
+      perfil,
     }
     setDevs(prev => [...prev, newDev])
     setSelectedDev('')
@@ -965,19 +1083,13 @@ export function TabDesarrollo({
         {devs.length > 0 && (
           <div className="space-y-2 mb-3">
             {devs.map(d => (
-              <div key={d.perfil_id} className="flex items-center gap-2.5 rounded-lg bg-slate-50 px-3 py-2">
-                <Avatar nombre={d.perfil?.nombre_completo ?? '?'} />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-slate-700">{d.perfil?.nombre_completo}</p>
-                  <p className="text-xs text-slate-400">{d.perfil?.email}</p>
-                </div>
-                {d.perfil?.cargo && <span className="text-xs text-slate-400 hidden sm:block">{d.perfil.cargo}</span>}
-                {isAdmin && (
-                  <button onClick={() => handleDesasignar(d.perfil_id)} className="rounded p-1 text-slate-400 hover:bg-red-100 hover:text-red-600">
-                    <UserMinus size={14} />
-                  </button>
-                )}
-              </div>
+              <DevCard
+                key={d.perfil_id}
+                dev={d}
+                requerimientoId={requerimientoId}
+                isAdmin={isAdmin}
+                onDesasignar={handleDesasignar}
+              />
             ))}
           </div>
         )}
