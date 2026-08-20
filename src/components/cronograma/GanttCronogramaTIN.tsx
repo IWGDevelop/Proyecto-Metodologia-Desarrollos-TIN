@@ -2,9 +2,11 @@
 
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
-import { ZoomIn, ZoomOut, Calendar, Search } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { ZoomIn, ZoomOut, Calendar, Search, Pencil, Check, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { AsignacionCronograma } from '@/actions/desarrolladores-req'
+import { actualizarFechasDesarrollador } from '@/actions/desarrolladores-req'
 
 interface Props { asignaciones: AsignacionCronograma[] }
 
@@ -123,8 +125,32 @@ function ReqRow({
   group: ReqGroup; origin: Date; pxDay: number
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
-  const bg      = isEven ? 'bg-indigo-50'  : 'bg-white'
-  const bgGantt = isEven ? 'bg-indigo-50'  : 'bg-white'
+  const router = useRouter()
+  const [editingKey, setEditingKey] = useState<string | null>(null)
+  const [editInicio, setEditInicio] = useState('')
+  const [editFin,    setEditFin]    = useState('')
+  const [saving,     setSaving]     = useState(false)
+
+  const startEdit = (asig: AsignacionCronograma) => {
+    setEditingKey(`${asig.requerimiento_id}-${asig.perfil_id}`)
+    setEditInicio(asig.fecha_inicio_estimada ?? '')
+    setEditFin(asig.fecha_fin_estimada ?? '')
+  }
+
+  const cancelEdit = () => setEditingKey(null)
+
+  const handleSave = async (asig: AsignacionCronograma) => {
+    setSaving(true)
+    const res = await actualizarFechasDesarrollador(
+      asig.requerimiento_id, asig.perfil_id,
+      editInicio || null, editFin || null
+    )
+    setSaving(false)
+    if (res.ok) { setEditingKey(null); router.refresh() }
+  }
+
+  const bg      = isEven ? 'bg-indigo-50' : 'bg-white'
+  const bgGantt = isEven ? 'bg-indigo-50' : 'bg-white'
   const groupH  = group.devs.length * ROW_H
 
   return (
@@ -156,8 +182,10 @@ function ReqRow({
       {/* Columna 2 + Gantt: una sub-fila por desarrollador */}
       <div className="flex flex-1 flex-col">
         {group.devs.map((asig, devIdx) => {
-          const isLastDev   = devIdx === group.devs.length - 1
-          const devBorderB  = isLastDev ? 'border-b border-slate-300' : 'border-b border-slate-200'
+          const isLastDev  = devIdx === group.devs.length - 1
+          const devBorderB = isLastDev ? 'border-b border-slate-300' : 'border-b border-slate-200'
+          const rowKey     = `${asig.requerimiento_id}-${asig.perfil_id}`
+          const isEditing  = editingKey === rowKey
 
           const startD  = asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
           const endD    = asig.fecha_fin_estimada    ? toD(asig.fecha_fin_estimada)    : null
@@ -172,7 +200,7 @@ function ReqRow({
           return (
             <div key={`${asig.requerimiento_id}-${asig.perfil_id}`} className="flex" style={{ height: ROW_H }}>
 
-              {/* Columna 2: desarrollador + cargo */}
+              {/* Columna 2: desarrollador + cargo + botón editar */}
               <div
                 className={cn(
                   'sticky z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 px-3',
@@ -186,6 +214,18 @@ function ReqRow({
                     <span className="block truncate text-[10px] text-slate-400">{asig.cargo}</span>
                   )}
                 </div>
+                <button
+                  onClick={() => isEditing ? cancelEdit() : startEdit(asig)}
+                  className={cn(
+                    'shrink-0 rounded p-1 transition-colors',
+                    isEditing
+                      ? 'bg-slate-200 text-slate-600 hover:bg-slate-300'
+                      : 'text-slate-300 hover:bg-indigo-50 hover:text-indigo-500'
+                  )}
+                  title={isEditing ? 'Cancelar edición' : 'Editar fechas'}
+                >
+                  <Pencil size={12} />
+                </button>
               </div>
 
               {/* Área Gantt */}
@@ -203,30 +243,63 @@ function ReqRow({
                   <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
                 )}
 
-                {/* Barra de fechas */}
-                {hasBar && (
-                  <Link
-                    href={`/admin/requerimientos/${asig.requerimiento_id}`}
-                    title={barTitle}
-                    className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
-                    style={{
-                      left: x, width: w,
-                      top: BAR_Y, height: BAR_H,
-                      backgroundColor: hereda ? 'transparent' : color,
-                      opacity:   hereda ? 0.75 : 1,
-                      boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
-                      border:    hereda ? `2px dashed ${color}` : 'none',
-                    } as React.CSSProperties}
-                  >
-                    {w > 80 && (
-                      <span
-                        className="px-2 text-[10px] font-semibold leading-none truncate"
-                        style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
-                      >
-                        {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
-                      </span>
-                    )}
-                  </Link>
+                {/* Panel de edición inline */}
+                {isEditing ? (
+                  <div className="absolute inset-y-0 left-0 z-10 flex items-center gap-2 rounded-r-lg border-r border-slate-200 bg-white px-3 shadow-md"
+                    style={{ minWidth: 340 }}>
+                    <span className="shrink-0 text-[10px] font-medium text-slate-400">Inicio</span>
+                    <input
+                      type="date" value={editInicio}
+                      onChange={e => setEditInicio(e.target.value)}
+                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none"
+                    />
+                    <span className="shrink-0 text-slate-300">→</span>
+                    <span className="shrink-0 text-[10px] font-medium text-slate-400">Fin</span>
+                    <input
+                      type="date" value={editFin}
+                      onChange={e => setEditFin(e.target.value)}
+                      className="rounded border border-slate-200 px-2 py-1 text-xs text-slate-700 focus:border-indigo-400 focus:outline-none"
+                    />
+                    <button
+                      onClick={() => handleSave(asig)} disabled={saving}
+                      className="flex shrink-0 items-center gap-1 rounded-md bg-indigo-500 px-2.5 py-1 text-xs font-semibold text-white hover:bg-indigo-600 disabled:opacity-50"
+                    >
+                      <Check size={11} />
+                      {saving ? 'Guardando…' : 'Guardar'}
+                    </button>
+                    <button
+                      onClick={cancelEdit}
+                      className="shrink-0 rounded-md p-1 text-slate-400 hover:bg-slate-100"
+                    >
+                      <X size={13} />
+                    </button>
+                  </div>
+                ) : (
+                  /* Barra de fechas */
+                  hasBar && (
+                    <Link
+                      href={`/admin/requerimientos/${asig.requerimiento_id}`}
+                      title={barTitle}
+                      className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
+                      style={{
+                        left: x, width: w,
+                        top: BAR_Y, height: BAR_H,
+                        backgroundColor: hereda ? 'transparent' : color,
+                        opacity:   hereda ? 0.75 : 1,
+                        boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
+                        border:    hereda ? `2px dashed ${color}` : 'none',
+                      } as React.CSSProperties}
+                    >
+                      {w > 80 && (
+                        <span
+                          className="px-2 text-[10px] font-semibold leading-none truncate"
+                          style={{ color: hereda ? color : 'rgba(255,255,255,0.9)' }}
+                        >
+                          {fmtCorta(asig.fecha_inicio_estimada)} → {fmtCorta(asig.fecha_fin_estimada)}
+                        </span>
+                      )}
+                    </Link>
+                  )
                 )}
               </div>
             </div>

@@ -102,12 +102,12 @@ export async function actualizarFechasDesarrollador(
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
       .from('requerimiento_desarrolladores')
-      .update({
+      .upsert({
+        requerimiento_id:      requerimientoId,
+        perfil_id:             perfilId,
         fecha_inicio_estimada: fechaInicio || null,
         fecha_fin_estimada:    fechaFin    || null,
-      })
-      .eq('requerimiento_id', requerimientoId)
-      .eq('perfil_id', perfilId)
+      }, { onConflict: 'requerimiento_id,perfil_id' })
 
     if (error) return { ok: false, error: error.message }
     return { ok: true }
