@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CalendarDays, CheckCircle2, FlaskConical, Rocket, History } from 'lucide-react'
+import { CalendarDays, CheckCircle2, FlaskConical, Rocket, History, Wrench } from 'lucide-react'
 import { toast } from 'sonner'
 import { actualizarFechasEntrega, type FechasEntrega, type HistorialFecha } from '@/actions/fechas-entrega'
 import { cn } from '@/lib/utils'
@@ -142,6 +142,27 @@ export function TabFechas({ requerimientoId, fechasActuales, historial }: Props)
             label="Fecha real"
             value={fechas.fecha_real_feedback_pruebas ?? ''}
             onChange={v => setFecha('fecha_real_feedback_pruebas', v)}
+            isReal
+          />
+        </div>
+      </Seccion>
+
+      {/* ── Ajustes técnicos ─────────────────────────────────────────────── */}
+      <Seccion
+        titulo="Ajustes técnicos"
+        icon={<Wrench size={14} className="text-violet-500" />}
+        color="border-violet-100 bg-violet-50/30"
+      >
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <Campo
+            label="Fecha estimada"
+            value={fechas.fecha_estimada_ajustes_tecnicos ?? ''}
+            onChange={v => setFecha('fecha_estimada_ajustes_tecnicos', v)}
+          />
+          <Campo
+            label="Fecha real"
+            value={fechas.fecha_real_ajustes_tecnicos ?? ''}
+            onChange={v => setFecha('fecha_real_ajustes_tecnicos', v)}
             isReal
           />
         </div>

@@ -312,6 +312,8 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               fecha_real_entrega:              (req as any).fecha_real_entrega ?? null,
               fecha_estimada_feedback_pruebas: (req as any).fecha_estimada_feedback_pruebas ?? null,
               fecha_real_feedback_pruebas:     (req as any).fecha_real_feedback_pruebas ?? null,
+              fecha_estimada_ajustes_tecnicos: (req as any).fecha_estimada_ajustes_tecnicos ?? null,
+              fecha_real_ajustes_tecnicos:     (req as any).fecha_real_ajustes_tecnicos ?? null,
               fecha_estimada_salida_vivo:      (req as any).fecha_estimada_salida_vivo ?? null,
               fecha_salida_vivo:               (req as any).fecha_salida_vivo ?? null,
             }}

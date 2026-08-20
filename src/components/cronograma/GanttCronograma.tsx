@@ -176,10 +176,11 @@ function buildBars(req: ReqGantt, origin: Date, px: number): { bars: Bar[]; mrks
 
 // ── Fila individual ──────────────────────────────────────────────────────────
 function GanttRow({
-  req, origin, pxDay, months, totalWidth, isEven, todayX,
+  req, origin, pxDay, months, weeks, totalWidth, isEven, todayX,
 }: {
   req: ReqGantt; origin: Date; pxDay: number
-  months: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
+  months: { x: number }[]; weeks: { x: number }[]
+  totalWidth: number; isEven: boolean; todayX: number
 }) {
   const estadoCfg = getEstadoCfg(req.estado)
   const etiqueta  = req.prioridad != null
@@ -225,9 +226,14 @@ function GanttRow({
         className={cn('relative shrink-0 border-b border-slate-100', isEven ? 'bg-slate-50/30' : 'bg-white')}
         style={{ width: totalWidth, height: ROW_H }}
       >
-        {/* Líneas verticales de meses */}
+        {/* Líneas verticales de semanas */}
+        {weeks.map((wk, i) => wk.x > 0 && (
+          <div key={i} className="absolute inset-y-0 w-px bg-slate-200" style={{ left: wk.x }} />
+        ))}
+
+        {/* Líneas verticales de meses (más fuertes) */}
         {months.map((m, i) => (
-          <div key={i} className="absolute inset-y-0 w-px bg-slate-100" style={{ left: m.x }} />
+          <div key={i} className="absolute inset-y-0 w-px bg-slate-400" style={{ left: m.x }} />
         ))}
 
         {/* Línea de hoy */}
@@ -289,9 +295,16 @@ function GanttRow({
 
 // ── Componente principal ─────────────────────────────────────────────────────
 export function GanttCronograma({ requerimientos }: Props) {
-  const [pxDay,  setPxDay]  = useState(4)
-  const [search, setSearch] = useState('')
-  const [estado, setEstado] = useState('')
+  const [pxDay,        setPxDay]        = useState(4)
+  const [search,       setSearch]       = useState('')
+  const [estadosFiltro, setEstadosFiltro] = useState<Set<string>>(new Set())
+
+  const toggleEstado = (e: string) =>
+    setEstadosFiltro(prev => {
+      const next = new Set(prev)
+      next.has(e) ? next.delete(e) : next.add(e)
+      return next
+    })
 
   const filtered = useMemo(() => requerimientos.filter(r => {
     if (allDates(r).length === 0) return false
@@ -299,9 +312,9 @@ export function GanttCronograma({ requerimientos }: Props) {
       const q = search.toLowerCase()
       if (!`${r.nombre_desarrollo ?? ''} ${r.identificacion}`.toLowerCase().includes(q)) return false
     }
-    if (estado && r.estado !== estado) return false
+    if (estadosFiltro.size > 0 && !estadosFiltro.has(r.estado)) return false
     return true
-  }), [requerimientos, search, estado])
+  }), [requerimientos, search, estadosFiltro])
 
   // Timeline: siempre inicia en 2026-01-01
   const { origin, end, totalDays } = useMemo(() => {
@@ -321,7 +334,7 @@ export function GanttCronograma({ requerimientos }: Props) {
   const totalWidth = totalDays * pxDay
   const todayX     = getX(new Date(), origin, pxDay)
 
-  const estados = useMemo(
+  const estadosDisponibles = useMemo(
     () => [...new Set(requerimientos.map(r => r.estado))].sort(),
     [requerimientos]
   )
@@ -348,15 +361,6 @@ export function GanttCronograma({ requerimientos }: Props) {
             className="flex-1 bg-transparent text-sm text-slate-700 outline-none placeholder:text-slate-400"
           />
         </div>
-        <select
-          value={estado} onChange={e => setEstado(e.target.value)}
-          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 outline-none"
-        >
-          <option value="">Todos los estados</option>
-          {estados.map(e => (
-            <option key={e} value={e}>{getEstadoCfg(e).label}</option>
-          ))}
-        </select>
 
         {/* Zoom */}
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
@@ -366,6 +370,45 @@ export function GanttCronograma({ requerimientos }: Props) {
           <button onClick={() => setPxDay(p => Math.min(10, p + 1))}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100"><ZoomIn size={14} /></button>
         </div>
+      </div>
+
+      {/* Filtro de estados (chips multi-selección) */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-[11px] font-semibold text-slate-400 mr-1">Estado:</span>
+        <button
+          onClick={() => setEstadosFiltro(new Set())}
+          className={cn(
+            'rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors',
+            estadosFiltro.size === 0
+              ? 'border-slate-400 bg-slate-700 text-white'
+              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
+          )}
+        >
+          Todos
+        </button>
+        {estadosDisponibles.map(e => {
+          const cfg     = getEstadoCfg(e)
+          const activo  = estadosFiltro.has(e)
+          return (
+            <button
+              key={e}
+              onClick={() => toggleEstado(e)}
+              className={cn(
+                'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
+                activo
+                  ? `${cfg.bgColor} ${cfg.textColor} border-transparent shadow-sm`
+                  : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
+              )}
+            >
+              {cfg.label}
+            </button>
+          )
+        })}
+        {estadosFiltro.size > 0 && (
+          <span className="text-[10px] text-slate-400">
+            · {filtered.length} resultado{filtered.length !== 1 ? 's' : ''}
+          </span>
+        )}
       </div>
 
       {/* Leyenda */}
@@ -473,7 +516,7 @@ export function GanttCronograma({ requerimientos }: Props) {
                   return (
                     <div
                       key={i}
-                      className="absolute inset-y-0 flex items-center justify-center border-l border-slate-100 text-[9px] text-slate-400"
+                      className="absolute inset-y-0 flex items-center justify-center border-l border-slate-200 text-[9px] text-slate-500"
                       style={{ left: x, width: w }}
                     >
                       {w > 16 ? `S${wk.weekNum}` : ''}
@@ -497,6 +540,7 @@ export function GanttCronograma({ requerimientos }: Props) {
                 origin={origin}
                 pxDay={pxDay}
                 months={months}
+                weeks={weeks}
                 totalWidth={totalWidth}
                 isEven={i % 2 === 0}
                 todayX={todayX}

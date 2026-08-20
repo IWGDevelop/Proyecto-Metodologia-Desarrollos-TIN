@@ -13,12 +13,14 @@ function getAppUrl(): string {
 }
 
 export interface FechasEntrega {
-  fecha_estimada_entrega:          string | null
-  fecha_real_entrega:              string | null
-  fecha_estimada_feedback_pruebas: string | null
-  fecha_real_feedback_pruebas:     string | null
-  fecha_estimada_salida_vivo:      string | null
-  fecha_salida_vivo:               string | null
+  fecha_estimada_entrega:            string | null
+  fecha_real_entrega:                string | null
+  fecha_estimada_feedback_pruebas:   string | null
+  fecha_real_feedback_pruebas:       string | null
+  fecha_estimada_ajustes_tecnicos:   string | null
+  fecha_real_ajustes_tecnicos:       string | null
+  fecha_estimada_salida_vivo:        string | null
+  fecha_salida_vivo:                 string | null
 }
 
 export interface HistorialFecha {
@@ -36,6 +38,8 @@ const LABEL_FECHA: Record<string, string> = {
   fecha_real_entrega:              'Fecha real de entrega del desarrollo',
   fecha_estimada_feedback_pruebas: 'Fecha estimada de feedback de pruebas',
   fecha_real_feedback_pruebas:     'Fecha real de feedback de pruebas',
+  fecha_estimada_ajustes_tecnicos: 'Fecha estimada de ajustes técnicos',
+  fecha_real_ajustes_tecnicos:     'Fecha real de ajustes técnicos',
   fecha_estimada_salida_vivo:      'Fecha estimada de salida en vivo',
   fecha_salida_vivo:               'Fecha real de salida en vivo',
 }
@@ -65,6 +69,7 @@ export async function actualizarFechasEntrega(
         responsable, partes_interesadas,
         fecha_estimada_entrega, fecha_real_entrega,
         fecha_estimada_feedback_pruebas, fecha_real_feedback_pruebas,
+        fecha_estimada_ajustes_tecnicos, fecha_real_ajustes_tecnicos,
         fecha_estimada_salida_vivo, fecha_salida_vivo
       `)
       .eq('id', reqId)
