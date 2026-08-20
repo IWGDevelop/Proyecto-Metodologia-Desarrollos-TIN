@@ -121,6 +121,7 @@ export interface AsignacionCronograma {
   requerimiento_id: string
   nombre_desarrollador: string
   cargo: string | null
+  proceso_interno: string | null
   fecha_inicio_estimada: string | null
   fecha_fin_estimada: string | null
   nombre_desarrollo: string | null
@@ -143,7 +144,7 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
       requerimiento_id,
       fecha_inicio_estimada,
       fecha_fin_estimada,
-      perfil:perfil_id(nombre_completo, cargo),
+      perfil:perfil_id(nombre_completo, cargo, proceso_interno),
       requerimiento:requerimiento_id(nombre_desarrollo, identificacion, numero, estado, prioridad, sub_prioridad, parent_id)
     `)
     .order('perfil_id', { ascending: true })
@@ -155,6 +156,7 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
     requerimiento_id:      r.requerimiento_id,
     nombre_desarrollador:  r.perfil?.nombre_completo ?? 'Sin nombre',
     cargo:                 r.perfil?.cargo ?? null,
+    proceso_interno:       r.perfil?.proceso_interno ?? null,
     fecha_inicio_estimada: r.fecha_inicio_estimada as string | null,
     fecha_fin_estimada:    r.fecha_fin_estimada    as string | null,
     nombre_desarrollo:     r.requerimiento?.nombre_desarrollo ?? null,
@@ -179,11 +181,11 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
   })
 
   // Map parent requerimiento_id → developer info (to replicate under their dev row)
-  const parentToDevs = new Map<string, { perfil_id: string; nombre: string; cargo: string | null }[]>()
+  const parentToDevs = new Map<string, { perfil_id: string; nombre: string; cargo: string | null; proceso_interno: string | null }[]>()
   rows.forEach(row => {
     if (reqDatesMap.has(row.requerimiento_id)) {
       if (!parentToDevs.has(row.requerimiento_id)) parentToDevs.set(row.requerimiento_id, [])
-      parentToDevs.get(row.requerimiento_id)!.push({ perfil_id: row.perfil_id, nombre: row.nombre_desarrollador, cargo: row.cargo })
+      parentToDevs.get(row.requerimiento_id)!.push({ perfil_id: row.perfil_id, nombre: row.nombre_desarrollador, cargo: row.cargo, proceso_interno: row.proceso_interno })
     }
   })
 
@@ -220,6 +222,7 @@ export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronogra
           requerimiento_id:      child.id,
           nombre_desarrollador:  dev.nombre,
           cargo:                 dev.cargo,
+          proceso_interno:       dev.proceso_interno,
           fecha_inicio_estimada: parentDates.inicio,
           fecha_fin_estimada:    parentDates.fin,
           nombre_desarrollo:     child.nombre_desarrollo ?? null,

@@ -36,10 +36,20 @@ const BAR_Y = (ROW_H - BAR_H) / 2
 
 // ── Bar color palette ─────────────────────────────────────────────────────────
 const PALETTE = [
-  '#3b82f6', '#8b5cf6', '#10b981', '#f59e0b',
+  '#3b82f6', '#10b981', '#f59e0b',
   '#ef4444', '#ec4899', '#06b6d4', '#84cc16',
-  '#f97316', '#6366f1',
+  '#f97316', '#64748b',
 ]
+
+// Colores fijos por proceso
+const COLOR_IA = '#7c3aed'   // violeta intenso
+const COLOR_TI = '#0369a1'   // azul marino
+
+function barColor(proceso: string | null, fallbackIdx: number): string {
+  if (proceso === 'IA') return COLOR_IA
+  if (proceso === 'TI') return COLOR_TI
+  return PALETTE[fallbackIdx % PALETTE.length]
+}
 
 const HOY_COLOR = '#f87171'
 
@@ -154,7 +164,7 @@ function ReqRow({
           const hasBar  = !!(startD && endD)
           const x       = hasBar ? getX(startD!, origin, pxDay) : 0
           const w       = hasBar ? Math.max(getX(endD!, origin, pxDay) - x + pxDay, 6) : 0
-          const color   = PALETTE[devIdx % PALETTE.length]
+          const color   = barColor(asig.proceso_interno, devIdx)
           const hereda  = asig.fechas_heredadas
           const label   = asig.nombre_desarrollo ?? asig.identificacion
           const barTitle = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.nombre_desarrollador}\n${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
