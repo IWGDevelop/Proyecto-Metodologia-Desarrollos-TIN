@@ -21,9 +21,9 @@ const YEAR_H   = 20
 const MONTH_H  = 22
 const WEEK_H   = 18
 const HEADER_H = YEAR_H + MONTH_H + WEEK_H   // 60
-const ROW_H    = 54
 const BAR_H    = 26
-const BAR_Y    = (ROW_H - BAR_H) / 2         // 14
+const LANE_GAP = 4
+const ROW_PAD  = 8   // top and bottom padding inside each dev row
 
 // ── Bar color palette ─────────────────────────────────────────────────────────
 const PALETTE = [
@@ -97,6 +97,43 @@ function fmtCorta(s: string | null) {
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short' })
 }
 
+// ── Lane assignment (greedy interval scheduling) ──────────────────────────────
+interface LanedItem {
+  asig: AsignacionCronograma
+  lane: number
+  x: number
+  w: number
+}
+
+function assignLanes(asigs: AsignacionCronograma[], origin: Date, pxDay: number): LanedItem[] {
+  const items = asigs
+    .map(a => {
+      const startD = a.fecha_inicio_estimada ? toD(a.fecha_inicio_estimada)
+        : a.fecha_fin_estimada ? toD(a.fecha_fin_estimada) : null
+      const endD = a.fecha_fin_estimada ? toD(a.fecha_fin_estimada)
+        : a.fecha_inicio_estimada ? toD(a.fecha_inicio_estimada) : null
+      if (!startD || !endD) return null
+      const x = getX(startD, origin, pxDay)
+      const w = Math.max(getX(endD, origin, pxDay) - x + pxDay, 6)
+      return { asig: a, x, w }
+    })
+    .filter((v): v is { asig: AsignacionCronograma; x: number; w: number } => v !== null)
+
+  items.sort((a, b) => a.x - b.x)
+
+  const laneEnds: number[] = []
+  return items.map(item => {
+    const lane = laneEnds.findIndex(end => end <= item.x)
+    const assignedLane = lane === -1 ? laneEnds.length : lane
+    laneEnds[assignedLane] = item.x + item.w
+    return { ...item, lane: assignedLane }
+  })
+}
+
+function rowHeightForLanes(numLanes: number): number {
+  return ROW_PAD + numLanes * BAR_H + Math.max(0, numLanes - 1) * LANE_GAP + ROW_PAD
+}
+
 // ── Fila por desarrollador ────────────────────────────────────────────────────
 function DevRow({
   group, origin, pxDay, weeks, totalWidth, isEven, todayX,
@@ -105,16 +142,19 @@ function DevRow({
   weeks: { x: number }[]; totalWidth: number; isEven: boolean; todayX: number
 }) {
   const initials = group.nombre.split(' ').map(w => w[0]).slice(0, 2).join('').toUpperCase()
+  const laned    = assignLanes(group.asignaciones, origin, pxDay)
+  const numLanes = laned.length > 0 ? Math.max(...laned.map(l => l.lane)) + 1 : 1
+  const rowH     = rowHeightForLanes(numLanes)
 
   return (
-    <div className="flex" style={{ height: ROW_H }}>
+    <div className="flex" style={{ height: rowH }}>
       {/* Panel izquierdo (sticky) */}
       <div
         className={cn(
           'sticky left-0 z-10 flex shrink-0 items-center gap-2.5 border-b border-r border-slate-200 px-3',
           isEven ? 'bg-slate-50' : 'bg-white'
         )}
-        style={{ width: LEFT_W, minWidth: LEFT_W }}
+        style={{ width: LEFT_W, minWidth: LEFT_W, height: rowH }}
       >
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-indigo-100 text-xs font-bold text-indigo-700">
           {initials}
@@ -133,7 +173,7 @@ function DevRow({
       {/* Área de barras */}
       <div
         className={cn('relative shrink-0 border-b border-slate-200', isEven ? 'bg-slate-50/30' : 'bg-white')}
-        style={{ width: totalWidth, height: ROW_H }}
+        style={{ width: totalWidth, height: rowH }}
       >
         {/* Líneas de semana */}
         {weeks.map((wk, i) => wk.x > 0 && (
@@ -145,22 +185,13 @@ function DevRow({
           <div className="absolute inset-y-0 w-px" style={{ left: todayX, backgroundColor: HOY_COLOR, opacity: 0.7 }} />
         )}
 
-        {/* Barra por requerimiento asignado */}
-        {group.asignaciones.map((asig, i) => {
-          const startD = asig.fecha_inicio_estimada
-            ? toD(asig.fecha_inicio_estimada)
-            : asig.fecha_fin_estimada ? toD(asig.fecha_fin_estimada) : null
-          const endD = asig.fecha_fin_estimada
-            ? toD(asig.fecha_fin_estimada)
-            : asig.fecha_inicio_estimada ? toD(asig.fecha_inicio_estimada) : null
-          if (!startD || !endD) return null
-
-          const x     = getX(startD, origin, pxDay)
-          const w     = Math.max(getX(endD, origin, pxDay) - x + pxDay, 6)
-          const color = PALETTE[i % PALETTE.length]
-          const label = asig.nombre_desarrollo ?? asig.identificacion
+        {/* Barras en carriles independientes para evitar solapamiento */}
+        {laned.map(({ asig, lane, x, w }, i) => {
+          const color  = PALETTE[i % PALETTE.length]
           const hereda = asig.fechas_heredadas
-          const title = `${label}${hereda ? ' (fechas heredadas del padre)' : ''}\n${asig.numero ? '#' + asig.numero + ' · ' : ''}${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
+          const barTop = ROW_PAD + lane * (BAR_H + LANE_GAP)
+          const label  = asig.nombre_desarrollo ?? asig.identificacion
+          const title  = `${label}${hereda ? ' (fechas del padre)' : ''}\n${asig.numero ? '#' + asig.numero + ' · ' : ''}${fmtCorta(asig.fecha_inicio_estimada)} → ${fmtCorta(asig.fecha_fin_estimada)}`
 
           return (
             <Link
@@ -170,7 +201,7 @@ function DevRow({
               className="absolute flex items-center overflow-hidden rounded-md transition-all hover:brightness-90 hover:shadow-md"
               style={{
                 left: x, width: w,
-                top: BAR_Y, height: BAR_H,
+                top: barTop, height: BAR_H,
                 backgroundColor: hereda ? 'transparent' : color,
                 opacity: hereda ? 0.75 : 1,
                 boxShadow: hereda ? 'none' : '0 1px 2px rgba(0,0,0,0.15)',
