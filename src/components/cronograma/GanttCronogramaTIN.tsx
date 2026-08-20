@@ -118,7 +118,7 @@ function ReqRow({
   const groupH  = group.devs.length * ROW_H
 
   return (
-    <div className="flex border-t-2 border-slate-300" style={{ height: groupH }}>
+    <div className="flex border-t-2 border-slate-300" style={{ minHeight: groupH }}>
 
       {/* Columna 1: nombre del requerimiento — abarca todas las filas del grupo */}
       <div
@@ -126,14 +126,14 @@ function ReqRow({
           'sticky left-0 z-10 flex shrink-0 items-start border-b border-r border-slate-300 px-3 pt-3',
           bg
         )}
-        style={{ width: REQ_COL_W, minWidth: REQ_COL_W, height: groupH }}
+        style={{ width: REQ_COL_W, minWidth: REQ_COL_W, minHeight: groupH }}
       >
         <div className="min-w-0 flex-1">
           <div className="flex items-center gap-1.5">
             {group.numero && (
               <span className="shrink-0 text-[10px] font-bold text-indigo-500">#{group.numero}</span>
             )}
-            <p className="truncate text-sm font-semibold text-slate-700">
+            <p className="text-sm font-semibold text-slate-700 break-words leading-snug">
               {group.nombre_desarrollo ?? group.identificacion}
             </p>
           </div>
