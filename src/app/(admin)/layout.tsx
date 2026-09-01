@@ -15,6 +15,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     id: user.id,
     email: user.email ?? '',
     nombre_completo: user.email?.split('@')[0] ?? 'Admin',
+    cedula: null,
     cargo: null,
     proceso_interno: null,
     empresa: null,
