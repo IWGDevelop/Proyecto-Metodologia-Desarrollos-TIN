@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Plus, Bell, User, X } from 'lucide-react'
+import { ClipboardList, Plus, Bell, User, X, Brain, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo } from '@/components/layout/InterflowLogo'
 
@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { href: '/mis-requerimientos',               label: 'Mis solicitudes',   Icon: ClipboardList },
   { href: '/mis-requerimientos/nuevo',          label: 'Nueva solicitud',   Icon: Plus },
   { href: '/mis-requerimientos/notificaciones', label: 'Notificaciones',    Icon: Bell },
+  { href: '/cultura-ia',                        label: 'Mi uso de IA',      Icon: Brain },
+  { href: '/cultura-ia/nuevo',                  label: 'Registrar uso IA',  Icon: Zap },
   { href: '/perfil',                            label: 'Mi perfil',         Icon: User },
 ]
 

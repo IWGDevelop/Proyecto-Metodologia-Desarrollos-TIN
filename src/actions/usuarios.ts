@@ -58,6 +58,7 @@ export async function crearUsuario(data: {
 
 export async function actualizarPerfil(id: string, data: Partial<{
   nombre_completo: string
+  cedula: string | null
   cargo: string | null
   proceso_interno: string | null
   empresa: string | null

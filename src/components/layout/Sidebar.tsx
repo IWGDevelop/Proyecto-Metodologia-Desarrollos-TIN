@@ -22,6 +22,7 @@ import {
   GanttChartSquare,
   CalendarClock,
   Brain,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -46,6 +47,7 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/cronograma',            label: 'Cronograma',           Icon: GanttChartSquare, menuResource: 'menu:cronograma' },
   { href: '/admin/cronograma-tin',       label: 'Cronograma TIN',       Icon: CalendarClock,    menuResource: 'menu:cronograma-tin' },
   { href: '/admin/casos-uso-ia',         label: 'Casos de Uso IA',       Icon: Brain,            menuResource: 'menu:casos-uso-ia' },
+  { href: '/admin/cultura-ia',           label: 'Cultura IA',            Icon: Sparkles,         menuResource: 'menu:cultura-ia' },
   { href: '/admin/usuarios',             label: 'Usuarios',              Icon: Users,         menuResource: 'menu:usuarios' },
   { href: '/admin/sesiones',            label: 'Sesiones',          Icon: Monitor,          menuResource: 'menu:sesiones' },
   { href: '/admin/lotes',              label: 'Lotes',             Icon: Layers,           menuResource: 'menu:lotes' },

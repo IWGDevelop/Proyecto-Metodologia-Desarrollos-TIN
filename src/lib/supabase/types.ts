@@ -17,6 +17,7 @@ export interface Perfil {
   id: string
   email: string
   nombre_completo: string
+  cedula: string | null
   cargo: string | null
   proceso_interno: string | null
   empresa: 'IWF' | 'ILT' | 'IWG' | null
@@ -338,6 +339,54 @@ export interface TopImpacto {
   ahorro_anual_cop: number | null
   total_beneficios_cualitativos_anual: number | null
   impacto_economico_total_anual: number | null
+}
+
+// ─── Cultura IA — Registros de uso por funcionario ───────────────────────────
+export interface ActividadUsoIA {
+  actividad: string
+  min_sin_ia: number
+  min_con_ia: number
+  veces_mes: number
+  horas_mes_ahorradas: number
+}
+
+export interface BeneficioCualitativoUsoIA {
+  descripcion: string
+}
+
+export interface RegistroUsoIA {
+  id: string
+  usuario_id: string
+  cedula: string | null
+  fecha: string
+  herramienta: string
+  proceso: string
+  descripcion: string
+  actividades: ActividadUsoIA[]
+  horas_ahorradas_mes: number
+  salario_mensual_cop: number | null
+  valor_hora: number | null
+  ahorro_mensual_cop: number | null
+  ahorro_anual_cop: number | null
+  beneficios_cualitativos: BeneficioCualitativoUsoIA[]
+  created_at: string
+  updated_at: string
+  usuario?: Perfil
+}
+
+export interface MetricaUsuarioIA {
+  usuario_id: string
+  cedula: string | null
+  nombre: string
+  cargo: string | null
+  proceso_interno: string | null
+  empresa: string | null
+  total_registros: number
+  total_horas_ahorradas_mes: number
+  total_ahorro_mensual_cop: number
+  total_ahorro_anual_cop: number
+  herramientas: string[]
+  ultimo_registro: string
 }
 
 // ─── Casos de Uso IA ─────────────────────────────────────────────────────────
