@@ -340,6 +340,70 @@ export interface TopImpacto {
   impacto_economico_total_anual: number | null
 }
 
+// ─── Casos de Uso IA ─────────────────────────────────────────────────────────
+export type EstadoCasoUsoIA =
+  | 'RECIBIDO'
+  | 'EN_EVALUACION'
+  | 'EN_AJUSTE'
+  | 'AUTORIZADO'
+  | 'HABILITADO'
+  | 'EN_OPERACION'
+  | 'RENOVACION_PENDIENTE'
+  | 'SUSPENDIDO'
+  | 'REVOCADO_VENCIDO'
+
+export type NivelRiesgoIA = 'BAJO' | 'MEDIO' | 'ALTO' | 'CRITICO'
+
+export interface CasoUsoIA {
+  id: string
+  numero: number
+  estado: EstadoCasoUsoIA
+  solicitante_id: string | null
+  proceso_solicitante: string
+  alcance: Alcance
+  proposito: string
+  herramienta_proveedor: string
+  herramienta_producto: string
+  herramienta_modelo: string | null
+  herramienta_modalidad_acceso: string | null
+  tipo_datos: string
+  sistemas_conectar: string | null
+  usuarios_previstos: string
+  beneficios_esperados: string
+  nivel_riesgo: NivelRiesgoIA | null
+  observaciones_ajuste: string | null
+  fecha_autorizacion: string | null
+  fecha_vencimiento: string | null
+  autorizado_by_tin: string | null
+  autorizado_by_ia: string | null
+  created_at: string
+  updated_at: string
+  solicitante?: Perfil
+  autorizador_tin?: Perfil
+  autorizador_ia?: Perfil
+}
+
+export interface CasoUsoIAHistorial {
+  id: string
+  caso_id: string
+  estado_anterior: EstadoCasoUsoIA | null
+  estado_nuevo: EstadoCasoUsoIA
+  comentario: string | null
+  cambiado_by: string | null
+  created_at: string
+  cambiado_por?: Perfil
+}
+
+export interface CasoUsoIAAnexo {
+  id: string
+  caso_id: string
+  nombre: string
+  url: string
+  tipo: string | null
+  uploaded_by: string | null
+  created_at: string
+}
+
 // ─── Database schema (compatible con supabase-js v2) ────────────────────────
 export type Database = {
   public: {
