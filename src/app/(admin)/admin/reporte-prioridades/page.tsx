@@ -12,6 +12,7 @@ async function fetchDatos() {
         .select('*')
         .eq('es_borrador', false)
         .neq('origen_requerimiento', 'DESARROLLO_EXTERNO')
+        .neq('estado', 'DESISTIDO')
         .order('prioridad', { ascending: true, nullsFirst: false })
         .order('sub_prioridad', { ascending: true, nullsFirst: false })
         .order('nombre_desarrollo', { ascending: true }),
@@ -19,7 +20,8 @@ async function fetchDatos() {
         .from('requerimientos')
         .select('id, parent_id')
         .eq('es_borrador', false)
-        .neq('origen_requerimiento', 'DESARROLLO_EXTERNO'),
+        .neq('origen_requerimiento', 'DESARROLLO_EXTERNO')
+        .neq('estado', 'DESISTIDO'),
     ])
     const parentMap = new Map((parentIds ?? []).map((r: any) => [r.id, r.parent_id]))
     return (metricas ?? []).map((r: any) => ({ ...r, parent_id: parentMap.get(r.id) ?? null }))
