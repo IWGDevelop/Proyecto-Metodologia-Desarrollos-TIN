@@ -11,13 +11,15 @@ async function fetchDatos() {
         .from('v_metricas_requerimientos')
         .select('*')
         .eq('es_borrador', false)
+        .neq('origen_requerimiento', 'DESARROLLO_EXTERNO')
         .order('prioridad', { ascending: true, nullsFirst: false })
         .order('sub_prioridad', { ascending: true, nullsFirst: false })
         .order('nombre_desarrollo', { ascending: true }),
       (supabase as any)
         .from('requerimientos')
         .select('id, parent_id')
-        .eq('es_borrador', false),
+        .eq('es_borrador', false)
+        .neq('origen_requerimiento', 'DESARROLLO_EXTERNO'),
     ])
     const parentMap = new Map((parentIds ?? []).map((r: any) => [r.id, r.parent_id]))
     return (metricas ?? []).map((r: any) => ({ ...r, parent_id: parentMap.get(r.id) ?? null }))
