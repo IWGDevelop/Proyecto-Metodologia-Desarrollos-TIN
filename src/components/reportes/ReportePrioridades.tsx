@@ -210,8 +210,11 @@ export function ReportePrioridades({ datos }: Props) {
     return sortByTree(base)
   }, [datos, fEmpresa, fPrioridad, fEstados, fProceso, fOrigen])
 
-  // Activos (excluye ENTREGADO) para secciones 1 y 2; entregados para sección 3
-  const activosFiltrados = useMemo(() => filtrados.filter(r => r.estado !== 'ENTREGADO'), [filtrados])
+  // Activos (excluye ENTREGADO y EN_DEFINICION_USUARIO) para secciones 1 y 2
+  const activosFiltrados = useMemo(() =>
+    filtrados.filter(r => r.estado !== 'ENTREGADO' && r.estado !== 'EN_DEFINICION_USUARIO')
+  , [filtrados])
+  const definicionUsuarioFiltrados = useMemo(() => filtrados.filter(r => r.estado === 'EN_DEFINICION_USUARIO'), [filtrados])
   const entregadosFiltrados = useMemo(() => filtrados.filter(r => r.estado === 'ENTREGADO'), [filtrados])
 
   // ── 1. Conteos por prioridad ──────────────────────────────────────────────
@@ -365,7 +368,7 @@ export function ReportePrioridades({ datos }: Props) {
           <Select label="Proceso" value={fProceso} onChange={setFProceso} options={procesosDisponibles} />
           <Select label="Origen" value={fOrigen} onChange={setFOrigen} options={origenesDisponibles} />
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">{activosFiltrados.length} activos · {entregadosFiltrados.length} entregados · {datos.length} total en BD</p>
+        <p className="mt-2 text-[11px] text-slate-400">{activosFiltrados.length} activos · {definicionUsuarioFiltrados.length} en definición · {entregadosFiltrados.length} entregados · {datos.length} total en BD</p>
       </div>
 
       {/* ── SECCIÓN 1: KPIs ─────────────────────────────────────────────── */}
@@ -428,8 +431,88 @@ export function ReportePrioridades({ datos }: Props) {
 
       <div className="border-t border-slate-200" />
 
-      {/* ── SECCIÓN 3: Entregados y en funcionamiento ────────────────────── */}
-      {seccionTitle(`3. Desarrollos entregados y en funcionamiento (${entregadosFiltrados.length})`)}
+      {/* ── SECCIÓN 3: En definición de usuario ─────────────────────────── */}
+      {seccionTitle(`3. Desarrollos en definición de usuario (${definicionUsuarioFiltrados.length})`)}
+      {definicionUsuarioFiltrados.length === 0 ? (
+        <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
+          No hay desarrollos en definición de usuario con los filtros seleccionados
+        </div>
+      ) : (
+        <div className="rounded-xl border border-violet-200 bg-white overflow-hidden shadow-sm">
+          <div className="flex items-center gap-2 px-4 py-3 bg-violet-50 border-b border-violet-200">
+            <span className="text-xs font-medium text-violet-700">
+              {definicionUsuarioFiltrados.length} desarrollo{definicionUsuarioFiltrados.length !== 1 ? 's' : ''} pendiente{definicionUsuarioFiltrados.length !== 1 ? 's' : ''} de definición por el usuario
+            </span>
+          </div>
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200">
+                <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-16">Nº</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500">Desarrollo</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-32">Proceso</th>
+                <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-32">Origen</th>
+                <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 w-36">Impacto total/año</th>
+                <th className="w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {definicionUsuarioFiltrados.map(r => {
+                const impacto = (r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop ?? 0
+                const origen = (r as any).origen_requerimiento as string | null
+                const etiqueta = labelJerarquico(r.id, datos)
+                const esHijo = !!(r as any).parent_id
+                return (
+                  <tr key={r.id} className="hover:bg-violet-50/40 transition-colors">
+                    <td className="px-3 py-2.5">
+                      <div className={cn('flex items-center gap-1', esHijo && 'pl-4')}>
+                        {esHijo && <span className="text-slate-300 text-xs">↳</span>}
+                        <span className="text-xs text-slate-500">{etiqueta}</span>
+                      </div>
+                    </td>
+                    <td className="px-3 py-2.5">
+                      <Link href={`/admin/requerimientos/${r.id}`} className="font-medium text-slate-800 hover:text-blue-600 transition-colors line-clamp-2 text-sm">
+                        {r.nombre_desarrollo ?? r.identificacion}
+                      </Link>
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-slate-500">
+                      {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-xs text-slate-500">
+                      {origen ? (ORIGEN_LABEL[origen] ?? origen) : '—'}
+                    </td>
+                    <td className="px-3 py-2.5 text-right">
+                      {impacto > 0
+                        ? <span className="font-semibold text-emerald-700 text-xs">{formatCOP(impacto)}</span>
+                        : <span className="text-slate-300 text-xs">—</span>}
+                    </td>
+                    <td className="px-2 py-2.5">
+                      <Link href={`/admin/requerimientos/${r.id}`} className="text-slate-300 hover:text-blue-400">
+                        <ExternalLink size={13} />
+                      </Link>
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+            <tfoot>
+              <tr className="bg-violet-50 border-t-2 border-violet-200">
+                <td colSpan={4} className="px-3 py-3 text-xs font-semibold text-violet-700">
+                  Total ({definicionUsuarioFiltrados.length} en definición)
+                </td>
+                <td className="px-3 py-3 text-right text-xs font-bold text-emerald-700">
+                  {formatCOP(definicionUsuarioFiltrados.reduce((s, r) => s + ((r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop ?? 0), 0))}
+                </td>
+                <td />
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      <div className="border-t border-slate-200" />
+
+      {/* ── SECCIÓN 4: Entregados y en funcionamiento ────────────────────── */}
+      {seccionTitle(`4. Desarrollos entregados y en funcionamiento (${entregadosFiltrados.length})`)}
       {entregadosFiltrados.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-6 text-center text-sm text-slate-400">
           No hay desarrollos entregados con los filtros seleccionados
@@ -508,8 +591,8 @@ export function ReportePrioridades({ datos }: Props) {
 
       <div className="border-t border-slate-200" />
 
-      {/* ── SECCIÓN 4: Gráfico de barras por estado ─────────────────────── */}
-      {seccionTitle('4. Desarrollos por estado')}
+      {/* ── SECCIÓN 5: Gráfico de barras por estado ─────────────────────── */}
+      {seccionTitle('5. Desarrollos por estado')}
       <div className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
         {datosPorEstado.length === 0 ? (
           <p className="text-center text-sm text-slate-400 py-8">Sin datos</p>
@@ -530,8 +613,8 @@ export function ReportePrioridades({ datos }: Props) {
 
       <div className="border-t border-slate-200" />
 
-      {/* ── SECCIÓN 5: Tabla impacto por proceso ────────────────────────── */}
-      {seccionTitle('5. Impacto económico por proceso')}
+      {/* ── SECCIÓN 6: Tabla impacto por proceso ────────────────────────── */}
+      {seccionTitle('6. Impacto económico por proceso')}
       {impactoPorProceso.length === 0 ? (
         <div className="rounded-xl border border-slate-200 bg-white p-8 text-center text-sm text-slate-400">Sin datos de impacto</div>
       ) : (
@@ -574,8 +657,8 @@ export function ReportePrioridades({ datos }: Props) {
 
       <div className="border-t border-slate-200" />
 
-      {/* ── SECCIÓN 6: Sin impacto ───────────────────────────────────────── */}
-      {seccionTitle(`6. Desarrollos sin impacto registrado (${sinImpacto.length})`)}
+      {/* ── SECCIÓN 7: Sin impacto ───────────────────────────────────────── */}
+      {seccionTitle(`7. Desarrollos sin impacto registrado (${sinImpacto.length})`)}
       {sinImpacto.length === 0 ? (
         <div className="rounded-xl border border-emerald-200 bg-emerald-50 p-6 text-center">
           <p className="text-sm font-medium text-emerald-700">✓ Todos los desarrollos tienen impacto registrado</p>
