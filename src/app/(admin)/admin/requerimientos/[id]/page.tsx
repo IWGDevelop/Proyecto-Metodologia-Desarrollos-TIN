@@ -17,6 +17,7 @@ import { TabImpactoHH } from '@/components/requerimientos/tabs/TabImpactoHH'
 import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociaciones'
 import { TabFechas } from '@/components/requerimientos/tabs/TabFechas'
 import { TabFlujo } from '@/components/requerimientos/tabs/TabFlujo'
+import { TabDocumentacionTecnica } from '@/components/requerimientos/tabs/TabDocumentacionTecnica'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
@@ -79,7 +80,8 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
   const tabsDef = [
     { value: 'informacion',    recurso: 'req:informacion' },
-    { value: 'desarrollo',     recurso: 'req:desarrollo' },
+    { value: 'desarrollo',      recurso: 'req:desarrollo' },
+    { value: 'doc-tecnica',    recurso: 'req:doc-tecnica' },
     { value: 'impacto',        recurso: 'req:impacto-hh' },
     { value: 'historial',      recurso: 'req:historial' },
     { value: 'impacto-real',   recurso: 'req:impacto-real' },
@@ -183,6 +185,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         <TabsList className="w-full justify-start flex-wrap">
           {pv('req:informacion')    && <TabsTrigger value="informacion">Información</TabsTrigger>}
           {pv('req:desarrollo')     && <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>}
+          {pv('req:doc-tecnica')   && <TabsTrigger value="doc-tecnica">Doc. Técnica</TabsTrigger>}
           {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
           {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
           {pv('req:impacto-real')  && (
@@ -257,6 +260,16 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               isAdmin={isAdmin}
               currentUserId={perfilAdmin?.id}
               horasEstimadasDesarrollo={(req as any).horas_estimadas_desarrollo ?? null}
+            />
+          </TabsContent>
+        )}
+
+        {pv('req:doc-tecnica') && (
+          <TabsContent value="doc-tecnica" className="mt-4">
+            <TabDocumentacionTecnica
+              requerimientoId={id}
+              currentUserId={perfilAdmin?.id}
+              canUpload={pe('req:doc-tecnica')}
             />
           </TabsContent>
         )}

@@ -303,6 +303,30 @@ export interface Anexo {
   created_at: string
 }
 
+export type TipoDocumentoTecnico =
+  | 'ESPECIFICACION'
+  | 'ARQUITECTURA'
+  | 'BASE_DE_DATOS'
+  | 'MANUAL_TECNICO'
+  | 'SCRIPTS_SQL'
+  | 'PRUEBAS'
+  | 'REPOSITORIO'
+  | 'OTRO'
+
+export interface DocumentacionTecnica {
+  id: string
+  requerimiento_id: string
+  nombre_archivo: string
+  url_storage: string
+  tipo_archivo: string | null
+  tamanio_bytes: number | null
+  tipo_documento: TipoDocumentoTecnico
+  descripcion: string | null
+  version: string | null
+  subido_por: string | null
+  created_at: string
+}
+
 // ─── Vistas ───────────────────────────────────────────────────────────────────
 export interface MetricaRequerimiento extends Requerimiento {
   dias_respuesta_tin: number | null
