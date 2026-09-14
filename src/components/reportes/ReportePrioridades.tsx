@@ -210,9 +210,9 @@ export function ReportePrioridades({ datos }: Props) {
     return sortByTree(base)
   }, [datos, fEmpresa, fPrioridad, fEstados, fProceso, fOrigen])
 
-  // Activos (excluye ENTREGADO y EN_DEFINICION_USUARIO) para secciones 1 y 2
+  // Activos (excluye solo ENTREGADO) para secciones 1 y 2
   const activosFiltrados = useMemo(() =>
-    filtrados.filter(r => r.estado !== 'ENTREGADO' && r.estado !== 'EN_DEFINICION_USUARIO')
+    filtrados.filter(r => r.estado !== 'ENTREGADO')
   , [filtrados])
   const definicionUsuarioFiltrados = useMemo(() => filtrados.filter(r => r.estado === 'EN_DEFINICION_USUARIO'), [filtrados])
   const entregadosFiltrados = useMemo(() => filtrados.filter(r => r.estado === 'ENTREGADO'), [filtrados])
@@ -368,7 +368,7 @@ export function ReportePrioridades({ datos }: Props) {
           <Select label="Proceso" value={fProceso} onChange={setFProceso} options={procesosDisponibles} />
           <Select label="Origen" value={fOrigen} onChange={setFOrigen} options={origenesDisponibles} />
         </div>
-        <p className="mt-2 text-[11px] text-slate-400">{activosFiltrados.length} activos · {definicionUsuarioFiltrados.length} en definición · {entregadosFiltrados.length} entregados · {datos.length} total en BD</p>
+        <p className="mt-2 text-[11px] text-slate-400">{activosFiltrados.length} en curso · {entregadosFiltrados.length} entregados · {datos.length} total en BD</p>
       </div>
 
       {/* ── SECCIÓN 1: KPIs ─────────────────────────────────────────────── */}
