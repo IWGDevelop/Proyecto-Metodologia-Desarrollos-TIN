@@ -2,13 +2,13 @@
 
 import { useState, useTransition } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
-import { ExternalLink, Link2, Unlink, Search, GitBranch, ChevronRight } from 'lucide-react'
+import { ExternalLink, Link2, Unlink, Search, GitBranch, ChevronRight, ChevronDown, Loader2 } from 'lucide-react'
 import {
   asociarRequerimiento,
   desasociarRequerimiento,
   getRequerimientosDisponibles,
+  getHijosRequerimiento,
   type ReqBasico,
 } from '@/actions/asociaciones'
 import { getEstadoCfg, formatPrioridad } from '@/lib/constants'
@@ -106,8 +106,133 @@ function BuscadorReq({
   )
 }
 
+/* ─── Fila expandible recursiva ─── */
+function HijoExpandible({
+  hijo,
+  etiquetaPadre,
+  nivel,
+  onDesvincular,
+  isPending,
+}: {
+  hijo: ReqBasico
+  etiquetaPadre: string
+  nivel: number
+  onDesvincular: (id: string) => void
+  isPending: boolean
+}) {
+  const [expandido, setExpandido]     = useState(false)
+  const [subHijos, setSubHijos]       = useState<ReqBasico[] | null>(null)
+  const [cargando, setCargando]       = useState(false)
+
+  const etiqueta = etiquetaPadre ? `${etiquetaPadre}.${hijo.sub_prioridad ?? 0}` : ''
+  const estadoCfg = getEstadoCfg(hijo.estado)
+
+  const toggleExpand = async () => {
+    if (!expandido && subHijos === null) {
+      setCargando(true)
+      const data = await getHijosRequerimiento(hijo.id)
+      setSubHijos(data)
+      setCargando(false)
+    }
+    setExpandido(e => !e)
+  }
+
+  const tieneSubHijos = subHijos === null || subHijos.length > 0
+
+  return (
+    <div>
+      <div
+        className={cn(
+          'flex items-center gap-2 rounded-lg border border-slate-100 bg-slate-50 px-3 py-2.5',
+          nivel > 0 && 'bg-white border-slate-100'
+        )}
+        style={{ marginLeft: nivel * 20 }}
+      >
+        {/* Botón expandir */}
+        <button
+          onClick={toggleExpand}
+          disabled={cargando || (!tieneSubHijos && subHijos !== null)}
+          className={cn(
+            'shrink-0 rounded p-0.5 transition-colors',
+            tieneSubHijos || subHijos === null
+              ? 'text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+              : 'text-slate-200 cursor-default'
+          )}
+          title={expandido ? 'Colapsar' : 'Ver sub-requerimientos'}
+        >
+          {cargando
+            ? <Loader2 size={13} className="animate-spin" />
+            : expandido
+            ? <ChevronDown size={13} />
+            : <ChevronRight size={13} />}
+        </button>
+
+        <div className="flex min-w-0 flex-1 items-center gap-2">
+          {etiqueta && (
+            <span className="shrink-0 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-600">
+              {etiqueta}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <Link
+              href={`/admin/requerimientos/${hijo.id}`}
+              className="text-sm font-medium text-slate-700 hover:text-blue-600 line-clamp-1"
+            >
+              {hijo.nombre_desarrollo ?? hijo.identificacion}
+            </Link>
+            <p className="text-xs text-slate-400">#{hijo.numero ?? hijo.identificacion}</p>
+          </div>
+        </div>
+
+        <div className="flex shrink-0 items-center gap-1.5">
+          <span className={cn('rounded-full border px-2 py-0.5 text-xs', estadoCfg.bgColor, estadoCfg.textColor, estadoCfg.borderColor)}>
+            {estadoCfg.label}
+          </span>
+          <Link href={`/admin/requerimientos/${hijo.id}`}>
+            <ExternalLink size={12} className="text-slate-300 hover:text-blue-400" />
+          </Link>
+          {nivel === 0 && (
+            <button
+              onClick={() => onDesvincular(hijo.id)}
+              disabled={isPending}
+              title="Desvincular"
+              className="text-slate-300 hover:text-red-400 disabled:opacity-50"
+            >
+              <Unlink size={12} />
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Sub-hijos */}
+      {expandido && subHijos !== null && (
+        <div className="mt-1 space-y-1 border-l-2 border-slate-100 ml-5">
+          {subHijos.length === 0 ? (
+            <p
+              className="py-2 text-xs text-slate-400"
+              style={{ marginLeft: (nivel + 1) * 20 }}
+            >
+              Sin sub-requerimientos
+            </p>
+          ) : (
+            subHijos.map(sub => (
+              <HijoExpandible
+                key={sub.id}
+                hijo={sub}
+                etiquetaPadre={etiqueta}
+                nivel={nivel + 1}
+                onDesvincular={onDesvincular}
+                isPending={isPending}
+              />
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  )
+}
+
 export function TabAsociaciones({ requerimientoId, padre, hijos, etiquetaActual }: Props) {
-  const router = useRouter()
   const [isPending, startTransition] = useTransition()
   const [showAddHijo, setShowAddHijo]     = useState(false)
   const [showSetPadre, setShowSetPadre]   = useState(false)
@@ -224,48 +349,17 @@ export function TabAsociaciones({ requerimientoId, padre, hijos, etiquetaActual 
             Sin sub-requerimientos vinculados
           </p>
         ) : (
-          <div className="space-y-2">
-            {hijos.map(hijo => {
-              const estadoCfg = getEstadoCfg(hijo.estado)
-              // etiqueta del hijo = etiqueta del padre actual + "." + posición del hijo
-              const etiquetaHijo = `${etiquetaActual}.${hijo.sub_prioridad ?? 0}`
-              return (
-                <div key={hijo.id}
-                  className="flex items-center justify-between rounded-lg border border-slate-100 bg-slate-50 px-4 py-2.5">
-                  <div className="flex min-w-0 items-center gap-3">
-                    <ChevronRight size={14} className="shrink-0 text-slate-300" />
-                    {hijo.prioridad && (
-                      <span className="shrink-0 rounded border border-slate-200 bg-white px-1.5 py-0.5 text-xs font-bold text-slate-600">
-                        {etiquetaHijo}
-                      </span>
-                    )}
-                    <div className="min-w-0">
-                      <Link href={`/admin/requerimientos/${hijo.id}`}
-                        className="text-sm font-medium text-slate-700 hover:text-blue-600 line-clamp-1">
-                        {hijo.nombre_desarrollo ?? hijo.identificacion}
-                      </Link>
-                      <p className="text-xs text-slate-400">#{hijo.numero ?? hijo.identificacion}</p>
-                    </div>
-                  </div>
-                  <div className="flex shrink-0 items-center gap-2">
-                    <span className={cn('rounded-full border px-2 py-0.5 text-xs', estadoCfg.bgColor, estadoCfg.textColor, estadoCfg.borderColor)}>
-                      {estadoCfg.label}
-                    </span>
-                    <Link href={`/admin/requerimientos/${hijo.id}`}>
-                      <ExternalLink size={12} className="text-slate-300 hover:text-blue-400" />
-                    </Link>
-                    <button
-                      onClick={() => exec(() => desasociarRequerimiento(hijo.id), 'Sub-req desvinculado')}
-                      disabled={isPending}
-                      title="Desvincular"
-                      className="text-slate-300 hover:text-red-400 disabled:opacity-50"
-                    >
-                      <Unlink size={12} />
-                    </button>
-                  </div>
-                </div>
-              )
-            })}
+          <div className="space-y-1">
+            {hijos.map(hijo => (
+              <HijoExpandible
+                key={hijo.id}
+                hijo={hijo}
+                etiquetaPadre={etiquetaActual}
+                nivel={0}
+                isPending={isPending}
+                onDesvincular={id => exec(() => desasociarRequerimiento(id), 'Sub-req desvinculado')}
+              />
+            ))}
           </div>
         )}
       </div>
