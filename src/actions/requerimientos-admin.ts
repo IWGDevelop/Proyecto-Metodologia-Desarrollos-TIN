@@ -181,6 +181,71 @@ export async function getPrioridadesProceso(
   }))
 }
 
+export interface PrioridadProcesoOcupada {
+  prioridad_proceso: number
+  nombre: string
+}
+
+export async function getPrioridadesPorProceso(
+  proceso_interno: string,
+  excludeId: string
+): Promise<PrioridadProcesoOcupada[]> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('requerimientos')
+    .select('prioridad_proceso, nombre_desarrollo, identificacion')
+    .eq('proceso_interno', proceso_interno)
+    .neq('id', excludeId)
+    .not('prioridad_proceso', 'is', null)
+  return (data ?? []).map((r: any) => ({
+    prioridad_proceso: r.prioridad_proceso,
+    nombre: r.nombre_desarrollo ?? r.identificacion ?? '',
+  }))
+}
+
+export async function asignarPrioridadProcesoConDesplazamiento(
+  reqId: string,
+  proceso_interno: string,
+  prioridadProceso: number | null
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+
+    if (prioridadProceso !== null) {
+      // Desplazar hacia abajo los que tengan prioridad_proceso >= nueva en el mismo proceso
+      const { data: afectados } = await (supabase as any)
+        .from('requerimientos')
+        .select('id, prioridad_proceso')
+        .eq('proceso_interno', proceso_interno)
+        .gte('prioridad_proceso', prioridadProceso)
+        .neq('id', reqId)
+        .order('prioridad_proceso', { ascending: false })
+
+      for (const r of afectados ?? []) {
+        const { error } = await (supabase as any)
+          .from('requerimientos')
+          .update({ prioridad_proceso: (r.prioridad_proceso as number) + 1 })
+          .eq('id', r.id)
+        if (error) return { ok: false, error: `Error al desplazar: ${error.message}` }
+      }
+    }
+
+    const { error } = await (supabase as any)
+      .from('requerimientos')
+      .update({ prioridad_proceso: prioridadProceso })
+      .eq('id', reqId)
+
+    if (error) return { ok: false, error: error.message }
+
+    revalidatePath('/admin/requerimientos')
+    revalidatePath(`/admin/requerimientos/${reqId}`)
+    revalidatePath('/admin/reporte-prioridades')
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
 export async function asignarPrioridadConDesplazamiento(
   reqId: string,
   prioridad: number | null,

@@ -11,6 +11,7 @@ import { cn, formatCOP } from '@/lib/utils'
 import { ESTADOS } from '@/lib/constants'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
+import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
 
 interface Props { datos: MetricaRequerimiento[] }
 
@@ -295,6 +296,7 @@ export function ReportePrioridades({ datos }: Props) {
     const origen = (r as any).origen_requerimiento as string | null
     const esHijo = !!(r as any).parent_id
     const etiqueta = labelJerarquico(r.id, datos)
+    const prioridadProceso: number | null = (r as any).prioridad_proceso ?? null
 
     return (
       <tr className={cn('hover:bg-slate-50 transition-colors', esPrimero && !esHijo && 'border-t-2 border-slate-300')}>
@@ -320,6 +322,13 @@ export function ReportePrioridades({ datos }: Props) {
         </td>
         <td className="px-3 py-2.5 text-xs text-slate-500">
           {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+        </td>
+        <td className="px-3 py-2.5 text-center">
+          <AsignarPrioridadProcesoBtn
+            requerimientoId={r.id}
+            proceso_interno={r.proceso_interno ?? null}
+            prioridadProcesoActual={prioridadProceso}
+          />
         </td>
         <td className="px-3 py-2.5 text-xs text-slate-500">
           {origen ? (ORIGEN_LABEL[origen] ?? origen) : '—'}
@@ -403,8 +412,9 @@ export function ReportePrioridades({ datos }: Props) {
             <tr className="bg-slate-50 border-b border-slate-200">
               <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-16">Nº</th>
               <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500">Desarrollo</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-32">Proceso</th>
-              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-32">Origen</th>
+              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-28">Proceso</th>
+              <th className="text-center px-3 py-3 text-xs font-semibold text-violet-500 w-28">Pos. proceso</th>
+              <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-28">Origen</th>
               <th className="text-right px-3 py-3 text-xs font-semibold text-slate-500 w-36">Impacto total/año</th>
               <th className="text-left px-3 py-3 text-xs font-semibold text-slate-500 w-32">Estado</th>
               <th className="w-8" />
@@ -419,7 +429,7 @@ export function ReportePrioridades({ datos }: Props) {
           </tbody>
           <tfoot>
             <tr className="bg-slate-50 border-t-2 border-slate-300">
-              <td colSpan={4} className="px-3 py-3 text-xs font-semibold text-slate-600">
+              <td colSpan={5} className="px-3 py-3 text-xs font-semibold text-slate-600">
                 Total ({activosFiltrados.length} desarrollos activos)
               </td>
               <td className="px-3 py-3 text-right text-xs font-bold text-emerald-700">{formatCOP(totalImpactoActivos)}</td>

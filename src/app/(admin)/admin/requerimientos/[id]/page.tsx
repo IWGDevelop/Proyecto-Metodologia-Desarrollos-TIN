@@ -23,6 +23,7 @@ import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
+import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
 import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
 import { PublicarRequerimientoBtn } from '@/components/requerimientos/PublicarRequerimientoBtn'
 import { getTareas } from '@/actions/tareas'
@@ -163,6 +164,11 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             impactoCualitativos={req.total_beneficios_cualitativos_anual}
             impactoTotal={req.impacto_economico_total_anual}
             proceso_interno={(req as any).proceso_interno ?? null}
+          />
+          <AsignarPrioridadProcesoBtn
+            requerimientoId={id}
+            proceso_interno={(req as any).proceso_interno ?? null}
+            prioridadProcesoActual={(req as any).prioridad_proceso ?? null}
           />
           {isAdmin && pe('req:estado') && (
             <CambiarEstadoBtn

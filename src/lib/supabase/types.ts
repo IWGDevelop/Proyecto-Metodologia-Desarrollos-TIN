@@ -154,6 +154,7 @@ export interface Requerimiento {
   identificacion: string
   prioridad: number | null
   sub_prioridad: number | null
+  prioridad_proceso: number | null
   estado: Estado
   motivo_stand_by: string | null
   porcentaje_avance: number
