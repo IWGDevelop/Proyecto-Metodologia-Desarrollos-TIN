@@ -471,40 +471,53 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Prioridad — editable si lote abierto */}
+                        {/* Prioridad general + prioridad de proceso */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (() => {
-                            const v = row.prioridad
-                              ? row.sub_prioridad ? `${row.prioridad}.${row.sub_prioridad}` : String(row.prioridad)
-                              : null
-                            if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
-                            const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
-                            const cfg = PRIORIDADES[p]
-                            return cfg
-                              ? <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>P{v}</span>
-                              : null
-                          })() : (
-                            <CeldaEditable
-                              rowId={row.id}
-                              valor={row.prioridad
-                                ? row.sub_prioridad
-                                  ? `${row.prioridad}.${row.sub_prioridad}`
-                                  : String(row.prioridad)
-                                : null}
-                              opciones={OPCIONES_PRIORIDAD}
-                              onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
-                              renderBadge={(v) => {
-                                if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
-                                const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
-                                const cfg = PRIORIDADES[p]
-                                return cfg ? (
-                                  <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
-                                    P{v}
-                                  </span>
-                                ) : null
-                              }}
-                            />
-                          )}
+                          <div className="flex flex-col gap-1">
+                            {/* Prioridad general — editable si lote abierto */}
+                            {loteCerrado ? (() => {
+                              const v = row.prioridad
+                                ? row.sub_prioridad ? `${row.prioridad}.${row.sub_prioridad}` : String(row.prioridad)
+                                : null
+                              if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                              const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                              const cfg = PRIORIDADES[p]
+                              return cfg
+                                ? <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>P{v}</span>
+                                : null
+                            })() : (
+                              <CeldaEditable
+                                rowId={row.id}
+                                valor={row.prioridad
+                                  ? row.sub_prioridad
+                                    ? `${row.prioridad}.${row.sub_prioridad}`
+                                    : String(row.prioridad)
+                                  : null}
+                                opciones={OPCIONES_PRIORIDAD}
+                                onGuardar={(id, v) => guardarCampo(id, 'prioridad', v)}
+                                renderBadge={(v) => {
+                                  if (!v) return <span className="rounded-full border border-dashed border-slate-200 px-1.5 py-0.5 text-xs text-slate-300">—</span>
+                                  const p = v.includes('.') ? Number(v.split('.')[0]) : Number(v)
+                                  const cfg = PRIORIDADES[p]
+                                  return cfg ? (
+                                    <span className={cn('rounded-full px-1.5 py-0.5 text-xs font-bold', cfg.bgColor, cfg.textColor)}>
+                                      P{v}
+                                    </span>
+                                  ) : null
+                                }}
+                              />
+                            )}
+                            {/* Prioridad de proceso — solo lectura */}
+                            {(row as any).prioridad_proceso != null && (
+                              <span
+                                className="inline-flex items-center gap-0.5 rounded-full border border-violet-200 bg-violet-50 px-1.5 py-0.5 text-[10px] font-semibold text-violet-600"
+                                title={`Posición #${(row as any).prioridad_proceso} dentro del proceso`}
+                              >
+                                <Layers size={9} />
+                                #{(row as any).prioridad_proceso}
+                              </span>
+                            )}
+                          </div>
                         </td>
 
                         {/* Estado — solo clickeable si lote abierto */}
