@@ -6,7 +6,7 @@ import { format, parseISO } from 'date-fns'
 import { es } from 'date-fns/locale'
 import {
   Clock, AlertTriangle, CheckCircle2, CalendarDays,
-  Users, ExternalLink, ChevronDown, ChevronUp, Filter,
+  Users, ExternalLink, ChevronDown, ChevronUp, Filter, UserCircle2,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { TareaPendienteReunion, CompromisoPendiente } from '@/actions/pendientes'
@@ -242,12 +242,39 @@ function FiltroBtn({ label, activo, onClick, color }: {
   )
 }
 
+function AvatarResponsable({ nombre, email }: { nombre: string | null; email: string | null }) {
+  if (!email && !nombre) return null
+  const displayName = nombre ?? email!
+  const initials = displayName
+    .split(' ')
+    .slice(0, 2)
+    .map(w => w[0]?.toUpperCase() ?? '')
+    .join('')
+
+  return (
+    <div className="flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 px-2.5 py-1.5">
+      <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-blue-500 text-[11px] font-bold text-white">
+        {initials || <UserCircle2 size={14} />}
+      </div>
+      <div className="min-w-0">
+        <div className="text-xs font-semibold text-blue-800 leading-tight truncate max-w-[140px]">
+          {nombre ?? email}
+        </div>
+        {nombre && email && (
+          <div className="text-[10px] text-blue-500 truncate max-w-[140px]">{email}</div>
+        )}
+      </div>
+    </div>
+  )
+}
+
 function FilaTarea({ tarea }: { tarea: TareaPendienteReunion }) {
   return (
-    <div className="px-5 py-3.5 hover:bg-slate-50 transition-colors">
+    <div className="px-5 py-4 hover:bg-slate-50 transition-colors">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 flex-wrap mb-1">
+          {/* Requerimiento + urgencia */}
+          <div className="flex items-center gap-2 flex-wrap mb-1.5">
             {tarea.requerimiento_numero && (
               <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
                 #{tarea.requerimiento_numero}
@@ -263,24 +290,24 @@ function FilaTarea({ tarea }: { tarea: TareaPendienteReunion }) {
             {urgenciaBadge(tarea.dias_restantes)}
           </div>
 
-          <p className="text-sm text-slate-600 leading-snug">{tarea.descripcion}</p>
+          {/* Descripción de la tarea */}
+          <p className="text-sm text-slate-700 leading-snug mb-2">{tarea.descripcion}</p>
 
-          <div className="mt-1.5 flex items-center gap-3 text-xs text-slate-400 flex-wrap">
-            <span className="flex items-center gap-1">
-              <Users size={11} />
-              {tarea.reunion_titulo} · {formatFecha(tarea.fecha_reunion)}
-            </span>
-            {tarea.responsable_email && (
+          {/* Responsable destacado + metadata */}
+          <div className="flex items-center gap-3 flex-wrap">
+            <AvatarResponsable nombre={tarea.nombre_responsable} email={tarea.responsable_email} />
+
+            <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
               <span className="flex items-center gap-1">
-                <CheckCircle2 size={11} />
-                {tarea.responsable_email}
+                <Users size={11} />
+                {tarea.reunion_titulo} · {formatFecha(tarea.fecha_reunion)}
               </span>
-            )}
-            {tarea.penalizacion_cop !== null && tarea.penalizacion_cop > 0 && (
-              <span className="text-red-400 font-medium">
-                Penalización: ${tarea.penalizacion_cop.toLocaleString('es-CO')}
-              </span>
-            )}
+              {tarea.penalizacion_cop !== null && tarea.penalizacion_cop > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-500 border border-red-200">
+                  Penalización: ${tarea.penalizacion_cop.toLocaleString('es-CO')}
+                </span>
+              )}
+            </div>
           </div>
         </div>
 

@@ -1,11 +1,13 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getPerfil } from '@/lib/supabase/auth'
 
 export interface TareaPendienteReunion {
   id: string
   descripcion: string
   responsable_email: string | null
+  nombre_responsable: string | null
   fecha_compromiso: string | null
   penalizacion_cop: number | null
   completada: boolean
@@ -41,8 +43,10 @@ function diasDesdeHoy(fecha: string): number {
 
 export async function getTareasPendientesReunion(): Promise<TareaPendienteReunion[]> {
   const supabase = createAdminClient()
+  const perfil = await getPerfil()
+  const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
 
-  const { data, error } = await (supabase as any)
+  let queryBuilder = (supabase as any)
     .from('tareas_reunion')
     .select(`
       id, descripcion, responsable_email, fecha_compromiso,
@@ -57,7 +61,26 @@ export async function getTareasPendientesReunion(): Promise<TareaPendienteReunio
     .eq('completada', false)
     .order('fecha_compromiso', { ascending: true, nullsFirst: false })
 
+  // Usuarios no admin solo ven sus propias tareas asignadas
+  if (!isAdmin && perfil) {
+    queryBuilder = queryBuilder.eq('responsable_email', perfil.email)
+  }
+
+  const { data, error } = await queryBuilder
   if (error || !data) return []
+
+  // Resolución de nombres: colectar emails únicos y buscar en perfiles
+  const emails = [...new Set((data as any[]).map((t: any) => t.responsable_email).filter(Boolean))] as string[]
+  const nombresMap: Record<string, string> = {}
+  if (emails.length > 0) {
+    const { data: perfs } = await (supabase as any)
+      .from('perfiles')
+      .select('email, nombre_completo')
+      .in('email', emails)
+    if (perfs) {
+      for (const p of perfs as any[]) nombresMap[p.email] = p.nombre_completo
+    }
+  }
 
   return (data as any[])
     .filter((t: any) => t.reunion?.requerimiento)
@@ -65,6 +88,7 @@ export async function getTareasPendientesReunion(): Promise<TareaPendienteReunio
       id: t.id,
       descripcion: t.descripcion,
       responsable_email: t.responsable_email,
+      nombre_responsable: t.responsable_email ? (nombresMap[t.responsable_email] ?? null) : null,
       fecha_compromiso: t.fecha_compromiso,
       penalizacion_cop: t.penalizacion_cop,
       completada: t.completada,
@@ -93,19 +117,44 @@ const TIPOS_FECHA: {
 
 export async function getCompromisosFechasPendientes(): Promise<CompromisoPendiente[]> {
   const supabase = createAdminClient()
+  const perfil = await getPerfil()
+  const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
 
-  const { data, error } = await (supabase as any)
+  const campos = [
+    'id', 'nombre_desarrollo', 'identificacion', 'numero', 'estado', 'proceso_interno',
+    'responsable', 'partes_interesadas',
+    'fecha_estimada_entrega', 'fecha_real_entrega',
+    'fecha_estimada_feedback_pruebas', 'fecha_real_feedback_pruebas',
+    'fecha_estimada_ajustes_tecnicos', 'fecha_real_ajustes_tecnicos',
+    'fecha_estimada_salida_vivo', 'fecha_salida_vivo',
+  ].join(',')
+
+  let reqQuery = (supabase as any)
     .from('requerimientos')
-    .select([
-      'id', 'nombre_desarrollo', 'identificacion', 'numero', 'estado', 'proceso_interno',
-      'fecha_estimada_entrega', 'fecha_real_entrega',
-      'fecha_estimada_feedback_pruebas', 'fecha_real_feedback_pruebas',
-      'fecha_estimada_ajustes_tecnicos', 'fecha_real_ajustes_tecnicos',
-      'fecha_estimada_salida_vivo', 'fecha_salida_vivo',
-    ].join(','))
+    .select(campos)
     .eq('es_borrador', false)
     .not('estado', 'in', `(${ESTADOS_EXCLUIDOS.join(',')})`)
 
+  if (!isAdmin && perfil) {
+    // Obtener IDs de requerimientos donde el usuario es desarrollador asignado
+    const { data: asignaciones } = await (supabase as any)
+      .from('requerimiento_desarrolladores')
+      .select('requerimiento_id')
+      .eq('perfil_id', perfil.id)
+
+    const devIds: string[] = (asignaciones ?? []).map((a: any) => a.requerimiento_id)
+
+    // Filtrar por asociación: desarrollador asignado, responsable, o partes interesadas
+    const filtros: string[] = []
+    if (devIds.length > 0) filtros.push(`id.in.(${devIds.join(',')})`)
+    filtros.push(`responsable.ilike.*${perfil.email}*`)
+    filtros.push(`responsable.ilike.*${perfil.nombre_completo}*`)
+    filtros.push(`partes_interesadas.cs.{"${perfil.email}"}`)
+
+    reqQuery = reqQuery.or(filtros.join(','))
+  }
+
+  const { data, error } = await reqQuery
   if (error || !data) return []
 
   const compromisos: CompromisoPendiente[] = []
