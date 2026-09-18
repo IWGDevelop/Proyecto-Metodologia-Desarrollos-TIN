@@ -18,6 +18,8 @@ import { TabAsociaciones } from '@/components/requerimientos/tabs/TabAsociacione
 import { TabFechas } from '@/components/requerimientos/tabs/TabFechas'
 import { TabFlujo } from '@/components/requerimientos/tabs/TabFlujo'
 import { TabDocumentacionTecnica } from '@/components/requerimientos/tabs/TabDocumentacionTecnica'
+import { TabActividad } from '@/components/requerimientos/tabs/TabActividad'
+import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
@@ -40,7 +42,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -51,6 +53,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getHijosRequerimiento(id),
     getEtiquetaJerarquica(id),
     getHistorialFechas(id),
+    getHistorialCompleto(id),
   ])
 
   if (error || !req) notFound()
@@ -85,6 +88,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     { value: 'doc-tecnica',    recurso: 'req:doc-tecnica' },
     { value: 'impacto',        recurso: 'req:impacto-hh' },
     { value: 'historial',      recurso: 'req:historial' },
+    { value: 'actividad',      recurso: 'req:actividad' },
     { value: 'impacto-real',   recurso: 'req:impacto-real' },
     { value: 'reuniones',      recurso: 'req:reuniones' },
     { value: 'penalizaciones', recurso: 'req:penalizaciones' },
@@ -194,6 +198,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:doc-tecnica')   && <TabsTrigger value="doc-tecnica">Doc. Técnica</TabsTrigger>}
           {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
           {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
+          {pv('req:actividad')      && <TabsTrigger value="actividad">Actividad</TabsTrigger>}
           {pv('req:impacto-real')  && (
             <TabsTrigger value="impacto-real">
               Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
@@ -252,6 +257,12 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
                 </ol>
               )}
             </div>
+          </TabsContent>
+        )}
+
+        {pv('req:actividad') && (
+          <TabsContent value="actividad">
+            <TabActividad eventos={eventosActividad} />
           </TabsContent>
         )}
 
