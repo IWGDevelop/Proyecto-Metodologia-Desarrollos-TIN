@@ -311,7 +311,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
         {pv('req:comentarios') && (
           <TabsContent value="comentarios" className="mt-4">
-            <TabComentarios requerimientoId={id} />
+            <TabComentarios requerimientoId={id} isAdmin={isAdmin} />
           </TabsContent>
         )}
 
