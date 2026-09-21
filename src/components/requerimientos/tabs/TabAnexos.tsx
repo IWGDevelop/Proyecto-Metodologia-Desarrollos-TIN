@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 interface Props {
   requerimientoId: string
   canUpload?: boolean
+  canDelete?: boolean
 }
 
 const TIPOS_PERMITIDOS = [
@@ -138,7 +139,7 @@ function PreviewModal({ anexo, onClose }: { anexo: Anexo; onClose: () => void })
 }
 
 /* ─── Componente principal ─── */
-export function TabAnexos({ requerimientoId, canUpload = true }: Props) {
+export function TabAnexos({ requerimientoId, canUpload = true, canDelete = canUpload }: Props) {
   const qc = useQueryClient()
   const inputRef = useRef<HTMLInputElement>(null)
   const [uploading, setUploading] = useState<string[]>([])
@@ -274,7 +275,7 @@ export function TabAnexos({ requerimientoId, canUpload = true }: Props) {
                   <Download size={16} />
                 </a>
 
-                {canUpload && (
+                {canDelete && (
                   <button
                     onClick={() => handleEliminar(a)}
                     className="text-slate-300 hover:text-red-500"

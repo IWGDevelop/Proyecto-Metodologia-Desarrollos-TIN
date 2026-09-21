@@ -83,6 +83,10 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const pe = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_editar === true)
   const pc = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_crear === true)
 
+  // After the user visto bueno of definition, non-admins can only add documents (no delete, no edit info)
+  const ESTADOS_PRE_DEFINICION = ['SIN_GESTION', 'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'EN_DEFINICION_USUARIO', 'ANALISIS']
+  const infoLocked = !isAdmin && !ESTADOS_PRE_DEFINICION.includes(req.estado)
+
   const tabsDef = [
     { value: 'informacion',    recurso: 'req:informacion' },
     { value: 'desarrollo',      recurso: 'req:desarrollo' },
@@ -222,7 +226,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
         {pv('req:informacion') && (
           <TabsContent value="informacion">
-            <TabInformacion req={req as any} canEdit={pe('req:general')} isAdmin={isAdmin} />
+            <TabInformacion req={req as any} canEdit={pe('req:general') && !infoLocked} isAdmin={isAdmin} />
           </TabsContent>
         )}
 
@@ -332,7 +336,11 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
         {pv('req:anexos') && (
           <TabsContent value="anexos" className="mt-4">
-            <TabAnexos requerimientoId={id} />
+            <TabAnexos
+              requerimientoId={id}
+              canUpload={pc('req:anexos')}
+              canDelete={pc('req:anexos') && !infoLocked}
+            />
           </TabsContent>
         )}
 

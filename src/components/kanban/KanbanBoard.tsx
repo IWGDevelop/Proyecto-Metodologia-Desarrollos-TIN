@@ -117,11 +117,13 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   )
 
   const onDragStart = useCallback((event: DragStartEvent) => {
+    if (!isAdmin) return
     setActiveCard((event.active.data.current?.card as MetricaRequerimiento) ?? null)
-  }, [])
+  }, [isAdmin])
 
   const onDragEnd = useCallback((event: DragEndEvent) => {
     setActiveCard(null)
+    if (!isAdmin) return
     const { active, over } = event
     if (!over || !data) return
     const card = active.data.current?.card as MetricaRequerimiento

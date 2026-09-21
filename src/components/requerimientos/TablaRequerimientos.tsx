@@ -125,12 +125,13 @@ function ColHeader({
 
 // ─── Acciones por fila ────────────────────────────────────────────────────────
 function AccionesMenu({
-  row, onCambiarEstado, onEliminar, basePath,
+  row, onCambiarEstado, onEliminar, basePath, esAdminTIN,
 }: {
   row: MetricaRequerimiento
   onCambiarEstado: (r: MetricaRequerimiento) => void
   onEliminar: (id: string) => void
   basePath: string
+  esAdminTIN: boolean
 }) {
   const router = useRouter()
   return (
@@ -145,17 +146,23 @@ function AccionesMenu({
         <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}`)}>
           <Eye size={13} className="mr-2" /> Ver detalle
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
-          <Pencil size={13} className="mr-2" /> Editar completo
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onCambiarEstado(row)}>
-          <RefreshCw size={13} className="mr-2" /> Cambiar estado
-        </DropdownMenuItem>
-        <DropdownMenuSeparator />
-        <DropdownMenuItem onClick={() => onEliminar(row.id)} variant="destructive">
-          <Archive size={13} className="mr-2" /> Cerrar requerimiento
-        </DropdownMenuItem>
+        {esAdminTIN && (
+          <DropdownMenuItem onClick={() => router.push(`${basePath}/${row.id}/editar`)}>
+            <Pencil size={13} className="mr-2" /> Editar completo
+          </DropdownMenuItem>
+        )}
+        {esAdminTIN && (
+          <>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onCambiarEstado(row)}>
+              <RefreshCw size={13} className="mr-2" /> Cambiar estado
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onEliminar(row.id)} variant="destructive">
+              <Archive size={13} className="mr-2" /> Cerrar requerimiento
+            </DropdownMenuItem>
+          </>
+        )}
       </DropdownMenuContent>
     </DropdownMenu>
   )
@@ -355,6 +362,8 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                     const loteRow = (row as any).lote_id ? loteMap[(row as any).lote_id] : undefined
                     // ADMIN_TIN siempre puede editar aunque el lote esté cerrado
                     const loteCerrado = loteRow?.cerrado === true && !esAdminTIN
+                    // No-admins never get inline editing, regardless of lote state
+                    const readOnly = loteCerrado || !esAdminTIN
 
                     const rankBadge = tieneImpacto
                       ? rankNum === 1 ? { cls: 'bg-yellow-100 text-yellow-700 border-yellow-300', ico: '🥇' }
@@ -408,9 +417,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Alcance — editable si lote abierto */}
+                        {/* Alcance — editable solo para admins con lote abierto */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (
+                          {readOnly ? (
                             row.alcance
                               ? <Badge variant="outline" className={cn('text-xs', ALCANCE_BADGE[row.alcance] ?? '')}>{row.alcance}</Badge>
                               : <span className="text-xs text-slate-300">—</span>
@@ -429,9 +438,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Proceso — editable si lote abierto */}
+                        {/* Proceso — editable solo para admins con lote abierto */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (
+                          {readOnly ? (
                             (row as any).proceso_interno
                               ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{PROCESOS_INTERNOS.find(p => p.value === (row as any).proceso_interno)?.label ?? (row as any).proceso_interno}</span>
                               : <span className="text-xs text-slate-300">—</span>
@@ -450,9 +459,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Tipo solicitud — editable si lote abierto */}
+                        {/* Tipo solicitud — editable solo para admins con lote abierto */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (
+                          {readOnly ? (
                             row.tipo_solicitud
                               ? <span className={cn('inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium', TIPO_SOLICITUD_BADGE[row.tipo_solicitud] ?? 'bg-slate-100 text-slate-600 border-slate-200')}>{TIPOS_SOLICITUD.find(t => t.value === row.tipo_solicitud)?.label ?? row.tipo_solicitud}</span>
                               : <span className="text-xs text-slate-300">—</span>
@@ -474,8 +483,8 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                         {/* Prioridad general + prioridad de proceso */}
                         <td className="px-3 py-2.5">
                           <div className="flex flex-col gap-1">
-                            {/* Prioridad general — editable si lote abierto */}
-                            {loteCerrado ? (() => {
+                            {/* Prioridad general — editable solo para admins con lote abierto */}
+                            {readOnly ? (() => {
                               const v = row.prioridad
                                 ? row.sub_prioridad ? `${row.prioridad}.${row.sub_prioridad}` : String(row.prioridad)
                                 : null
@@ -520,9 +529,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           </div>
                         </td>
 
-                        {/* Estado — solo clickeable si lote abierto */}
+                        {/* Estado — solo clickeable para admins con lote abierto */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (
+                          {readOnly ? (
                             <span className={cn(
                               'inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium',
                               estadoCfg.bgColor, estadoCfg.textColor
@@ -546,9 +555,9 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                           )}
                         </td>
 
-                        {/* Origen — editable si lote abierto */}
+                        {/* Origen — editable solo para admins con lote abierto */}
                         <td className="px-3 py-2.5">
-                          {loteCerrado ? (() => {
+                          {readOnly ? (() => {
                             const cfg = (row as any).origen_requerimiento
                               ? ORIGENES_REQUERIMIENTO.find(o => o.value === (row as any).origen_requerimiento)
                               : null
@@ -624,6 +633,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                             onCambiarEstado={setCambioEstadoRow}
                             onEliminar={setEliminarId}
                             basePath={basePath}
+                            esAdminTIN={esAdminTIN}
                           />
                         </td>
                       </tr>
