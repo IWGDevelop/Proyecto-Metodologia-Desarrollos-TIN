@@ -304,6 +304,136 @@ export function templateRecordatorioTarea({
   `)
 }
 
+export function templateSolicitudVistoBueno({
+  tipo,
+  nombreDesarrollo,
+  numero,
+  solicitadoPor,
+  mensaje,
+  enlace,
+  esEstrategia,
+}: {
+  tipo: 'DOCUMENTACION' | 'SALIDA_VIVO'
+  nombreDesarrollo: string
+  numero: string | null
+  solicitadoPor: string
+  mensaje: string | null
+  enlace?: string
+  esEstrategia: boolean
+}) {
+  const esDoc = tipo === 'DOCUMENTACION'
+  const tituloTipo = esDoc ? 'Visto bueno de documentación' : 'Visto bueno de salida en vivo'
+  const headerColor = esDoc ? '#7c3aed' : '#0369a1'
+  const bannerBg    = esDoc ? '#f5f3ff' : '#f0f9ff'
+  const bannerBorder = esDoc ? '#7c3aed' : '#0284c7'
+  const bannerLabel  = esDoc ? '#5b21b6' : '#0369a1'
+
+  const textoAccion = esDoc
+    ? 'revisar y aprobar la documentación técnica del desarrollo. Se requiere confirmar que la documentación está completa, correcta y cumple con los requisitos acordados.'
+    : 'dar el visto bueno final para la <strong>salida en vivo</strong> del desarrollo. Se requiere confirmar que has recibido a conformidad el desarrollo entregado.'
+
+  const textoEstrategia = esEstrategia
+    ? `<div style="background:#fffbeb;border:1px solid #f59e0b;border-radius:8px;padding:12px 16px;margin-bottom:20px">
+        <p style="margin:0;font-size:13px;color:#92400e">
+          <strong>📋 Responsabilidad de Dirección de Estrategia:</strong> Adicionalmente, debes verificar que todas las partes interesadas estén debidamente identificadas y vinculadas a este desarrollo.
+        </p>
+       </div>`
+    : ''
+
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${headerColor}">✍️ Se requiere tu visto bueno</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">
+      <strong>${solicitadoPor}</strong> ha solicitado tu firma de aprobación para el desarrollo:
+    </p>
+
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin-bottom:20px;font-size:14px">
+      ${numero ? `<tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b;width:35%">Número</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${numero}</td></tr>` : ''}
+      <tr ${numero ? '' : 'style="background:#f8fafc"'}><td style="padding:10px 12px;color:#64748b">Desarrollo</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${nombreDesarrollo}</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b">Tipo de visto bueno</td><td style="padding:10px 12px;color:${headerColor};font-weight:bold">${tituloTipo}</td></tr>
+    </table>
+
+    <div style="background:${bannerBg};border-left:4px solid ${bannerBorder};border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:20px">
+      <p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:${bannerLabel}">Tu acción requerida</p>
+      <p style="margin:0;font-size:14px;color:#1e293b">
+        Se solicita que procedas a ${textoAccion}
+      </p>
+    </div>
+
+    ${textoEstrategia}
+
+    ${mensaje ? `
+    <div style="background:#f8fafc;border-radius:8px;padding:12px 16px;margin-bottom:20px">
+      <p style="margin:0 0 4px;font-size:11px;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em">Mensaje del solicitante</p>
+      <p style="margin:0;font-size:13px;color:#475569;font-style:italic">"${mensaje}"</p>
+    </div>` : ''}
+
+    <div style="background:#fef2f2;border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:24px">
+      <p style="margin:0;font-size:13px;color:#7f1d1d">
+        ⚠️ <strong>Importante:</strong> Al firmar, confirmas formalmente tu visto bueno. La firma queda registrada con tu nombre, correo electrónico y la fecha y hora exacta de la firma.
+      </p>
+    </div>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:${headerColor};color:#fff;text-decoration:none;padding:12px 28px;border-radius:8px;font-size:14px;font-weight:bold">Ir a firmar →</a>` : ''}
+  `)
+}
+
+export function templateConfirmacionFirma({
+  tipo,
+  nombreDesarrollo,
+  numero,
+  nombreFirmante,
+  emailFirmante,
+  fechaFirma,
+  enlace,
+}: {
+  tipo: 'DOCUMENTACION' | 'SALIDA_VIVO'
+  nombreDesarrollo: string
+  numero: string | null
+  nombreFirmante: string
+  emailFirmante: string
+  fechaFirma: string
+  enlace?: string
+}) {
+  const esDoc = tipo === 'DOCUMENTACION'
+  const tituloTipo = esDoc ? 'Visto bueno de documentación' : 'Visto bueno de salida en vivo'
+  const headerColor = esDoc ? '#7c3aed' : '#0369a1'
+
+  const fechaStr = new Date(fechaFirma).toLocaleString('es-CO', {
+    weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+    hour: '2-digit', minute: '2-digit', timeZoneName: 'short',
+  })
+
+  const textoConfirmacion = esDoc
+    ? 'Has confirmado que la documentación técnica del desarrollo es correcta y está completa.'
+    : 'Has confirmado que recibes a conformidad el desarrollo y das tu visto bueno para la salida en vivo.'
+
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#16a34a">✅ Firma registrada exitosamente</h2>
+    <p style="margin:0 0 24px;font-size:14px;color:#64748b">${textoConfirmacion}</p>
+
+    <table width="100%" cellpadding="8" cellspacing="0" style="border-collapse:collapse;margin-bottom:24px;font-size:14px">
+      ${numero ? `<tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b;width:35%">Número</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${numero}</td></tr>` : ''}
+      <tr ${numero ? '' : 'style="background:#f8fafc"'}><td style="padding:10px 12px;color:#64748b">Desarrollo</td><td style="padding:10px 12px;color:#1e293b;font-weight:bold">${nombreDesarrollo}</td></tr>
+      <tr style="background:#f8fafc"><td style="padding:10px 12px;color:#64748b">Tipo</td><td style="padding:10px 12px;color:${headerColor};font-weight:bold">${tituloTipo}</td></tr>
+    </table>
+
+    <div style="background:#f0fdf4;border:1px solid #86efac;border-radius:8px;padding:16px;margin-bottom:24px">
+      <p style="margin:0 0 10px;font-size:12px;font-weight:bold;text-transform:uppercase;letter-spacing:.06em;color:#166534">Constancia de firma</p>
+      <table cellpadding="0" cellspacing="0" style="font-size:13px;color:#15803d">
+        <tr><td style="padding:3px 12px 3px 0;color:#166534;font-weight:bold">Firmante:</td><td>${nombreFirmante}</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:#166534;font-weight:bold">Correo:</td><td>${emailFirmante}</td></tr>
+        <tr><td style="padding:3px 12px 3px 0;color:#166534;font-weight:bold">Fecha y hora:</td><td>${fechaStr}</td></tr>
+      </table>
+    </div>
+
+    <p style="margin:0 0 24px;font-size:13px;color:#64748b">
+      Este correo es el comprobante de tu firma. Consérvalo como evidencia de tu visto bueno.
+    </p>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#16a34a;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
+  `)
+}
+
 export function templateNuevoRequerimiento({
   nombreDesarrollo,
   identificacion,

@@ -19,6 +19,7 @@ import { TabFechas } from '@/components/requerimientos/tabs/TabFechas'
 import { TabFlujo } from '@/components/requerimientos/tabs/TabFlujo'
 import { TabDocumentacionTecnica } from '@/components/requerimientos/tabs/TabDocumentacionTecnica'
 import { TabActividad } from '@/components/requerimientos/tabs/TabActividad'
+import { TabVistoBueno } from '@/components/requerimientos/tabs/TabVistoBueno'
 import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
@@ -89,6 +90,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     { value: 'impacto',        recurso: 'req:impacto-hh' },
     { value: 'historial',      recurso: 'req:historial' },
     { value: 'actividad',      recurso: 'req:actividad' },
+    { value: 'visto-bueno',   recurso: 'req:visto-bueno' },
     { value: 'impacto-real',   recurso: 'req:impacto-real' },
     { value: 'reuniones',      recurso: 'req:reuniones' },
     { value: 'penalizaciones', recurso: 'req:penalizaciones' },
@@ -199,6 +201,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
           {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
           {pv('req:actividad')      && <TabsTrigger value="actividad">Actividad</TabsTrigger>}
+          {pv('req:visto-bueno')    && <TabsTrigger value="visto-bueno">Visto Bueno</TabsTrigger>}
           {pv('req:impacto-real')  && (
             <TabsTrigger value="impacto-real">
               Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
@@ -263,6 +266,18 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         {pv('req:actividad') && (
           <TabsContent value="actividad">
             <TabActividad eventos={eventosActividad} />
+          </TabsContent>
+        )}
+
+        {pv('req:visto-bueno') && (
+          <TabsContent value="visto-bueno">
+            <TabVistoBueno
+              requerimientoId={id}
+              nombreDesarrollo={req.nombre_desarrollo ?? req.identificacion}
+              isAdmin={isAdmin}
+              userEmail={perfilAdmin?.email ?? null}
+              userName={perfilAdmin?.nombre_completo ?? null}
+            />
           </TabsContent>
         )}
 
