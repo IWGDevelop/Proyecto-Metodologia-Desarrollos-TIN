@@ -24,7 +24,6 @@ import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
-import { DesistirBtn } from '@/components/requerimientos/DesistirBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
 import { AsignarOrigenBtn } from '@/components/requerimientos/AsignarOrigenBtn'
@@ -166,15 +165,17 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               origenActual={req.origen_requerimiento ?? null}
             />
           )}
-          <AsignarPrioridadBtn
-            requerimientoId={id}
-            prioridadActual={req.prioridad}
-            subPrioridadActual={(req as any).sub_prioridad ?? null}
-            impactoHH={req.ahorro_anual_cop}
-            impactoCualitativos={req.total_beneficios_cualitativos_anual}
-            impactoTotal={req.impacto_economico_total_anual}
-            proceso_interno={(req as any).proceso_interno ?? null}
-          />
+          {(isAdmin || !req.prioridad) && (
+            <AsignarPrioridadBtn
+              requerimientoId={id}
+              prioridadActual={req.prioridad}
+              subPrioridadActual={(req as any).sub_prioridad ?? null}
+              impactoHH={req.ahorro_anual_cop}
+              impactoCualitativos={req.total_beneficios_cualitativos_anual}
+              impactoTotal={req.impacto_economico_total_anual}
+              proceso_interno={(req as any).proceso_interno ?? null}
+            />
+          )}
           <AsignarPrioridadProcesoBtn
             requerimientoId={id}
             proceso_interno={(req as any).proceso_interno ?? null}
@@ -188,20 +189,20 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               valorHoraEstimado={req.valor_hora_hombre}
             />
           )}
-          {!isAdmin && (
-            <DesistirBtn
-              requerimientoId={id}
-              estadoActual={req.estado}
-            />
-          )}
         </div>
       </div>
 
       <Tabs defaultValue={defaultTab}>
         <TabsList className="w-full justify-start flex-wrap">
           {pv('req:informacion')    && <TabsTrigger value="informacion">Información</TabsTrigger>}
-          {pv('req:desarrollo')     && <TabsTrigger value="desarrollo">Desarrollo</TabsTrigger>}
-          {pv('req:doc-tecnica')   && <TabsTrigger value="doc-tecnica">Doc. Técnica</TabsTrigger>}
+          <TabsTrigger value="desarrollo" disabled={!isAdmin} className={!isAdmin ? 'opacity-50' : ''}>
+            {!isAdmin && <Lock size={11} className="mr-1" />}
+            Desarrollo
+          </TabsTrigger>
+          <TabsTrigger value="doc-tecnica" disabled={!isAdmin} className={!isAdmin ? 'opacity-50' : ''}>
+            {!isAdmin && <Lock size={11} className="mr-1" />}
+            Doc. Técnica
+          </TabsTrigger>
           {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
           {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
           {pv('req:actividad')      && <TabsTrigger value="actividad">Actividad</TabsTrigger>}
