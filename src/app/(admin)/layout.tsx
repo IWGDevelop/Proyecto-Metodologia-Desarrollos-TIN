@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getUser, getPerfil } from '@/lib/supabase/auth'
 import { AdminShell } from '@/components/layout/AdminShell'
 import { getPermisosUsuario } from '@/actions/roles-permisos'
+import { getContadorPendientes } from '@/actions/pendientes'
 import type { PermisosMap } from '@/actions/roles-permisos'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -42,5 +43,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     if (!tieneAccesoAdmin) redirect('/mis-requerimientos')
   }
 
-  return <AdminShell perfil={perfilEfectivo} permisos={permisos}>{children}</AdminShell>
+  const pendientesCount = await getContadorPendientes()
+
+  return <AdminShell perfil={perfilEfectivo} permisos={permisos} pendientesCount={pendientesCount}>{children}</AdminShell>
 }

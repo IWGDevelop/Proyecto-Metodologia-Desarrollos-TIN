@@ -186,3 +186,63 @@ export async function getCompromisosFechasPendientes(): Promise<CompromisoPendie
 
   return compromisos.sort((a, b) => (a.dias_restantes ?? 999) - (b.dias_restantes ?? 999))
 }
+
+export async function getContadorPendientes(): Promise<number> {
+  const supabase = createAdminClient()
+  const perfil = await getPerfil()
+  const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
+
+  // ── Tareas de reunión pendientes ──────────────────────────────────────────
+  let tareasQuery = (supabase as any)
+    .from('tareas_reunion')
+    .select('id', { count: 'exact', head: true })
+    .eq('completada', false)
+
+  if (!isAdmin && perfil) {
+    tareasQuery = tareasQuery.eq('responsable_email', perfil.email)
+  }
+
+  const { count: tareasCount } = await tareasQuery
+
+  // ── Compromisos de fechas pendientes ──────────────────────────────────────
+  const campos = [
+    'id', 'responsable', 'partes_interesadas', 'proceso_interno',
+    'fecha_estimada_entrega', 'fecha_real_entrega',
+    'fecha_estimada_feedback_pruebas', 'fecha_real_feedback_pruebas',
+    'fecha_estimada_ajustes_tecnicos', 'fecha_real_ajustes_tecnicos',
+    'fecha_estimada_salida_vivo', 'fecha_salida_vivo',
+  ].join(',')
+
+  let reqQuery = (supabase as any)
+    .from('requerimientos')
+    .select(campos)
+    .eq('es_borrador', false)
+    .not('estado', 'in', `(${ESTADOS_EXCLUIDOS.join(',')})`)
+
+  if (!isAdmin && perfil) {
+    const { data: asignaciones } = await (supabase as any)
+      .from('requerimiento_desarrolladores')
+      .select('requerimiento_id')
+      .eq('perfil_id', perfil.id)
+
+    const devIds: string[] = (asignaciones ?? []).map((a: any) => a.requerimiento_id)
+
+    const filtros: string[] = []
+    if (devIds.length > 0) filtros.push(`id.in.(${devIds.join(',')})`)
+    filtros.push(`responsable.ilike.*${perfil.email}*`)
+    filtros.push(`responsable.ilike.*${perfil.nombre_completo}*`)
+    filtros.push(`partes_interesadas.cs.{"${perfil.email}"}`)
+
+    reqQuery = reqQuery.or(filtros.join(','))
+  }
+
+  const { data: reqs } = await reqQuery
+  let fechasCount = 0
+  for (const req of reqs ?? []) {
+    for (const tf of TIPOS_FECHA) {
+      if (req[tf.estimada] && !req[tf.real]) fechasCount++
+    }
+  }
+
+  return (tareasCount ?? 0) + fechasCount
+}

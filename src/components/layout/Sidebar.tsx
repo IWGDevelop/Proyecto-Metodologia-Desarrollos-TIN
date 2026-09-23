@@ -70,9 +70,10 @@ interface Props {
   onCollapsedChange?: (collapsed: boolean) => void
   rol?: RolUsuario
   permisos?: PermisosMap
+  pendientesCount?: number
 }
 
-export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, permisos = {} }: Props) {
+export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, permisos = {}, pendientesCount = 0 }: Props) {
   const pathname = usePathname()
   const [collapsed, setCollapsed] = useState(false)
 
@@ -133,6 +134,8 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
         {navItems.map(({ href, label, Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
+          const esPendientes = href === '/admin/pendientes'
+          const badge = esPendientes && pendientesCount > 0 ? pendientesCount : 0
           return (
             <Link
               key={href}
@@ -147,8 +150,20 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
               )}
               title={collapsed ? label : undefined}
             >
-              <Icon size={18} className="shrink-0" />
-              {!collapsed && <span>{label}</span>}
+              <div className="relative shrink-0">
+                <Icon size={18} />
+                {badge > 0 && collapsed && (
+                  <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                    {badge > 99 ? '99+' : badge}
+                  </span>
+                )}
+              </div>
+              {!collapsed && <span className="flex-1">{label}</span>}
+              {!collapsed && badge > 0 && (
+                <span className="ml-auto rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white min-w-[20px] text-center">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              )}
             </Link>
           )
         })}

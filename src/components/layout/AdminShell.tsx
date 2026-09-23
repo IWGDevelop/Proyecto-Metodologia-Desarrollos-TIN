@@ -11,9 +11,10 @@ interface Props {
   children: React.ReactNode
   perfil: Perfil
   permisos?: PermisosMap
+  pendientesCount?: number
 }
 
-export function AdminShell({ children, perfil, permisos = {} }: Props) {
+export function AdminShell({ children, perfil, permisos = {}, pendientesCount = 0 }: Props) {
   const [mobileOpen, setMobileOpen] = useState(false)
   const [collapsed, setCollapsed] = useState(false)
 
@@ -37,6 +38,7 @@ export function AdminShell({ children, perfil, permisos = {} }: Props) {
           onCollapsedChange={setCollapsed}
           rol={perfil.rol}
           permisos={permisos}
+          pendientesCount={pendientesCount}
         />
 
         <div
