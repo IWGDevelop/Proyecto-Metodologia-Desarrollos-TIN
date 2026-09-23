@@ -6,8 +6,9 @@ import { es } from 'date-fns/locale'
 import {
   GitBranch, Calendar, MessageSquare, Users, CheckSquare,
   CheckCircle2, Paperclip, BookOpen, Filter, ChevronDown, ChevronUp,
+  AlertOctagon,
 } from 'lucide-react'
-import { cn } from '@/lib/utils'
+import { cn, formatCOP } from '@/lib/utils'
 import { getEstadoCfg } from '@/lib/constants'
 import type { EventoHistorial, EventoTipo } from '@/actions/historial-detallado'
 
@@ -31,6 +32,7 @@ const TIPO_CFG: Record<EventoTipo, {
   tarea_tecnica_completada:{ label: 'Tarea completada',      icon: CheckCircle2,  iconBg: 'bg-green-100',   iconColor: 'text-green-600',   badge: 'bg-green-100 text-green-700' },
   anexo:                   { label: 'Archivo adjunto',       icon: Paperclip,     iconBg: 'bg-slate-100',   iconColor: 'text-slate-500',   badge: 'bg-slate-100 text-slate-600' },
   doc_tecnica:             { label: 'Doc. técnica',          icon: BookOpen,      iconBg: 'bg-pink-100',    iconColor: 'text-pink-600',    badge: 'bg-pink-100 text-pink-700' },
+  penalizacion:            { label: 'Penalización',           icon: AlertOctagon,  iconBg: 'bg-red-100',     iconColor: 'text-red-600',     badge: 'bg-red-100 text-red-700' },
 }
 
 const TODOS_LOS_TIPOS = Object.keys(TIPO_CFG) as EventoTipo[]
@@ -117,6 +119,13 @@ function EventoCard({ evento }: { evento: EventoHistorial }) {
                   : 'bg-amber-100 text-amber-700'
               )}>
                 {evento.extra.completada ? 'Completada' : 'Pendiente'}
+              </span>
+            )}
+
+            {/* Extra para penalizacion: monto */}
+            {evento.tipo === 'penalizacion' && evento.extra.monto_cop > 0 && (
+              <span className="mt-1 inline-block rounded-full bg-red-50 border border-red-200 px-2 py-0.5 text-[10px] font-semibold text-red-700">
+                {formatCOP(evento.extra.monto_cop)}
               </span>
             )}
 

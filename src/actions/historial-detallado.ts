@@ -12,6 +12,7 @@ export type EventoTipo =
   | 'tarea_tecnica_completada'
   | 'anexo'
   | 'doc_tecnica'
+  | 'penalizacion'
 
 export interface EventoHistorial {
   id: string
@@ -21,6 +22,16 @@ export interface EventoHistorial {
   titulo: string
   descripcion: string | null
   extra: Record<string, any>
+}
+
+const LABEL_PENALIZACION: Record<string, string> = {
+  DOCUMENTACION_DESTIEMPO: 'Documentación a destiempo',
+  MALA_DEFINICION:         'Mala definición',
+  FALTA_RESPUESTA:         'Falta de respuesta',
+  INFORMACION_INCORRECTA:  'Información incorrecta',
+  CAMBIO_ALCANCE:          'Cambio de alcance',
+  RETRASO_ENTREGA:         'Retraso en entrega',
+  OTRO:                    'Otro',
 }
 
 const LABEL_FECHA: Record<string, string> = {
@@ -54,6 +65,7 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
     { data: tareasTecnicas },
     { data: anexos },
     { data: docTecnica },
+    { data: penalizaciones },
   ] = await Promise.all([
     (supabase as any)
       .from('historial_estados')
@@ -99,6 +111,11 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
     (supabase as any)
       .from('documentacion_tecnica')
       .select('id, nombre_archivo, tipo_documento, subido_por, created_at')
+      .eq('requerimiento_id', reqId),
+
+    (supabase as any)
+      .from('penalizaciones_requerimiento')
+      .select('id, tipo, descripcion, responsables, monto_cop, created_by, created_at')
       .eq('requerimiento_id', reqId),
   ])
 
@@ -224,6 +241,22 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
       titulo: d.nombre_archivo,
       descripcion: d.tipo_documento ?? null,
       extra: { tipo_documento: d.tipo_documento },
+    })
+  }
+
+  for (const p of penalizaciones ?? []) {
+    const tipoLabel = LABEL_PENALIZACION[p.tipo] ?? p.tipo
+    const partes: string[] = []
+    if (p.descripcion) partes.push(p.descripcion)
+    if (p.responsables?.length) partes.push(`Responsables: ${(p.responsables as string[]).join(', ')}`)
+    eventos.push({
+      id: `penalizacion-${p.id}`,
+      tipo: 'penalizacion',
+      fecha: p.created_at,
+      usuario: p.created_by ?? null,
+      titulo: tipoLabel,
+      descripcion: partes.length ? partes.join(' · ') : null,
+      extra: { tipo_penalizacion: p.tipo, monto_cop: p.monto_cop, responsables: p.responsables ?? [] },
     })
   }
 
