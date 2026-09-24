@@ -7,7 +7,7 @@ import { es } from 'date-fns/locale'
 import {
   ShieldCheck, ShieldAlert, Clock, CheckCircle2, XCircle,
   Plus, X, AlertTriangle, FileCheck, Rocket, User, Mail,
-  CalendarDays, ChevronDown, ChevronUp,
+  CalendarDays, ChevronDown, ChevronUp, Calendar,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -31,6 +31,7 @@ interface Props {
   isAdmin: boolean
   userEmail: string | null
   userName: string | null
+  tipoSolicitudReq?: string | null
 }
 
 /* ── Helpers ──────────────────────────────────────────────────────────────── */
@@ -59,7 +60,7 @@ const TIPO_CFG = {
   },
 } as const
 
-const TEXTO_CONFIRMACION: Record<TipoVistoBueno, { titulo: string; cuerpo: string; advertencia: string }> = {
+const TEXTO_BASE: Record<TipoVistoBueno, { titulo: string; cuerpo: string; advertencia: string }> = {
   DOCUMENTACION: {
     titulo: 'Confirmar visto bueno de documentación',
     cuerpo:
@@ -81,16 +82,16 @@ function formatDatetime(iso: string) {
   catch { return iso }
 }
 
+function formatFechaSalida(dateStr: string | null) {
+  if (!dateStr) return null
+  try { return format(parseISO(dateStr), "EEEE d 'de' MMMM yyyy", { locale: es }) }
+  catch { return dateStr }
+}
+
 /* ── Diálogo de firma ────────────────────────────────────────────────────── */
 function DialogFirmar({
-  open,
-  onClose,
-  firma,
-  solicitud,
-  requerimientoId,
-  userName,
-  userEmail,
-  onFirmado,
+  open, onClose, firma, solicitud, requerimientoId,
+  userName, userEmail, tipoSolicitudReq, onFirmado,
 }: {
   open: boolean
   onClose: () => void
@@ -99,12 +100,17 @@ function DialogFirmar({
   requerimientoId: string
   userName: string | null
   userEmail: string | null
+  tipoSolicitudReq?: string | null
   onFirmado: () => void
 }) {
   const [aceptado, setAceptado]     = useState(false)
   const [isPending, startTransition] = useTransition()
   const cfg  = TIPO_CFG[solicitud.tipo]
-  const text = TEXTO_CONFIRMACION[solicitud.tipo]
+  const text = TEXTO_BASE[solicitud.tipo]
+
+  const esSalidaVivo  = solicitud.tipo === 'SALIDA_VIVO'
+  const esInforme     = tipoSolicitudReq === 'INFORME'
+  const fechaSalida   = esSalidaVivo ? formatFechaSalida(solicitud.fecha_propuesta_salida) : null
 
   const handleFirmar = () => {
     if (!aceptado) return
@@ -132,9 +138,43 @@ function DialogFirmar({
 
         <div className="space-y-4 pt-1">
           {/* Texto de lo que se está firmando */}
-          <div className={cn('rounded-xl border p-4', cfg.bg, cfg.border)}>
+          <div className={cn('rounded-xl border p-4 space-y-3', cfg.bg, cfg.border)}>
             <p className="text-sm text-slate-700 leading-relaxed">{text.cuerpo}</p>
+
+            {/* Texto adicional para INFORME */}
+            {esSalidaVivo && esInforme && (
+              <p className="text-sm font-semibold text-sky-800 leading-relaxed border-t border-sky-200 pt-3">
+                Al firmar también autorizas el desmonte y archivo de los archivos de cuadros en Drive relacionados con este informe.
+              </p>
+            )}
           </div>
+
+          {/* Fecha de salida en vivo propuesta por TIN */}
+          {esSalidaVivo && (
+            <div className={cn(
+              'rounded-xl border-2 p-4 space-y-1',
+              fechaSalida
+                ? 'border-sky-300 bg-sky-50'
+                : 'border-slate-200 bg-slate-50'
+            )}>
+              <div className="flex items-center gap-2">
+                <Calendar size={15} className={fechaSalida ? 'text-sky-600' : 'text-slate-400'} />
+                <p className="text-xs font-semibold uppercase tracking-widest text-slate-500">
+                  Fecha propuesta de salida en vivo
+                </p>
+              </div>
+              {fechaSalida ? (
+                <p className="text-base font-bold text-sky-800 capitalize pl-5">{fechaSalida}</p>
+              ) : (
+                <p className="text-xs text-slate-400 pl-5 italic">Sin fecha propuesta por TIN</p>
+              )}
+              {fechaSalida && (
+                <p className="text-xs text-sky-700 pl-5">
+                  Al firmar confirmas tu conformidad con esta fecha de salida.
+                </p>
+              )}
+            </div>
+          )}
 
           {/* Identidad del firmante */}
           <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
@@ -172,7 +212,10 @@ function DialogFirmar({
               className="mt-0.5 h-4 w-4 cursor-pointer rounded border-slate-300 text-violet-600 accent-violet-600"
             />
             <span className="text-sm font-medium text-slate-700">
-              He leído y entiendo lo anterior. Confirmo que deseo registrar mi visto bueno formal. Esta acción no puede deshacerse.
+              He leído y entiendo lo anterior.{' '}
+              {esSalidaVivo && fechaSalida && 'Confirmo la fecha de salida en vivo indicada. '}
+              {esSalidaVivo && esInforme && 'Autorizo el desmonte de archivos en Drive. '}
+              Confirmo que deseo registrar mi visto bueno formal. Esta acción no puede deshacerse.
             </span>
           </label>
 
@@ -198,17 +241,18 @@ function DialogFirmar({
 
 /* ── Fila de firmante ────────────────────────────────────────────────────── */
 function FilaFirmante({
-  firma, solicitud, requerimientoId, userEmail, userName, onRefresh,
+  firma, solicitud, requerimientoId, userEmail, userName, tipoSolicitudReq, onRefresh,
 }: {
   firma: FirmaVistoBueno
   solicitud: SolicitudVistoBueno
   requerimientoId: string
   userEmail: string | null
   userName: string | null
+  tipoSolicitudReq?: string | null
   onRefresh: () => void
 }) {
   const [dialogOpen, setDialogOpen] = useState(false)
-  const esMiFirma = userEmail && firma.email_requerido.toLowerCase() === userEmail.toLowerCase()
+  const esMiFirma  = userEmail && firma.email_requerido.toLowerCase() === userEmail.toLowerCase()
   const puedeFirmar = esMiFirma && !firma.firmado && solicitud.estado === 'PENDIENTE'
 
   return (
@@ -276,6 +320,7 @@ function FilaFirmante({
           requerimientoId={requerimientoId}
           userName={userName}
           userEmail={userEmail}
+          tipoSolicitudReq={tipoSolicitudReq}
           onFirmado={onRefresh}
         />
       )}
@@ -285,13 +330,14 @@ function FilaFirmante({
 
 /* ── Tarjeta de solicitud ────────────────────────────────────────────────── */
 function TarjetaSolicitud({
-  solicitud, requerimientoId, isAdmin, userEmail, userName, onRefresh,
+  solicitud, requerimientoId, isAdmin, userEmail, userName, tipoSolicitudReq, onRefresh,
 }: {
   solicitud: SolicitudVistoBueno
   requerimientoId: string
   isAdmin: boolean
   userEmail: string | null
   userName: string | null
+  tipoSolicitudReq?: string | null
   onRefresh: () => void
 }) {
   const [abierta, setAbierta]        = useState(true)
@@ -299,15 +345,19 @@ function TarjetaSolicitud({
   const cfg = TIPO_CFG[solicitud.tipo]
   const Icon = cfg.Icon
 
-  const firmadas  = solicitud.firmas.filter(f => f.firmado).length
-  const total     = solicitud.firmas.length
-  const progreso  = total > 0 ? Math.round((firmadas / total) * 100) : 0
+  const firmadas = solicitud.firmas.filter(f => f.firmado).length
+  const total    = solicitud.firmas.length
+  const progreso = total > 0 ? Math.round((firmadas / total) * 100) : 0
 
   const estadoCfg = {
     PENDIENTE:  { label: 'Pendiente',  cls: 'bg-amber-100 text-amber-700', Icon: Clock },
     COMPLETADO: { label: 'Completado', cls: 'bg-green-100 text-green-700', Icon: CheckCircle2 },
     CANCELADO:  { label: 'Cancelado',  cls: 'bg-slate-100 text-slate-500', Icon: XCircle },
   }[solicitud.estado]
+
+  const fechaSalida = solicitud.tipo === 'SALIDA_VIVO'
+    ? formatFechaSalida(solicitud.fecha_propuesta_salida)
+    : null
 
   const handleCancelar = () => {
     if (!confirm('¿Cancelar esta solicitud de visto bueno? Esta acción no se puede deshacer.')) return
@@ -331,10 +381,19 @@ function TarjetaSolicitud({
                 <estadoCfg.Icon size={10} /> {estadoCfg.label}
               </span>
             </div>
-            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500">
+            <div className="mt-0.5 flex items-center gap-2 text-xs text-slate-500 flex-wrap">
               <span>Solicitado por {solicitud.solicitado_por ?? 'Administrador'}</span>
               <span>·</span>
               <span>{formatDatetime(solicitud.created_at)}</span>
+              {fechaSalida && (
+                <>
+                  <span>·</span>
+                  <span className="flex items-center gap-1 font-semibold text-sky-700">
+                    <Calendar size={11} />
+                    Salida: <span className="capitalize">{fechaSalida}</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -395,6 +454,7 @@ function TarjetaSolicitud({
                 requerimientoId={requerimientoId}
                 userEmail={userEmail}
                 userName={userName}
+                tipoSolicitudReq={tipoSolicitudReq}
                 onRefresh={onRefresh}
               />
             ))}
@@ -407,27 +467,38 @@ function TarjetaSolicitud({
 
 /* ── Modal nueva solicitud ───────────────────────────────────────────────── */
 function ModalNuevaSolicitud({
-  open, onClose, requerimientoId, onCreado,
+  open, onClose, requerimientoId, tipoSolicitudReq, onCreado,
 }: {
   open: boolean
   onClose: () => void
   requerimientoId: string
+  tipoSolicitudReq?: string | null
   onCreado: () => void
 }) {
-  const [tipo, setTipo]     = useState<TipoVistoBueno>('DOCUMENTACION')
-  const [mensaje, setMensaje] = useState('')
-  const [isPending, startT] = useTransition()
+  const [tipo, setTipo]                   = useState<TipoVistoBueno>('DOCUMENTACION')
+  const [mensaje, setMensaje]             = useState('')
+  const [fechaSalida, setFechaSalida]     = useState('')
+  const [isPending, startT]               = useTransition()
 
   const cfg = TIPO_CFG[tipo]
   const Icon = cfg.Icon
+  const esInforme = tipoSolicitudReq === 'INFORME'
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     startT(async () => {
-      const res = await crearSolicitudVistoBueno(requerimientoId, tipo, mensaje.trim() || null)
+      const res = await crearSolicitudVistoBueno(
+        requerimientoId,
+        tipo,
+        mensaje.trim() || null,
+        tipo === 'SALIDA_VIVO' ? (fechaSalida || null) : null,
+      )
       if (res.ok) {
         toast.success('Solicitud enviada — los firmantes recibirán un correo')
-        setMensaje(''); onCreado(); onClose()
+        setMensaje('')
+        setFechaSalida('')
+        onCreado()
+        onClose()
       } else {
         toast.error(res.error ?? 'Error al crear solicitud')
       }
@@ -448,7 +519,7 @@ function ModalNuevaSolicitud({
           {/* Tipo */}
           <div className="grid grid-cols-2 gap-3">
             {(['DOCUMENTACION', 'SALIDA_VIVO'] as const).map(t => {
-              const c = TIPO_CFG[t]
+              const c  = TIPO_CFG[t]
               const Ic = c.Icon
               const sel = tipo === t
               return (
@@ -472,6 +543,36 @@ function ModalNuevaSolicitud({
               )
             })}
           </div>
+
+          {/* Fecha propuesta — solo para SALIDA_VIVO */}
+          {tipo === 'SALIDA_VIVO' && (
+            <div className="space-y-1.5">
+              <label className="text-xs font-semibold text-sky-700 flex items-center gap-1.5">
+                <Calendar size={13} />
+                Fecha propuesta de salida en vivo
+                <span className="font-normal text-slate-400">(recomendado)</span>
+              </label>
+              <input
+                type="date"
+                value={fechaSalida}
+                onChange={e => setFechaSalida(e.target.value)}
+                className="w-full rounded-lg border border-sky-200 bg-sky-50 px-3 py-2 text-sm text-slate-700 outline-none focus:border-sky-400 focus:ring-1 focus:ring-sky-300"
+              />
+              <p className="text-[11px] text-slate-400">
+                Los firmantes verán esta fecha y deberán confirmarla al dar su visto bueno.
+              </p>
+            </div>
+          )}
+
+          {/* Aviso especial para INFORME en SALIDA_VIVO */}
+          {tipo === 'SALIDA_VIVO' && esInforme && (
+            <div className="flex items-start gap-3 rounded-xl border border-sky-200 bg-sky-50 p-3">
+              <AlertTriangle size={14} className="mt-0.5 shrink-0 text-sky-600" />
+              <p className="text-xs text-sky-800 leading-relaxed">
+                Este requerimiento es de tipo <strong>Informe</strong>. Los firmantes también autorizarán el desmonte y archivo de los archivos de cuadros en Drive relacionados.
+              </p>
+            </div>
+          )}
 
           {/* Info sobre firmantes */}
           <div className={cn('rounded-xl border p-4 text-xs space-y-1.5', cfg.bg, cfg.border)}>
@@ -517,9 +618,9 @@ function ModalNuevaSolicitud({
 
 /* ── Tab principal ───────────────────────────────────────────────────────── */
 export function TabVistoBueno({
-  requerimientoId, nombreDesarrollo, isAdmin, userEmail, userName,
+  requerimientoId, nombreDesarrollo, isAdmin, userEmail, userName, tipoSolicitudReq,
 }: Props) {
-  const [modalOpen, setModalOpen]   = useState(false)
+  const [modalOpen, setModalOpen] = useState(false)
   const qc = useQueryClient()
 
   const refresh = () => qc.invalidateQueries({ queryKey: ['visto-bueno', requerimientoId] })
@@ -530,7 +631,6 @@ export function TabVistoBueno({
     refetchOnWindowFocus: true,
   })
 
-  // Firmas pendientes para el usuario actual
   const { data: misFirmasPendientes = [] } = useQuery<FirmaVistoBueno[]>({
     queryKey: ['mis-firmas-pendientes', requerimientoId, userEmail],
     queryFn:  () => userEmail ? getMisFirmasPendientesEnReq(requerimientoId, userEmail) : Promise.resolve([]),
@@ -601,6 +701,7 @@ export function TabVistoBueno({
               isAdmin={isAdmin}
               userEmail={userEmail}
               userName={userName}
+              tipoSolicitudReq={tipoSolicitudReq}
               onRefresh={refresh}
             />
           ))}
@@ -611,6 +712,7 @@ export function TabVistoBueno({
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         requerimientoId={requerimientoId}
+        tipoSolicitudReq={tipoSolicitudReq}
         onCreado={refresh}
       />
     </div>

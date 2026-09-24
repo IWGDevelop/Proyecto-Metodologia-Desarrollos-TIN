@@ -34,6 +34,7 @@ export interface SolicitudVistoBueno {
   solicitado_por: string | null
   solicitado_por_email: string | null
   mensaje: string | null
+  fecha_propuesta_salida: string | null
   created_at: string
   completado_at: string | null
   firmas: FirmaVistoBueno[]
@@ -98,6 +99,7 @@ export async function crearSolicitudVistoBueno(
   reqId: string,
   tipo: TipoVistoBueno,
   mensaje: string | null,
+  fechaPropuestaSalida?: string | null,
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const perfil = await getCurrentPerfil()
@@ -106,7 +108,7 @@ export async function crearSolicitudVistoBueno(
     // Datos del requerimiento
     const { data: req } = await (supabase as any)
       .from('requerimientos')
-      .select('nombre_desarrollo, identificacion, numero, responsable, partes_interesadas')
+      .select('nombre_desarrollo, identificacion, numero, responsable, partes_interesadas, tipo_solicitud')
       .eq('id', reqId)
       .single()
     if (!req) return { ok: false, error: 'Requerimiento no encontrado' }
@@ -131,12 +133,13 @@ export async function crearSolicitudVistoBueno(
     const { data: solicitud, error: errSol } = await (supabase as any)
       .from('solicitudes_visto_bueno')
       .insert({
-        requerimiento_id:     reqId,
+        requerimiento_id:        reqId,
         tipo,
-        estado:               'PENDIENTE',
-        solicitado_por:       perfil?.nombre_completo ?? null,
-        solicitado_por_email: perfil?.email ?? null,
-        mensaje:              mensaje || null,
+        estado:                  'PENDIENTE',
+        solicitado_por:          perfil?.nombre_completo ?? null,
+        solicitado_por_email:    perfil?.email ?? null,
+        mensaje:                 mensaje || null,
+        fecha_propuesta_salida:  tipo === 'SALIDA_VIVO' ? (fechaPropuestaSalida || null) : null,
       })
       .select().single()
     if (errSol) return { ok: false, error: errSol.message }

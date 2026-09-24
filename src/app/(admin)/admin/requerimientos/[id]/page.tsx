@@ -282,6 +282,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               isAdmin={isAdmin}
               userEmail={perfilAdmin?.email ?? null}
               userName={perfilAdmin?.nombre_completo ?? null}
+              tipoSolicitudReq={req.tipo_solicitud ?? null}
             />
           </TabsContent>
         )}
