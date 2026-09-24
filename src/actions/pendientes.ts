@@ -3,6 +3,21 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 
+export interface FirmaPendienteVistoBueno {
+  firma_id: string
+  solicitud_id: string
+  requerimiento_id: string
+  requerimiento_nombre: string
+  requerimiento_numero: string | null
+  tipo: 'DOCUMENTACION' | 'SALIDA_VIVO'
+  email_requerido: string
+  nombre_requerido: string | null
+  es_estrategia: boolean
+  solicitado_por: string | null
+  fecha_propuesta_salida: string | null
+  created_at: string
+}
+
 export interface TareaPendienteReunion {
   id: string
   descripcion: string
@@ -187,6 +202,60 @@ export async function getCompromisosFechasPendientes(): Promise<CompromisoPendie
   return compromisos.sort((a, b) => (a.dias_restantes ?? 999) - (b.dias_restantes ?? 999))
 }
 
+export async function getFirmasPendientesVistoBueno(): Promise<FirmaPendienteVistoBueno[]> {
+  const supabase = createAdminClient()
+  const perfil = await getPerfil()
+  const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
+
+  let query = (supabase as any)
+    .from('firmas_visto_bueno')
+    .select(`
+      id,
+      solicitud_id,
+      requerimiento_id,
+      email_requerido,
+      nombre_requerido,
+      es_estrategia,
+      created_at,
+      solicitud:solicitudes_visto_bueno!inner (
+        tipo,
+        estado,
+        solicitado_por,
+        fecha_propuesta_salida
+      ),
+      requerimiento:requerimientos!inner (
+        nombre_desarrollo,
+        identificacion,
+        numero
+      )
+    `)
+    .eq('firmado', false)
+    .eq('solicitud.estado', 'PENDIENTE')
+    .order('created_at', { ascending: true })
+
+  if (!isAdmin && perfil) {
+    query = query.eq('email_requerido', perfil.email)
+  }
+
+  const { data, error } = await query
+  if (error || !data) return []
+
+  return (data as any[]).map(f => ({
+    firma_id:               f.id,
+    solicitud_id:           f.solicitud_id,
+    requerimiento_id:       f.requerimiento_id,
+    requerimiento_nombre:   f.requerimiento?.nombre_desarrollo ?? f.requerimiento?.identificacion ?? '',
+    requerimiento_numero:   f.requerimiento?.numero ?? null,
+    tipo:                   f.solicitud?.tipo ?? 'DOCUMENTACION',
+    email_requerido:        f.email_requerido,
+    nombre_requerido:       f.nombre_requerido ?? null,
+    es_estrategia:          f.es_estrategia ?? false,
+    solicitado_por:         f.solicitud?.solicitado_por ?? null,
+    fecha_propuesta_salida: f.solicitud?.fecha_propuesta_salida ?? null,
+    created_at:             f.created_at,
+  }))
+}
+
 export async function getContadorPendientes(): Promise<number> {
   const supabase = createAdminClient()
   const perfil = await getPerfil()
@@ -244,5 +313,17 @@ export async function getContadorPendientes(): Promise<number> {
     }
   }
 
-  return (tareasCount ?? 0) + fechasCount
+  // ── Firmas de visto bueno pendientes ─────────────────────────────────────
+  let firmasQuery = (supabase as any)
+    .from('firmas_visto_bueno')
+    .select('id', { count: 'exact', head: true })
+    .eq('firmado', false)
+
+  if (!isAdmin && perfil) {
+    firmasQuery = firmasQuery.eq('email_requerido', perfil.email)
+  }
+
+  const { count: firmasCount } = await firmasQuery
+
+  return (tareasCount ?? 0) + fechasCount + (firmasCount ?? 0)
 }

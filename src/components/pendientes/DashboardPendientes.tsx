@@ -7,13 +7,16 @@ import { es } from 'date-fns/locale'
 import {
   Clock, AlertTriangle, CheckCircle2, CalendarDays,
   Users, ExternalLink, ChevronDown, ChevronUp, Filter, UserCircle2,
+  ShieldCheck, FileCheck, Rocket, Calendar,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { TareaPendienteReunion, CompromisoPendiente } from '@/actions/pendientes'
+import type { TareaPendienteReunion, CompromisoPendiente, FirmaPendienteVistoBueno } from '@/actions/pendientes'
 
 interface Props {
   tareas: TareaPendienteReunion[]
   compromisos: CompromisoPendiente[]
+  firmas: FirmaPendienteVistoBueno[]
+  isAdmin?: boolean
 }
 
 const TIPO_COLOR: Record<string, string> = {
@@ -54,11 +57,12 @@ function formatFecha(fecha: string) {
 
 type FiltroUrgencia = 'todas' | 'vencidas' | 'urgentes' | 'proximas'
 
-export function DashboardPendientes({ tareas, compromisos }: Props) {
+export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = false }: Props) {
   const [filtroTareas, setFiltroTareas] = useState<FiltroUrgencia>('todas')
   const [filtroCompromisos, setFiltroCompromisos] = useState<FiltroUrgencia>('todas')
   const [seccionTareasAbierta, setSeccionTareasAbierta] = useState(true)
   const [seccionCompromisosAbierta, setSeccionCompromisosAbierta] = useState(true)
+  const [seccionFirmasAbierta, setSeccionFirmasAbierta] = useState(true)
 
   const tareasFiltradas = useMemo(() => {
     if (filtroTareas === 'todas') return tareas
@@ -86,11 +90,11 @@ export function DashboardPendientes({ tareas, compromisos }: Props) {
       {/* Header */}
       <div>
         <h1 className="text-2xl font-bold text-slate-800">Pendientes</h1>
-        <p className="text-sm text-slate-500 mt-1">Tareas de reuniones y compromisos de fechas sin completar</p>
+        <p className="text-sm text-slate-500 mt-1">Tareas de reuniones, compromisos de fechas y vistos buenos pendientes</p>
       </div>
 
       {/* Resumen global */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         <StatCard
           label="Tareas vencidas"
           value={tareasVencidas}
@@ -114,6 +118,12 @@ export function DashboardPendientes({ tareas, compromisos }: Props) {
           value={compromisosUrgentes}
           color="orange"
           icon={<CalendarDays size={18} />}
+        />
+        <StatCard
+          label="Vistos buenos"
+          value={firmas.length}
+          color="violet"
+          icon={<ShieldCheck size={18} />}
         />
       </div>
 
@@ -198,13 +208,46 @@ export function DashboardPendientes({ tareas, compromisos }: Props) {
           </>
         )}
       </section>
+
+      {/* Sección: Vistos buenos pendientes */}
+      <section className="rounded-xl border border-amber-200 bg-white shadow-sm overflow-hidden">
+        <button
+          className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-amber-50 transition-colors"
+          onClick={() => setSeccionFirmasAbierta(v => !v)}
+        >
+          <div className="flex items-center gap-2">
+            <ShieldCheck size={18} className="text-amber-500" />
+            <h2 className="text-base font-semibold text-slate-700">
+              {isAdmin ? 'Vistos buenos pendientes (todos)' : 'Mis vistos buenos pendientes'}
+            </h2>
+            <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-bold text-amber-700">
+              {firmas.length}
+            </span>
+          </div>
+          {seccionFirmasAbierta ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        </button>
+
+        {seccionFirmasAbierta && (
+          firmas.length === 0 ? (
+            <div className="border-t border-amber-100">
+              <EmptyState />
+            </div>
+          ) : (
+            <div className="divide-y divide-amber-50 border-t border-amber-100">
+              {firmas.map(f => (
+                <FilaFirmaVistoBueno key={f.firma_id} firma={f} isAdmin={isAdmin} />
+              ))}
+            </div>
+          )
+        )}
+      </section>
     </div>
   )
 }
 
 function StatCard({ label, value, color, icon }: {
   label: string; value: number
-  color: 'red' | 'orange' | 'green' | 'blue'
+  color: 'red' | 'orange' | 'green' | 'blue' | 'violet'
   icon: React.ReactNode
 }) {
   const styles = {
@@ -212,6 +255,7 @@ function StatCard({ label, value, color, icon }: {
     orange: 'bg-orange-50 border-orange-200 text-orange-700',
     green:  'bg-green-50 border-green-200 text-green-700',
     blue:   'bg-blue-50 border-blue-200 text-blue-700',
+    violet: 'bg-amber-50 border-amber-200 text-amber-700',
   }
   return (
     <div className={cn('rounded-xl border p-4', styles[color])}>
@@ -367,6 +411,82 @@ function FilaCompromiso({ compromiso }: { compromiso: CompromisoPendiente }) {
           <div className={cn('text-xs mt-0.5', diasColor(compromiso.dias_restantes))}>
             {diasLabel(compromiso.dias_restantes)}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FilaFirmaVistoBueno({ firma, isAdmin }: { firma: FirmaPendienteVistoBueno; isAdmin: boolean }) {
+  const esSalidaVivo = firma.tipo === 'SALIDA_VIVO'
+  const tipoCfg = esSalidaVivo
+    ? { label: 'Salida en vivo', cls: 'bg-sky-100 text-sky-700 border-sky-200', Icon: Rocket }
+    : { label: 'Documentación',  cls: 'bg-violet-100 text-violet-700 border-violet-200', Icon: FileCheck }
+  const TipoIcon = tipoCfg.Icon
+
+  return (
+    <div className="px-5 py-4 hover:bg-amber-50/50 transition-colors">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-2">
+          {/* Requerimiento */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {firma.requerimiento_numero && (
+              <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                #{firma.requerimiento_numero}
+              </span>
+            )}
+            <Link
+              href={`/admin/requerimientos/${firma.requerimiento_id}?tab=visto-bueno`}
+              className="text-sm font-medium text-slate-700 hover:text-blue-600 hover:underline truncate flex items-center gap-1"
+            >
+              {firma.requerimiento_nombre}
+              <ExternalLink size={11} className="shrink-0" />
+            </Link>
+            <span className={cn('shrink-0 rounded border px-2 py-0.5 text-[10px] font-semibold flex items-center gap-1', tipoCfg.cls)}>
+              <TipoIcon size={10} /> {tipoCfg.label}
+            </span>
+            {firma.es_estrategia && (
+              <span className="shrink-0 rounded bg-blue-100 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-blue-700">
+                Dir. Estrategia
+              </span>
+            )}
+          </div>
+
+          {/* Firmante (solo visible para admins) */}
+          {isAdmin && (
+            <div className="flex items-center gap-2">
+              <span className="text-[11px] text-slate-400">Debe firmar:</span>
+              <AvatarResponsable nombre={firma.nombre_requerido} email={firma.email_requerido} />
+            </div>
+          )}
+
+          {/* Metadata */}
+          <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+            {firma.solicitado_por && (
+              <span>Solicitado por <strong className="text-slate-500">{firma.solicitado_por}</strong></span>
+            )}
+            {esSalidaVivo && firma.fecha_propuesta_salida && (
+              <span className="flex items-center gap-1 font-semibold text-sky-700">
+                <Calendar size={11} />
+                Salida: {formatFecha(firma.fecha_propuesta_salida)}
+              </span>
+            )}
+            <span className="flex items-center gap-1">
+              <Clock size={11} />
+              Desde {formatFecha(firma.created_at)}
+            </span>
+          </div>
+        </div>
+
+        {/* Acción */}
+        <div className="shrink-0">
+          <Link
+            href={`/admin/requerimientos/${firma.requerimiento_id}?tab=visto-bueno`}
+            className="inline-flex items-center gap-1.5 rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-600 transition-colors"
+          >
+            <ShieldCheck size={13} />
+            Firmar ahora
+          </Link>
         </div>
       </div>
     </div>
