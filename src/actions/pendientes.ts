@@ -34,6 +34,21 @@ export interface TareaPendienteReunion {
   dias_restantes: number | null  // negativo = vencida
 }
 
+export interface TareaSolicitudPendiente {
+  id: string
+  descripcion: string
+  responsable_email: string | null
+  nombre_responsable: string | null
+  fecha_compromiso: string | null
+  penalizacion_cop: number | null
+  requerimiento_id: string
+  requerimiento_nombre: string
+  requerimiento_numero: string | null
+  created_by: string | null
+  created_at: string
+  dias_restantes: number | null
+}
+
 export interface CompromisoPendiente {
   requerimiento_id: string
   requerimiento_nombre: string
@@ -112,6 +127,60 @@ export async function getTareasPendientesReunion(): Promise<TareaPendienteReunio
       requerimiento_numero: t.reunion.requerimiento.numero,
       reunion_titulo: t.reunion.titulo,
       fecha_reunion: t.reunion.fecha_reunion,
+      dias_restantes: t.fecha_compromiso ? diasDesdeHoy(t.fecha_compromiso) : null,
+    }))
+}
+
+export async function getTareasSolicitudPendientes(): Promise<TareaSolicitudPendiente[]> {
+  const supabase = createAdminClient()
+  const perfil = await getPerfil()
+  const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
+
+  let query = (supabase as any)
+    .from('tareas_solicitud')
+    .select(`
+      id, descripcion, responsable_email, fecha_compromiso,
+      penalizacion_cop, created_by, created_at,
+      requerimiento:requerimientos (
+        id, nombre_desarrollo, identificacion, numero
+      )
+    `)
+    .eq('completada', false)
+    .order('fecha_compromiso', { ascending: true, nullsFirst: false })
+
+  if (!isAdmin && perfil) {
+    query = query.eq('responsable_email', perfil.email)
+  }
+
+  const { data, error } = await query
+  if (error || !data) return []
+
+  const emails = [...new Set((data as any[]).map((t: any) => t.responsable_email).filter(Boolean))] as string[]
+  const nombresMap: Record<string, string> = {}
+  if (emails.length > 0) {
+    const { data: perfs } = await (supabase as any)
+      .from('perfiles')
+      .select('email, nombre_completo')
+      .in('email', emails)
+    if (perfs) {
+      for (const p of perfs as any[]) nombresMap[p.email] = p.nombre_completo
+    }
+  }
+
+  return (data as any[])
+    .filter((t: any) => t.requerimiento)
+    .map((t: any) => ({
+      id: t.id,
+      descripcion: t.descripcion,
+      responsable_email: t.responsable_email,
+      nombre_responsable: t.responsable_email ? (nombresMap[t.responsable_email] ?? null) : null,
+      fecha_compromiso: t.fecha_compromiso,
+      penalizacion_cop: t.penalizacion_cop,
+      requerimiento_id: t.requerimiento.id,
+      requerimiento_nombre: t.requerimiento.nombre_desarrollo ?? t.requerimiento.identificacion,
+      requerimiento_numero: t.requerimiento.numero,
+      created_by: t.created_by,
+      created_at: t.created_at,
       dias_restantes: t.fecha_compromiso ? diasDesdeHoy(t.fecha_compromiso) : null,
     }))
 }
@@ -313,6 +382,18 @@ export async function getContadorPendientes(): Promise<number> {
     }
   }
 
+  // ── Tareas solicitud pendientes ───────────────────────────────────────────
+  let solicitudesQuery = (supabase as any)
+    .from('tareas_solicitud')
+    .select('id', { count: 'exact', head: true })
+    .eq('completada', false)
+
+  if (!isAdmin && perfil) {
+    solicitudesQuery = solicitudesQuery.eq('responsable_email', perfil.email)
+  }
+
+  const { count: solicitudesCount } = await solicitudesQuery
+
   // ── Firmas de visto bueno pendientes ─────────────────────────────────────
   let firmasQuery = (supabase as any)
     .from('firmas_visto_bueno')
@@ -325,5 +406,5 @@ export async function getContadorPendientes(): Promise<number> {
 
   const { count: firmasCount } = await firmasQuery
 
-  return (tareasCount ?? 0) + fechasCount + (firmasCount ?? 0)
+  return (tareasCount ?? 0) + fechasCount + (solicitudesCount ?? 0) + (firmasCount ?? 0)
 }

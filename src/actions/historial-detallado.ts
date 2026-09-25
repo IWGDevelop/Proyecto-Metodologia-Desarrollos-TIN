@@ -10,6 +10,8 @@ export type EventoTipo =
   | 'tarea_reunion'
   | 'tarea_tecnica'
   | 'tarea_tecnica_completada'
+  | 'tarea_solicitud'
+  | 'tarea_solicitud_completada'
   | 'anexo'
   | 'doc_tecnica'
   | 'penalizacion'
@@ -63,6 +65,7 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
     { data: comentarios },
     { data: reuniones },
     { data: tareasTecnicas },
+    { data: tareasSolicitud },
     { data: anexos },
     { data: docTecnica },
     { data: penalizaciones },
@@ -101,6 +104,11 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
         id, titulo, descripcion, completada, completada_at, created_by, created_at,
         perfil_completada:perfiles!completada_por (nombre_completo, email)
       `)
+      .eq('requerimiento_id', reqId),
+
+    (supabase as any)
+      .from('tareas_solicitud')
+      .select('id, descripcion, responsable_email, fecha_compromiso, penalizacion_cop, completada, fecha_cumplimiento, created_by, created_at')
       .eq('requerimiento_id', reqId),
 
     (supabase as any)
@@ -214,6 +222,38 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
         fecha: t.completada_at,
         usuario: nombreCompletado,
         titulo: t.titulo,
+        descripcion: null,
+        extra: {},
+      })
+    }
+  }
+
+  for (const t of tareasSolicitud ?? []) {
+    eventos.push({
+      id: `tarea-solicitud-${t.id}`,
+      tipo: 'tarea_solicitud',
+      fecha: t.created_at,
+      usuario: t.created_by ?? null,
+      titulo: t.descripcion,
+      descripcion: [
+        t.responsable_email ? `Responsable: ${t.responsable_email}` : null,
+        t.fecha_compromiso ? `Compromiso: ${fmt(t.fecha_compromiso)}` : null,
+      ].filter(Boolean).join(' · ') || null,
+      extra: {
+        completada: t.completada,
+        responsable_email: t.responsable_email,
+        fecha_compromiso: t.fecha_compromiso,
+        penalizacion_cop: t.penalizacion_cop,
+      },
+    })
+
+    if (t.completada && t.fecha_cumplimiento) {
+      eventos.push({
+        id: `tarea-solicitud-completada-${t.id}`,
+        tipo: 'tarea_solicitud_completada',
+        fecha: t.fecha_cumplimiento + 'T12:00:00',
+        usuario: null,
+        titulo: t.descripcion,
         descripcion: null,
         extra: {},
       })

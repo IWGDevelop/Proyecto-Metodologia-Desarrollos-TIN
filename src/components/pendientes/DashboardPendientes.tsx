@@ -7,15 +7,16 @@ import { es } from 'date-fns/locale'
 import {
   Clock, AlertTriangle, CheckCircle2, CalendarDays,
   Users, ExternalLink, ChevronDown, ChevronUp, Filter, UserCircle2,
-  ShieldCheck, FileCheck, Rocket, Calendar,
+  ShieldCheck, FileCheck, Rocket, Calendar, ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { TareaPendienteReunion, CompromisoPendiente, FirmaPendienteVistoBueno } from '@/actions/pendientes'
+import type { TareaPendienteReunion, CompromisoPendiente, FirmaPendienteVistoBueno, TareaSolicitudPendiente } from '@/actions/pendientes'
 
 interface Props {
   tareas: TareaPendienteReunion[]
   compromisos: CompromisoPendiente[]
   firmas: FirmaPendienteVistoBueno[]
+  solicitudes: TareaSolicitudPendiente[]
   isAdmin?: boolean
 }
 
@@ -57,11 +58,12 @@ function formatFecha(fecha: string) {
 
 type FiltroUrgencia = 'todas' | 'vencidas' | 'urgentes' | 'proximas'
 
-export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = false }: Props) {
+export function DashboardPendientes({ tareas, compromisos, firmas, solicitudes, isAdmin = false }: Props) {
   const [filtroTareas, setFiltroTareas] = useState<FiltroUrgencia>('todas')
   const [filtroCompromisos, setFiltroCompromisos] = useState<FiltroUrgencia>('todas')
   const [seccionTareasAbierta, setSeccionTareasAbierta] = useState(true)
   const [seccionCompromisosAbierta, setSeccionCompromisosAbierta] = useState(true)
+  const [seccionSolicitudesAbierta, setSeccionSolicitudesAbierta] = useState(true)
   const [seccionFirmasAbierta, setSeccionFirmasAbierta] = useState(true)
 
   const tareasFiltradas = useMemo(() => {
@@ -94,7 +96,7 @@ export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = fal
       </div>
 
       {/* Resumen global */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         <StatCard
           label="Tareas vencidas"
           value={tareasVencidas}
@@ -118,6 +120,12 @@ export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = fal
           value={compromisosUrgentes}
           color="orange"
           icon={<CalendarDays size={18} />}
+        />
+        <StatCard
+          label="Solicitudes"
+          value={solicitudes.length}
+          color="cyan"
+          icon={<ClipboardList size={18} />}
         />
         <StatCard
           label="Vistos buenos"
@@ -209,6 +217,39 @@ export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = fal
         )}
       </section>
 
+      {/* Sección: Tareas y solicitudes */}
+      <section className="rounded-xl border border-cyan-200 bg-white shadow-sm overflow-hidden">
+        <button
+          className="flex w-full items-center justify-between px-5 py-4 text-left hover:bg-cyan-50 transition-colors"
+          onClick={() => setSeccionSolicitudesAbierta(v => !v)}
+        >
+          <div className="flex items-center gap-2">
+            <ClipboardList size={18} className="text-cyan-500" />
+            <h2 className="text-base font-semibold text-slate-700">
+              {isAdmin ? 'Tareas y solicitudes (todas)' : 'Mis tareas y solicitudes'}
+            </h2>
+            <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-bold text-cyan-700">
+              {solicitudes.length}
+            </span>
+          </div>
+          {seccionSolicitudesAbierta ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+        </button>
+
+        {seccionSolicitudesAbierta && (
+          solicitudes.length === 0 ? (
+            <div className="border-t border-cyan-100">
+              <EmptyState />
+            </div>
+          ) : (
+            <div className="divide-y divide-cyan-50 border-t border-cyan-100">
+              {solicitudes.map(s => (
+                <FilaSolicitud key={s.id} solicitud={s} isAdmin={isAdmin} />
+              ))}
+            </div>
+          )
+        )}
+      </section>
+
       {/* Sección: Vistos buenos pendientes */}
       <section className="rounded-xl border border-amber-200 bg-white shadow-sm overflow-hidden">
         <button
@@ -247,7 +288,7 @@ export function DashboardPendientes({ tareas, compromisos, firmas, isAdmin = fal
 
 function StatCard({ label, value, color, icon }: {
   label: string; value: number
-  color: 'red' | 'orange' | 'green' | 'blue' | 'violet'
+  color: 'red' | 'orange' | 'green' | 'blue' | 'cyan' | 'violet'
   icon: React.ReactNode
 }) {
   const styles = {
@@ -255,6 +296,7 @@ function StatCard({ label, value, color, icon }: {
     orange: 'bg-orange-50 border-orange-200 text-orange-700',
     green:  'bg-green-50 border-green-200 text-green-700',
     blue:   'bg-blue-50 border-blue-200 text-blue-700',
+    cyan:   'bg-cyan-50 border-cyan-200 text-cyan-700',
     violet: 'bg-amber-50 border-amber-200 text-amber-700',
   }
   return (
@@ -411,6 +453,66 @@ function FilaCompromiso({ compromiso }: { compromiso: CompromisoPendiente }) {
           <div className={cn('text-xs mt-0.5', diasColor(compromiso.dias_restantes))}>
             {diasLabel(compromiso.dias_restantes)}
           </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function FilaSolicitud({ solicitud, isAdmin }: { solicitud: TareaSolicitudPendiente; isAdmin: boolean }) {
+  return (
+    <div className="px-5 py-4 hover:bg-cyan-50/50 transition-colors">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0 flex-1 space-y-1.5">
+          {/* Requerimiento */}
+          <div className="flex items-center gap-2 flex-wrap">
+            {solicitud.requerimiento_numero && (
+              <span className="shrink-0 rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-bold text-slate-500">
+                #{solicitud.requerimiento_numero}
+              </span>
+            )}
+            <Link
+              href={`/admin/requerimientos/${solicitud.requerimiento_id}?tab=comentarios`}
+              className="text-sm font-medium text-slate-700 hover:text-blue-600 hover:underline truncate flex items-center gap-1"
+            >
+              {solicitud.requerimiento_nombre}
+              <ExternalLink size={11} className="shrink-0" />
+            </Link>
+            {urgenciaBadge(solicitud.dias_restantes)}
+          </div>
+
+          {/* Descripción */}
+          <p className="text-sm text-slate-700 leading-snug line-clamp-2">{solicitud.descripcion}</p>
+
+          {/* Responsable + metadata */}
+          <div className="flex items-center gap-3 flex-wrap">
+            {(solicitud.nombre_responsable || solicitud.responsable_email) && (
+              <AvatarResponsable nombre={solicitud.nombre_responsable} email={solicitud.responsable_email} />
+            )}
+            <div className="flex items-center gap-3 text-xs text-slate-400 flex-wrap">
+              {solicitud.created_by && (
+                <span>Creada por <strong className="text-slate-500">{solicitud.created_by}</strong></span>
+              )}
+              {solicitud.penalizacion_cop != null && solicitud.penalizacion_cop > 0 && (
+                <span className="flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-500 border border-red-200">
+                  Penalización: ${solicitud.penalizacion_cop.toLocaleString('es-CO')}
+                </span>
+              )}
+            </div>
+          </div>
+        </div>
+
+        <div className="shrink-0 text-right">
+          {solicitud.fecha_compromiso ? (
+            <>
+              <div className="text-xs font-semibold text-slate-600">{formatFecha(solicitud.fecha_compromiso)}</div>
+              <div className={cn('text-xs mt-0.5', diasColor(solicitud.dias_restantes))}>
+                {diasLabel(solicitud.dias_restantes)}
+              </div>
+            </>
+          ) : (
+            <span className="text-xs text-slate-400">Sin fecha límite</span>
+          )}
         </div>
       </div>
     </div>

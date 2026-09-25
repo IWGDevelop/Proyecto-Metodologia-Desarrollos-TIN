@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import {
   GitBranch, Calendar, MessageSquare, Users, CheckSquare,
   CheckCircle2, Paperclip, BookOpen, Filter, ChevronDown, ChevronUp,
-  AlertOctagon,
+  AlertOctagon, ClipboardList,
 } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
 import { getEstadoCfg } from '@/lib/constants'
@@ -32,7 +32,9 @@ const TIPO_CFG: Record<EventoTipo, {
   tarea_tecnica_completada:{ label: 'Tarea completada',      icon: CheckCircle2,  iconBg: 'bg-green-100',   iconColor: 'text-green-600',   badge: 'bg-green-100 text-green-700' },
   anexo:                   { label: 'Archivo adjunto',       icon: Paperclip,     iconBg: 'bg-slate-100',   iconColor: 'text-slate-500',   badge: 'bg-slate-100 text-slate-600' },
   doc_tecnica:             { label: 'Doc. técnica',          icon: BookOpen,      iconBg: 'bg-pink-100',    iconColor: 'text-pink-600',    badge: 'bg-pink-100 text-pink-700' },
-  penalizacion:            { label: 'Penalización',           icon: AlertOctagon,  iconBg: 'bg-red-100',     iconColor: 'text-red-600',     badge: 'bg-red-100 text-red-700' },
+  tarea_solicitud:           { label: 'Tarea / Solicitud',     icon: ClipboardList,  iconBg: 'bg-cyan-100',     iconColor: 'text-cyan-600',     badge: 'bg-cyan-100 text-cyan-700' },
+  tarea_solicitud_completada:{ label: 'Solicitud completada',  icon: CheckCircle2,   iconBg: 'bg-emerald-100',  iconColor: 'text-emerald-600',  badge: 'bg-emerald-100 text-emerald-700' },
+  penalizacion:              { label: 'Penalización',          icon: AlertOctagon,   iconBg: 'bg-red-100',      iconColor: 'text-red-600',      badge: 'bg-red-100 text-red-700' },
 }
 
 const TODOS_LOS_TIPOS = Object.keys(TIPO_CFG) as EventoTipo[]
@@ -110,8 +112,8 @@ function EventoCard({ evento }: { evento: EventoHistorial }) {
               <p className="mt-0.5 text-xs text-slate-500 leading-relaxed">{evento.descripcion}</p>
             )}
 
-            {/* Extra para tarea_reunion: badge de completada */}
-            {evento.tipo === 'tarea_reunion' && (
+            {/* Extra para tarea_reunion / tarea_solicitud: badge de completada */}
+            {(evento.tipo === 'tarea_reunion' || evento.tipo === 'tarea_solicitud') && (
               <span className={cn(
                 'mt-1 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold',
                 evento.extra.completada
