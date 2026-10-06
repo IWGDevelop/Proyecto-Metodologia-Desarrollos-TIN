@@ -4,11 +4,12 @@ import { Plus, Brain } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { TablaCasosUsoIA, TablaCasosUsoIASkeleton } from '@/components/casos-uso-ia/TablaCasosUsoIA'
 import { ESTADOS_CASO_IA } from '@/components/casos-uso-ia/BadgeEstadoCasoIA'
+import { TIPOS_REGISTRO_CASO_IA } from '@/lib/casos-uso-ia'
 
 export const dynamic = 'force-dynamic'
 
 interface PageProps {
-  searchParams: Promise<{ estado?: string; alcance?: string; q?: string }>
+  searchParams: Promise<{ estado?: string; alcance?: string; tipo?: string; q?: string }>
 }
 
 export default async function CasosUsoIAPage({ searchParams }: PageProps) {
@@ -26,12 +27,12 @@ export default async function CasosUsoIAPage({ searchParams }: PageProps) {
             <h1 className="text-xl font-bold text-slate-800">Casos de Uso IA</h1>
           </div>
           <p className="mt-1 text-sm text-slate-500">
-            Autorizaciones de uso de inteligencia artificial — Procedimiento TIN-P-008
+            Solicitudes y registro de usos existentes de inteligencia artificial — Procedimiento TIN-P-008
           </p>
         </div>
         <Link href="/admin/casos-uso-ia/nuevo">
           <Button size="sm" className="gap-1.5 bg-violet-600 hover:bg-violet-700">
-            <Plus size={15} /> Nueva solicitud
+            <Plus size={15} /> Nuevo registro
           </Button>
         </Link>
       </div>
@@ -64,8 +65,18 @@ export default async function CasosUsoIAPage({ searchParams }: PageProps) {
           <option value="ILT">ILT</option>
           <option value="IWG">IWG</option>
         </select>
+        <select
+          name="tipo"
+          defaultValue={params.tipo ?? ''}
+          className="h-9 rounded-md border border-slate-200 bg-white px-3 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500"
+        >
+          <option value="">Todos los tipos</option>
+          {TIPOS_REGISTRO_CASO_IA.map(t => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
         <Button type="submit" size="sm" variant="outline">Filtrar</Button>
-        {(params.estado || params.alcance || params.q) && (
+        {(params.estado || params.alcance || params.tipo || params.q) && (
           <Link href="/admin/casos-uso-ia">
             <Button size="sm" variant="ghost" className="text-slate-500">Limpiar</Button>
           </Link>
@@ -77,6 +88,7 @@ export default async function CasosUsoIAPage({ searchParams }: PageProps) {
         <TablaCasosUsoIA
           estado={params.estado}
           alcance={params.alcance}
+          tipo={params.tipo}
           search={params.q}
         />
       </Suspense>

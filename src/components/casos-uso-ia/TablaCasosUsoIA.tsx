@@ -1,11 +1,13 @@
 import Link from 'next/link'
-import { Building2, Calendar, ChevronRight } from 'lucide-react'
+import { Building2, Calendar, ChevronRight, Timer } from 'lucide-react'
 import { getCasosUsoIA } from '@/actions/casos-uso-ia'
 import { BadgeEstadoCasoIA } from './BadgeEstadoCasoIA'
+import { labelTipoRegistroCasoIA, minutosAhorradosMes, fmtMinutos } from '@/lib/casos-uso-ia'
 
 interface Props {
   estado?: string
   alcance?: string
+  tipo?: string
   search?: string
 }
 
@@ -16,14 +18,14 @@ function fmtDate(iso: string | null) {
 
 const ALCANCE_LABEL: Record<string, string> = { IWF: 'IWF', ILT: 'ILT', IWG: 'IWG' }
 
-export async function TablaCasosUsoIA({ estado, alcance, search }: Props) {
-  const casos = await getCasosUsoIA({ estado, alcance, search })
+export async function TablaCasosUsoIA({ estado, alcance, tipo, search }: Props) {
+  const casos = await getCasosUsoIA({ estado, alcance, tipo, search })
 
   if (casos.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
         <p className="text-sm font-medium text-slate-500">No hay casos de uso IA registrados</p>
-        <p className="mt-1 text-xs text-slate-400">Crea el primero con el botón "Nueva solicitud"</p>
+        <p className="mt-1 text-xs text-slate-400">Crea el primero con el botón "Nuevo registro"</p>
       </div>
     )
   }
@@ -34,6 +36,7 @@ export async function TablaCasosUsoIA({ estado, alcance, search }: Props) {
         <thead>
           <tr className="border-b border-slate-200 bg-slate-50">
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">N°</th>
+            <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Tipo</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Proceso solicitante</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Herramienta / Producto</th>
             <th className="px-4 py-3 text-left text-xs font-semibold uppercase tracking-wide text-slate-500">Alcance</th>
@@ -44,10 +47,24 @@ export async function TablaCasosUsoIA({ estado, alcance, search }: Props) {
           </tr>
         </thead>
         <tbody className="divide-y divide-slate-100">
-          {casos.map((caso) => (
+          {casos.map((caso) => {
+            const esUso = caso.tipo_registro === 'USO_EXISTENTE'
+            const minMes = esUso ? minutosAhorradosMes(caso.minutos_ahorrados, caso.frecuencia_uso) : null
+            return (
             <tr key={caso.id} className="group transition-colors hover:bg-violet-50">
               <td className="px-4 py-3 font-mono text-xs font-medium text-slate-700">
                 #{String(caso.numero).padStart(4, '0')}
+              </td>
+              <td className="px-4 py-3">
+                <span className={`inline-block whitespace-nowrap rounded-full px-2 py-0.5 text-xs font-medium
+                  ${esUso ? 'bg-emerald-100 text-emerald-700' : 'bg-violet-100 text-violet-700'}`}>
+                  {labelTipoRegistroCasoIA(caso.tipo_registro)}
+                </span>
+                {minMes != null && (
+                  <p className="mt-1 flex items-center gap-1 whitespace-nowrap text-xs text-slate-500">
+                    <Timer size={10} /> {fmtMinutos(minMes)}/mes
+                  </p>
+                )}
               </td>
               <td className="max-w-[180px] px-4 py-3">
                 <p className="truncate font-medium text-slate-800">{caso.proceso_solicitante}</p>
@@ -84,7 +101,8 @@ export async function TablaCasosUsoIA({ estado, alcance, search }: Props) {
                 </Link>
               </td>
             </tr>
-          ))}
+            )
+          })}
         </tbody>
       </table>
     </div>

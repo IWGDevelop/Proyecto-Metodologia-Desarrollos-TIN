@@ -30,7 +30,6 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'menu:cronograma',             label: 'Cronograma',               permisos: ['puede_ver'] },
       { id: 'menu:cronograma-tin',         label: 'Cronograma TIN',           permisos: ['puede_ver'] },
       { id: 'menu:casos-uso-ia',           label: 'Casos de Uso IA',          permisos: ['puede_ver'] },
-      { id: 'menu:cultura-ia',             label: 'Cultura IA',               permisos: ['puede_ver'] },
       { id: 'menu:usuarios',               label: 'Usuarios',                 permisos: ['puede_ver'] },
       { id: 'menu:sesiones',               label: 'Sesiones',                 permisos: ['puede_ver'] },
       { id: 'menu:lotes',                  label: 'Lotes',                    permisos: ['puede_ver'] },

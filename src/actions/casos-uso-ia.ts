@@ -2,11 +2,15 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
-import type { CasoUsoIA, CasoUsoIAHistorial, CasoUsoIAAnexo, EstadoCasoUsoIA, Alcance, NivelRiesgoIA } from '@/lib/supabase/types'
+import type {
+  CasoUsoIA, CasoUsoIAHistorial, CasoUsoIAAnexo, EstadoCasoUsoIA, Alcance, NivelRiesgoIA,
+  TipoRegistroCasoIA, FuenteDatosIA, FrecuenciaUsoIA,
+} from '@/lib/supabase/types'
 
 export async function getCasosUsoIA(params?: {
   estado?: string
   alcance?: string
+  tipo?: string
   search?: string
 }): Promise<CasoUsoIA[]> {
   const supabase = createAdminClient()
@@ -22,6 +26,7 @@ export async function getCasosUsoIA(params?: {
 
   if (params?.estado) query = query.eq('estado', params.estado)
   if (params?.alcance) query = query.eq('alcance', params.alcance)
+  if (params?.tipo) query = query.eq('tipo_registro', params.tipo)
   if (params?.search?.trim()) {
     const q = params.search.trim()
     query = query.or(`proceso_solicitante.ilike.%${q}%,proposito.ilike.%${q}%,herramienta_producto.ilike.%${q}%,herramienta_proveedor.ilike.%${q}%`)
@@ -49,6 +54,33 @@ export async function getCasoUsoIA(id: string): Promise<CasoUsoIA | null> {
   return data
 }
 
+/** Casos radicados por el usuario autenticado (vista de usuario). */
+export async function getMisCasosUsoIA(params?: { tipo?: string }): Promise<CasoUsoIA[]> {
+  const perfil = await getPerfil()
+  if (!perfil) return []
+  const supabase = createAdminClient()
+  let query = (supabase as any)
+    .from('casos_uso_ia')
+    .select('*')
+    .eq('solicitante_id', perfil.id)
+    .order('created_at', { ascending: false })
+
+  if (params?.tipo) query = query.eq('tipo_registro', params.tipo)
+
+  const { data, error } = await query
+  if (error) return []
+  return data ?? []
+}
+
+/** Detalle de un caso solo si pertenece al usuario autenticado. */
+export async function getMiCasoUsoIA(id: string): Promise<CasoUsoIA | null> {
+  const perfil = await getPerfil()
+  if (!perfil) return null
+  const caso = await getCasoUsoIA(id)
+  if (!caso || caso.solicitante_id !== perfil.id) return null
+  return caso
+}
+
 export async function getHistorialCasoUsoIA(casoId: string): Promise<CasoUsoIAHistorial[]> {
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
@@ -74,6 +106,7 @@ export async function getAnexosCasoUsoIA(casoId: string): Promise<CasoUsoIAAnexo
 }
 
 export interface NuevoCasoUsoIAInput {
+  tipo_registro: TipoRegistroCasoIA
   proceso_solicitante: string
   alcance: Alcance
   proposito: string
@@ -85,12 +118,24 @@ export interface NuevoCasoUsoIAInput {
   sistemas_conectar?: string
   usuarios_previstos: string
   beneficios_esperados: string
+  fuentes_datos: FuenteDatosIA[]
+  fuentes_datos_detalle?: string
+  minutos_ahorrados?: number
+  frecuencia_uso?: FrecuenciaUsoIA
 }
 
 export async function crearCasoUsoIA(
   input: NuevoCasoUsoIAInput
 ): Promise<{ ok: boolean; id?: string; error?: string }> {
   try {
+    const esUsoExistente = input.tipo_registro === 'USO_EXISTENTE'
+    if (input.fuentes_datos.length === 0) {
+      return { ok: false, error: 'Selecciona al menos una fuente de datos' }
+    }
+    if (esUsoExistente && (input.minutos_ahorrados == null || !input.frecuencia_uso)) {
+      return { ok: false, error: 'Indica los minutos ahorrados y la frecuencia de uso' }
+    }
+
     const perfil = await getPerfil()
     const supabase = createAdminClient()
 
@@ -98,6 +143,11 @@ export async function crearCasoUsoIA(
       .from('casos_uso_ia')
       .insert({
         estado: 'RECIBIDO',
+        tipo_registro: input.tipo_registro,
+        fuentes_datos: input.fuentes_datos,
+        fuentes_datos_detalle: input.fuentes_datos_detalle ?? null,
+        minutos_ahorrados: esUsoExistente ? input.minutos_ahorrados : null,
+        frecuencia_uso: esUsoExistente ? input.frecuencia_uso : null,
         solicitante_id: perfil?.id ?? null,
         proceso_solicitante: input.proceso_solicitante,
         alcance: input.alcance,
@@ -120,7 +170,7 @@ export async function crearCasoUsoIA(
       caso_id: data.id,
       estado_anterior: null,
       estado_nuevo: 'RECIBIDO',
-      comentario: 'Solicitud radicada en TIN-FLOW',
+      comentario: esUsoExistente ? 'Uso existente registrado en TIN-FLOW' : 'Solicitud radicada en TIN-FLOW',
       cambiado_by: perfil?.id ?? null,
     })
 

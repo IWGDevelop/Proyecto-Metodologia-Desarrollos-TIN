@@ -366,54 +366,6 @@ export interface TopImpacto {
   impacto_economico_total_anual: number | null
 }
 
-// ─── Cultura IA — Registros de uso por funcionario ───────────────────────────
-export interface ActividadUsoIA {
-  actividad: string
-  min_sin_ia: number
-  min_con_ia: number
-  veces_mes: number
-  horas_mes_ahorradas: number
-}
-
-export interface BeneficioCualitativoUsoIA {
-  descripcion: string
-}
-
-export interface RegistroUsoIA {
-  id: string
-  usuario_id: string
-  cedula: string | null
-  fecha: string
-  herramienta: string
-  proceso: string
-  descripcion: string
-  actividades: ActividadUsoIA[]
-  horas_ahorradas_mes: number
-  salario_mensual_cop: number | null
-  valor_hora: number | null
-  ahorro_mensual_cop: number | null
-  ahorro_anual_cop: number | null
-  beneficios_cualitativos: BeneficioCualitativoUsoIA[]
-  created_at: string
-  updated_at: string
-  usuario?: Perfil
-}
-
-export interface MetricaUsuarioIA {
-  usuario_id: string
-  cedula: string | null
-  nombre: string
-  cargo: string | null
-  proceso_interno: string | null
-  empresa: string | null
-  total_registros: number
-  total_horas_ahorradas_mes: number
-  total_ahorro_mensual_cop: number
-  total_ahorro_anual_cop: number
-  herramientas: string[]
-  ultimo_registro: string
-}
-
 // ─── Casos de Uso IA ─────────────────────────────────────────────────────────
 export type EstadoCasoUsoIA =
   | 'RECIBIDO'
@@ -428,10 +380,27 @@ export type EstadoCasoUsoIA =
 
 export type NivelRiesgoIA = 'BAJO' | 'MEDIO' | 'ALTO' | 'CRITICO'
 
+export type TipoRegistroCasoIA = 'SOLICITUD' | 'USO_EXISTENTE'
+
+export type FuenteDatosIA =
+  | 'GMAIL'
+  | 'OUTLOOK'
+  | 'GOOGLE_DRIVE'
+  | 'GOOGLE_DOCS_SHEETS'
+  | 'ONEDRIVE_SHAREPOINT'
+  | 'ARCHIVOS_LOCALES'
+  | 'SISTEMA_INTERNO'
+  | 'BASE_DATOS'
+  | 'WEB_PUBLICA'
+  | 'OTRO'
+
+export type FrecuenciaUsoIA = 'DIARIA' | 'SEMANAL' | 'QUINCENAL' | 'MENSUAL'
+
 export interface CasoUsoIA {
   id: string
   numero: number
   estado: EstadoCasoUsoIA
+  tipo_registro: TipoRegistroCasoIA
   solicitante_id: string | null
   proceso_solicitante: string
   alcance: Alcance
@@ -443,7 +412,12 @@ export interface CasoUsoIA {
   tipo_datos: string
   sistemas_conectar: string | null
   usuarios_previstos: string
+  /** SOLICITUD: beneficios esperados · USO_EXISTENTE: cómo aporta a optimizar las actividades */
   beneficios_esperados: string
+  fuentes_datos: FuenteDatosIA[]
+  fuentes_datos_detalle: string | null
+  minutos_ahorrados: number | null
+  frecuencia_uso: FrecuenciaUsoIA | null
   nivel_riesgo: NivelRiesgoIA | null
   observaciones_ajuste: string | null
   fecha_autorizacion: string | null
