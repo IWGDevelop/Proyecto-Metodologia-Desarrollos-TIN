@@ -1,6 +1,11 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getPerfil } from '@/lib/supabase/auth'
+import { sendEmail } from '@/lib/email'
+import { subjectReq, templateResumenTareasPendientes, type TareaResumenEmail } from '@/lib/email-templates'
+import { getEmailsActivos } from '@/actions/config-email'
+import { diasHastaCompromiso, urgenciaTarea } from '@/lib/urgencia-tareas'
 
 export type OrigenTareaReq = 'REUNION' | 'COMENTARIO'
 
@@ -117,4 +122,104 @@ export async function getTareasConsolidadasRequerimiento(requerimientoId: string
 
   // Cronológico: de la más antigua a la más reciente según su origen
   return tareas.sort((a, b) => new Date(a.fecha_origen).getTime() - new Date(b.fecha_origen).getTime())
+}
+
+export interface EnviarResumenInput {
+  /** TODAS = todas las pendientes · URGENTES = solo vencidas y próximas a vencer */
+  alcance: 'TODAS' | 'URGENTES'
+  /** Enviar a los responsables de las tareas incluidas */
+  responsables: boolean
+  /** Enviar a la lista global de notificaciones (Configuración → Notificaciones Email) */
+  listaGlobal: boolean
+  /** Correos adicionales */
+  adicionales: string[]
+  mensaje?: string
+}
+
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+
+function getAppUrl(): string {
+  if (process.env.APP_URL) return process.env.APP_URL
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
+  return ''
+}
+
+/** Envía por correo el resumen de tareas pendientes del requerimiento, clasificadas por urgencia. */
+export async function enviarResumenTareasPendientes(
+  requerimientoId: string,
+  input: EnviarResumenInput,
+): Promise<{ ok: boolean; error?: string; enviadoA?: string[]; tareas?: number }> {
+  try {
+    const perfil = await getPerfil()
+    if (!perfil) return { ok: false, error: 'Sesión no válida' }
+
+    const supabase = createAdminClient()
+    const [{ data: req }, todas] = await Promise.all([
+      (supabase as any)
+        .from('requerimientos')
+        .select('identificacion, nombre_desarrollo')
+        .eq('id', requerimientoId)
+        .single(),
+      getTareasConsolidadasRequerimiento(requerimientoId),
+    ])
+    if (!req) return { ok: false, error: 'Requerimiento no encontrado' }
+
+    const incluidas = todas
+      .filter(t => !t.completada)
+      .map(t => ({ t, urgencia: urgenciaTarea(t.fecha_compromiso), dias: diasHastaCompromiso(t.fecha_compromiso) }))
+      .filter(x => input.alcance === 'TODAS' || x.urgencia === 'VENCIDA' || x.urgencia === 'PROXIMA')
+      // Lo más urgente primero dentro de cada grupo
+      .sort((a, b) => (a.dias ?? Number.MAX_SAFE_INTEGER) - (b.dias ?? Number.MAX_SAFE_INTEGER))
+
+    if (incluidas.length === 0) {
+      return {
+        ok: false,
+        error: input.alcance === 'URGENTES'
+          ? 'No hay tareas vencidas ni próximas a vencer para enviar'
+          : 'No hay tareas pendientes para enviar',
+      }
+    }
+
+    const destinatarios = new Set<string>()
+    if (input.responsables) {
+      for (const { t } of incluidas) if (t.responsable_email) destinatarios.add(t.responsable_email.trim().toLowerCase())
+    }
+    if (input.listaGlobal) {
+      for (const e of await getEmailsActivos()) destinatarios.add(e.trim().toLowerCase())
+    }
+    for (const e of input.adicionales) {
+      const limpio = e.trim().toLowerCase()
+      if (!EMAIL_RE.test(limpio)) return { ok: false, error: `Correo no válido: ${e}` }
+      destinatarios.add(limpio)
+    }
+    if (destinatarios.size === 0) return { ok: false, error: 'No hay destinatarios para el envío' }
+
+    const tareas: TareaResumenEmail[] = incluidas.map(({ t, urgencia, dias }) => ({
+      descripcion: t.descripcion,
+      origen: t.origen === 'REUNION' ? `Reunión${t.contexto ? `: ${t.contexto}` : ''}` : 'Comentarios',
+      responsable: t.nombre_responsable ?? t.responsable_email,
+      fechaCompromiso: t.fecha_compromiso,
+      urgencia,
+      dias,
+    }))
+
+    const appUrl = getAppUrl()
+    const lista = [...destinatarios]
+    await sendEmail({
+      to: lista,
+      subject: subjectReq(req.identificacion ?? '', req.nombre_desarrollo ?? req.identificacion ?? ''),
+      html: templateResumenTareasPendientes({
+        nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
+        tareas,
+        mensaje: input.mensaje,
+        remitente: perfil.nombre_completo,
+        enlace: appUrl ? `${appUrl}/admin/requerimientos/${requerimientoId}` : undefined,
+      }),
+      requerimientoId,
+    })
+
+    return { ok: true, enviadoA: lista, tareas: tareas.length }
+  } catch (e: any) {
+    return { ok: false, error: e?.message ?? 'Error al enviar el correo' }
+  }
 }

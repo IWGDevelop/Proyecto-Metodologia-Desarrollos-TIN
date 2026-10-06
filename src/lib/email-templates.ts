@@ -458,3 +458,128 @@ export function templateNuevoRequerimiento({
     ${enlace ? `<a href="${enlace}" style="display:inline-block;background:#2563eb;color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver desarrollo →</a>` : ''}
   `)
 }
+
+/* ── Resumen de tareas pendientes del requerimiento ─────────────────────────── */
+
+export type UrgenciaTarea = 'VENCIDA' | 'PROXIMA' | 'AL_DIA' | 'SIN_FECHA'
+
+export interface TareaResumenEmail {
+  descripcion: string
+  origen: string
+  responsable: string | null
+  fechaCompromiso: string | null
+  urgencia: UrgenciaTarea
+  /** Días hasta el compromiso (negativo = días de retraso) */
+  dias: number | null
+}
+
+/** Escapa texto ingresado por usuarios antes de insertarlo en el HTML */
+function esc(texto: string) {
+  return texto
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;').replace(/'/g, '&#39;')
+}
+
+const URGENCIA_CFG: Record<UrgenciaTarea, { titulo: string; resumen: string; color: string; fondo: string; borde: string }> = {
+  VENCIDA:   { titulo: '🚨 Vencidas',              resumen: 'Vencidas',          color: '#b91c1c', fondo: '#fef2f2', borde: '#ef4444' },
+  PROXIMA:   { titulo: '⏰ Próximas a vencer',      resumen: 'Próximas a vencer', color: '#b45309', fondo: '#fffbeb', borde: '#f59e0b' },
+  AL_DIA:    { titulo: '🟢 Al día',                 resumen: 'Al día',            color: '#047857', fondo: '#ecfdf5', borde: '#10b981' },
+  SIN_FECHA: { titulo: '⚪ Sin fecha de compromiso', resumen: 'Sin fecha',         color: '#475569', fondo: '#f8fafc', borde: '#cbd5e1' },
+}
+
+function etiquetaPlazo(t: TareaResumenEmail) {
+  if (t.dias == null) return 'Sin fecha'
+  if (t.dias < 0) return `Vencida hace ${Math.abs(t.dias)} día${t.dias === -1 ? '' : 's'}`
+  if (t.dias === 0) return 'Vence HOY'
+  if (t.dias === 1) return 'Vence mañana'
+  return `Vence en ${t.dias} días`
+}
+
+function fmtFechaCorta(fecha: string | null) {
+  if (!fecha) return '—'
+  return new Date(`${fecha.slice(0, 10)}T12:00:00`).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
+}
+
+export function templateResumenTareasPendientes({
+  nombreDesarrollo,
+  tareas,
+  mensaje,
+  remitente,
+  enlace,
+}: {
+  nombreDesarrollo: string
+  tareas: TareaResumenEmail[]
+  mensaje?: string
+  remitente?: string
+  enlace?: string
+}) {
+  const conteo = (u: UrgenciaTarea) => tareas.filter(t => t.urgencia === u).length
+  const vencidas = conteo('VENCIDA')
+  const proximas = conteo('PROXIMA')
+
+  const tarjeta = (u: UrgenciaTarea) => {
+    const c = URGENCIA_CFG[u]
+    return `<td style="padding:4px" width="25%">
+      <div style="background:${c.fondo};border:1px solid ${c.borde};border-radius:8px;padding:10px 8px;text-align:center">
+        <p style="margin:0;font-size:22px;font-weight:bold;color:${c.color}">${conteo(u)}</p>
+        <p style="margin:2px 0 0;font-size:11px;color:${c.color}">${c.resumen}</p>
+      </div>
+    </td>`
+  }
+
+  const seccion = (u: UrgenciaTarea) => {
+    const lista = tareas.filter(t => t.urgencia === u)
+    if (lista.length === 0) return ''
+    const c = URGENCIA_CFG[u]
+    return `
+      <p style="margin:24px 0 8px;font-size:13px;font-weight:bold;color:${c.color}">${c.titulo} (${lista.length})</p>
+      <table width="100%" cellpadding="0" cellspacing="0" style="border-collapse:collapse">
+        ${lista.map(t => `
+          <tr>
+            <td style="padding:10px 12px;background:${c.fondo};border-left:4px solid ${c.borde};border-bottom:6px solid #fff">
+              <p style="margin:0;font-size:14px;color:#1e293b;font-weight:bold">${esc(t.descripcion)}</p>
+              <p style="margin:4px 0 0;font-size:12px;color:#64748b">
+                ${esc(t.origen)}${t.responsable ? ` · 👤 ${esc(t.responsable)}` : ''}${t.fechaCompromiso ? ` · Compromiso: ${fmtFechaCorta(t.fechaCompromiso)}` : ''}
+              </p>
+            </td>
+            <td style="padding:10px 12px;background:${c.fondo};border-bottom:6px solid #fff;text-align:right;white-space:nowrap;vertical-align:middle">
+              <span style="display:inline-block;padding:4px 10px;border-radius:999px;background:#fff;border:1px solid ${c.borde};font-size:12px;font-weight:bold;color:${c.color}">${etiquetaPlazo(t)}</span>
+            </td>
+          </tr>`).join('')}
+      </table>`
+  }
+
+  const titulo = vencidas > 0
+    ? `🚨 Tareas pendientes: ${vencidas} vencida${vencidas !== 1 ? 's' : ''}`
+    : proximas > 0
+      ? '⏰ Tareas pendientes próximas a vencer'
+      : 'Resumen de tareas pendientes'
+  const colorTitulo = vencidas > 0 ? '#dc2626' : proximas > 0 ? '#d97706' : '#1e293b'
+  const colorBoton = vencidas > 0 ? '#dc2626' : '#2563eb'
+
+  return shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:${colorTitulo}">${titulo}</h2>
+    <p style="margin:0 0 16px;font-size:14px;color:#64748b">
+      Estado de las tareas pendientes del desarrollo <strong>${esc(nombreDesarrollo)}</strong>
+      al ${new Date().toLocaleDateString('es-CO', { day: '2-digit', month: 'long', year: 'numeric', timeZone: 'America/Bogota' })}.
+    </p>
+
+    ${mensaje?.trim() ? `
+      <div style="background:#f8fafc;border-left:3px solid #2563eb;border-radius:0 8px 8px 0;padding:12px 16px;margin-bottom:16px">
+        ${remitente ? `<p style="margin:0 0 4px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8">Mensaje de ${esc(remitente)}</p>` : ''}
+        <p style="margin:0;font-size:14px;color:#1e293b;white-space:pre-wrap">${esc(mensaje.trim())}</p>
+      </div>` : ''}
+
+    <table width="100%" cellpadding="0" cellspacing="0" style="margin-bottom:8px">
+      <tr>${tarjeta('VENCIDA')}${tarjeta('PROXIMA')}${tarjeta('AL_DIA')}${tarjeta('SIN_FECHA')}</tr>
+    </table>
+
+    ${seccion('VENCIDA')}${seccion('PROXIMA')}${seccion('AL_DIA')}${seccion('SIN_FECHA')}
+
+    <p style="margin:24px 0 20px;font-size:14px;color:#475569">
+      Ingresa al sistema para registrar el cumplimiento de cada tarea con su respectivo soporte.
+    </p>
+
+    ${enlace ? `<a href="${enlace}" style="display:inline-block;background:${colorBoton};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold">Ver tareas pendientes →</a>` : ''}
+  `)
+}

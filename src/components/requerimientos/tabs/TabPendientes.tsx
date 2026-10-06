@@ -10,6 +10,8 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { storage } from '@/lib/firebase'
+import { DIAS_PROXIMA_A_VENCER, diasHastaCompromiso, urgenciaTarea } from '@/lib/urgencia-tareas'
+import { EnviarPendientesDialog } from './EnviarPendientesDialog'
 import { cn } from '@/lib/utils'
 import {
   getTareasConsolidadasRequerimiento, type AnexoSoporteTarea, type TareaConsolidadaReq,
@@ -44,12 +46,7 @@ function fmtFecha(iso: string | null) {
   return d.toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
-function diasRestantes(fecha: string | null) {
-  if (!fecha) return null
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0)
-  const f = new Date(`${fecha.slice(0, 10)}T00:00:00`)
-  return Math.round((f.getTime() - hoy.getTime()) / 86_400_000)
-}
+const diasRestantes = diasHastaCompromiso
 
 /** Ruta única en Storage para un soporte */
 function rutaSoporte(carpeta: string, nombreArchivo: string) {
@@ -73,7 +70,7 @@ function BadgeCompromiso({ tarea }: { tarea: TareaConsolidadaReq }) {
   if (!tarea.fecha_compromiso) return null
   const dias = diasRestantes(tarea.fecha_compromiso)
   const vencida = !tarea.completada && dias != null && dias < 0
-  const proxima = !tarea.completada && dias != null && dias >= 0 && dias <= 3
+  const proxima = !tarea.completada && dias != null && dias >= 0 && dias <= DIAS_PROXIMA_A_VENCER
   return (
     <span className={cn(
       'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium',
@@ -303,7 +300,8 @@ export function TabPendientes({ requerimientoId, initialData }: Props) {
   })
 
   const pendientes = tareas.filter(t => !t.completada)
-  const vencidas = pendientes.filter(t => (diasRestantes(t.fecha_compromiso) ?? 0) < 0)
+  const vencidas = pendientes.filter(t => urgenciaTarea(t.fecha_compromiso) === 'VENCIDA')
+  const proximas = pendientes.filter(t => urgenciaTarea(t.fecha_compromiso) === 'PROXIMA')
   const visibles = tareas.filter(t =>
     filtro === 'TODAS' ? true : filtro === 'PENDIENTES' ? !t.completada : t.completada
   )
@@ -318,10 +316,11 @@ export function TabPendientes({ requerimientoId, initialData }: Props) {
   return (
     <div className="space-y-4">
       {/* Resumen */}
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {[
           { label: 'Pendientes', valor: pendientes.length, cls: 'text-blue-700' },
           { label: 'Vencidas', valor: vencidas.length, cls: vencidas.length ? 'text-red-600' : 'text-slate-700' },
+          { label: 'Próximas a vencer', valor: proximas.length, cls: proximas.length ? 'text-amber-600' : 'text-slate-700' },
           { label: 'Completadas', valor: tareas.length - pendientes.length, cls: 'text-emerald-600' },
         ].map(k => (
           <div key={k.label} className="rounded-xl border border-slate-200 bg-white p-4">
@@ -348,7 +347,10 @@ export function TabPendientes({ requerimientoId, initialData }: Props) {
             </button>
           ))}
         </div>
-        <p className="text-xs text-slate-400">Orden cronológico según la fecha en que surgió cada tarea</p>
+        <div className="flex items-center gap-3">
+          <p className="hidden text-xs text-slate-400 xl:block">Orden cronológico según la fecha en que surgió cada tarea</p>
+          <EnviarPendientesDialog requerimientoId={requerimientoId} tareas={tareas} />
+        </div>
       </div>
 
       {/* Línea de tiempo */}
