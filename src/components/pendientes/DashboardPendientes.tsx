@@ -10,6 +10,8 @@ import {
   ShieldCheck, FileCheck, Rocket, Calendar, ClipboardList,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { coincideDesarrollador, SIN_DESARROLLADOR } from '@/lib/filtro-desarrollador'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import type { TareaPendienteReunion, CompromisoPendiente, FirmaPendienteVistoBueno, TareaSolicitudPendiente } from '@/actions/pendientes'
 
 interface Props {
@@ -18,6 +20,9 @@ interface Props {
   firmas: FirmaPendienteVistoBueno[]
   solicitudes: TareaSolicitudPendiente[]
   isAdmin?: boolean
+  /** Para el filtro por desarrollador */
+  desarrolladores?: { id: string; nombre: string }[]
+  porRequerimiento?: Record<string, string[]>
 }
 
 const TIPO_COLOR: Record<string, string> = {
@@ -58,7 +63,30 @@ function formatFecha(fecha: string) {
 
 type FiltroUrgencia = 'todas' | 'vencidas' | 'urgentes' | 'proximas'
 
-export function DashboardPendientes({ tareas, compromisos, firmas, solicitudes, isAdmin = false }: Props) {
+export function DashboardPendientes({
+  tareas: tareasTodas,
+  compromisos: compromisosTodos,
+  firmas: firmasTodas,
+  solicitudes: solicitudesTodas,
+  isAdmin = false,
+  desarrolladores = [],
+  porRequerimiento = {},
+}: Props) {
+  // Filtro por desarrollador: se aplica primero para que contadores y secciones lo reflejen
+  const [fDesarrollador, setFDesarrollador] = useState('')
+  const delDesarrollador = <T extends { requerimiento_id: string }>(lista: T[]) =>
+    fDesarrollador ? lista.filter(x => coincideDesarrollador(x.requerimiento_id, fDesarrollador, porRequerimiento)) : lista
+  const tareas      = delDesarrollador(tareasTodas)
+  const compromisos = delDesarrollador(compromisosTodos)
+  const firmas      = delDesarrollador(firmasTodas)
+  const solicitudes = delDesarrollador(solicitudesTodas)
+
+  const itemsDesarrollador = [
+    { value: '_all', label: 'Todos los desarrolladores' },
+    { value: SIN_DESARROLLADOR, label: 'Sin desarrollador asignado' },
+    ...desarrolladores.map(d => ({ value: d.id, label: d.nombre })),
+  ]
+
   const [filtroTareas, setFiltroTareas] = useState<FiltroUrgencia>('todas')
   const [filtroCompromisos, setFiltroCompromisos] = useState<FiltroUrgencia>('todas')
   const [seccionTareasAbierta, setSeccionTareasAbierta] = useState(true)
@@ -90,9 +118,33 @@ export function DashboardPendientes({ tareas, compromisos, firmas, solicitudes, 
   return (
     <div className="space-y-6 p-6">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Pendientes</h1>
-        <p className="text-sm text-slate-500 mt-1">Tareas de reuniones, compromisos de fechas y vistos buenos pendientes</p>
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Pendientes</h1>
+          <p className="text-sm text-slate-500 mt-1">Tareas de reuniones, compromisos de fechas y vistos buenos pendientes</p>
+        </div>
+        {desarrolladores.length > 0 && (
+          <div className="flex items-center gap-2">
+            <UserCircle2 size={15} className="text-slate-400" />
+            <Select
+              items={itemsDesarrollador}
+              value={fDesarrollador || '_all'}
+              onValueChange={v => setFDesarrollador(!v || v === '_all' ? '' : String(v))}
+            >
+              <SelectTrigger className={cn(
+                'h-9 w-[230px] text-sm',
+                fDesarrollador && 'border-blue-400 bg-blue-50 text-blue-700',
+              )}>
+                <SelectValue placeholder="Desarrollador" />
+              </SelectTrigger>
+              <SelectContent>
+                {itemsDesarrollador.map(d => (
+                  <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
       </div>
 
       {/* Resumen global */}

@@ -9,6 +9,8 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { getLotesConStats } from '@/actions/lotes'
 import { getEstadosDistintos } from '@/actions/requerimientos-admin'
+import { getMapaDesarrolladores } from '@/actions/desarrolladores-req'
+import { aplicarFiltroDesarrollador } from '@/lib/filtro-desarrollador'
 import type { FiltrosRequerimientos as FiltrosType, SortConfig } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 
@@ -16,7 +18,7 @@ interface PageProps {
   searchParams: Promise<{
     q?: string; estado?: string; alcance?: string; prioridad?: string
     proceso?: string; tipo?: string; borrador?: string; page?: string
-    sort?: string; dir?: string
+    sort?: string; dir?: string; dev?: string
   }>
 }
 
@@ -47,6 +49,7 @@ async function getTotales(filtros: FiltrosType, perfilFiltro: PerfilFiltro | nul
     }
     query = query.or(orParts.join(','))
   }
+  query = await aplicarFiltroDesarrollador(supabase, query, filtros.desarrollador)
 
   const { count: totalFiltrado } = await query
   return { total: total ?? 0, totalFiltrado: totalFiltrado ?? 0 }
@@ -69,16 +72,18 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
     proceso_interno: params.proceso,
     tipo_solucion:   params.tipo,
     es_borrador:     params.borrador === 'true' ? true : undefined,
+    desarrollador:   params.dev || undefined,
   }
   const sort: SortConfig = {
     column:    params.sort ?? 'impacto_economico_total_anual',
     direction: (params.dir === 'asc' ? 'asc' : 'desc') as 'asc' | 'desc',
   }
   const page = Math.max(1, parseInt(params.page ?? '1'))
-  const [{ total, totalFiltrado }, lotes, estadosDisponibles] = await Promise.all([
+  const [{ total, totalFiltrado }, lotes, estadosDisponibles, { desarrolladores }] = await Promise.all([
     getTotales(filtros, perfilFiltro),
     getLotesConStats(),
     getEstadosDistintos(),
+    getMapaDesarrolladores(),
   ])
 
   return (
@@ -104,7 +109,12 @@ export default async function AdminRequerimientosPage({ searchParams }: PageProp
       </div>
 
       <Suspense>
-        <FiltrosRequerimientos total={total} totalFiltrado={totalFiltrado} estadosDisponibles={estadosDisponibles} />
+        <FiltrosRequerimientos
+          total={total}
+          totalFiltrado={totalFiltrado}
+          estadosDisponibles={estadosDisponibles}
+          desarrolladores={desarrolladores}
+        />
       </Suspense>
 
       <Suspense fallback={<TablaRequerimientosSkeleton />}>

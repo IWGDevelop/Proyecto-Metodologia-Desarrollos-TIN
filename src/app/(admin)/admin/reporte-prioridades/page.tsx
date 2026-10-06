@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ReportePrioridades } from '@/components/reportes/ReportePrioridades'
+import { getMapaDesarrolladores } from '@/actions/desarrolladores-req'
 
 export const dynamic = 'force-dynamic'
 
@@ -31,14 +32,18 @@ async function fetchDatos() {
 }
 
 export default async function ReportePrioridadesPage() {
-  const datos = await fetchDatos()
+  const [datos, mapaDev] = await Promise.all([fetchDatos(), getMapaDesarrolladores()])
   return (
     <div className="space-y-8 p-6">
       <div>
         <h1 className="text-xl font-bold text-slate-800">Reporte de Prioridades</h1>
         <p className="text-sm text-slate-500">Distribución, impacto y estado de los desarrollos por nivel de prioridad</p>
       </div>
-      <ReportePrioridades datos={datos} />
+      <ReportePrioridades
+        datos={datos}
+        desarrolladores={mapaDev.desarrolladores}
+        porRequerimiento={mapaDev.porRequerimiento}
+      />
     </div>
   )
 }

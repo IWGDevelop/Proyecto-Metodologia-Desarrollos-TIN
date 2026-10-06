@@ -24,6 +24,50 @@ export async function getDesarrolladoresReq(requerimientoId: string): Promise<Re
   return data ?? []
 }
 
+export interface DesarrolladorFiltro {
+  id: string
+  nombre: string
+}
+
+/**
+ * Para filtros por desarrollador: lista de desarrolladores con al menos un requerimiento asignado
+ * y mapa requerimiento_id → perfil_ids asignados.
+ */
+export async function getMapaDesarrolladores(): Promise<{
+  desarrolladores: DesarrolladorFiltro[]
+  porRequerimiento: Record<string, string[]>
+}> {
+  const supabase = createAdminClient()
+  const { data, error } = await (supabase as any)
+    .from('requerimiento_desarrolladores')
+    .select('requerimiento_id, perfil_id, perfil:perfil_id(id, nombre_completo, email)')
+
+  if (error) return { desarrolladores: [], porRequerimiento: {} }
+
+  const porRequerimiento: Record<string, string[]> = {}
+  const nombres = new Map<string, string>()
+  for (const r of data ?? []) {
+    ;(porRequerimiento[r.requerimiento_id] ??= []).push(r.perfil_id)
+    if (!nombres.has(r.perfil_id)) nombres.set(r.perfil_id, r.perfil?.nombre_completo ?? r.perfil?.email ?? 'Sin nombre')
+  }
+
+  const desarrolladores = [...nombres.entries()]
+    .map(([id, nombre]) => ({ id, nombre }))
+    .sort((a, b) => a.nombre.localeCompare(b.nombre, 'es'))
+
+  return { desarrolladores, porRequerimiento }
+}
+
+/** IDs de requerimientos asignados a un desarrollador */
+export async function getRequerimientosDeDesarrollador(perfilId: string): Promise<string[]> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('requerimiento_desarrolladores')
+    .select('requerimiento_id')
+    .eq('perfil_id', perfilId)
+  return (data ?? []).map((r: { requerimiento_id: string }) => r.requerimiento_id)
+}
+
 export async function getDesarrolladoresDisponibles(): Promise<Perfil[]> {
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
