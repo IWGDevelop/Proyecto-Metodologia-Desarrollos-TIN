@@ -167,7 +167,43 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
 
   return (
-    <div className="space-y-5 p-6">
+    <Tabs
+      defaultValue={defaultTab}
+      orientation="vertical"
+      className="flex-col gap-5 p-6 lg:flex-row-reverse lg:items-start"
+    >
+      {/* Menú de pestañas: columna derecha desde el inicio de la página */}
+      <TabsList className="h-auto w-full shrink-0 items-stretch gap-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm max-lg:flex-row max-lg:flex-wrap lg:sticky lg:top-4 lg:w-56">
+        {gruposNav.map((grupo, gi) => (
+          <div key={grupo.titulo} className="contents lg:block">
+            <p className={cn(
+              'hidden px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 lg:block',
+              gi > 0 && 'mt-3 border-t border-slate-100 pt-3',
+            )}>
+              {grupo.titulo}
+            </p>
+            {grupo.items.map(({ value, label, Icon, bloqueado, badge }) => (
+              <TabsTrigger
+                key={value}
+                value={value}
+                disabled={bloqueado}
+                className={cn(
+                  'h-auto flex-none justify-start gap-2 px-2.5 py-2 text-slate-600 max-lg:w-auto lg:w-full',
+                  'hover:bg-slate-50 data-active:bg-blue-50 data-active:text-blue-700 data-active:shadow-none',
+                  bloqueado && 'opacity-50',
+                )}
+              >
+                {bloqueado ? <Lock size={14} /> : <Icon size={15} />}
+                <span className="flex-1 text-left">{label}</span>
+                {badge}
+              </TabsTrigger>
+            ))}
+          </div>
+        ))}
+      </TabsList>
+
+      {/* Columna principal: encabezado y contenido de la pestaña activa */}
+      <div className="min-w-0 flex-1 space-y-5">
       {/* Banner lote cerrado */}
       {lote && (
         <div className={cn(
@@ -252,40 +288,6 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           )}
         </div>
       </div>
-
-      <Tabs
-        defaultValue={defaultTab}
-        orientation="vertical"
-        className="flex-col gap-5 lg:flex-row-reverse lg:items-start [&>[data-slot=tabs-content]]:min-w-0"
-      >
-        <TabsList className="h-auto w-full shrink-0 items-stretch gap-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm max-lg:flex-row max-lg:flex-wrap lg:sticky lg:top-4 lg:w-56">
-          {gruposNav.map((grupo, gi) => (
-            <div key={grupo.titulo} className="contents lg:block">
-              <p className={cn(
-                'hidden px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 lg:block',
-                gi > 0 && 'mt-3 border-t border-slate-100 pt-3',
-              )}>
-                {grupo.titulo}
-              </p>
-              {grupo.items.map(({ value, label, Icon, bloqueado, badge }) => (
-                <TabsTrigger
-                  key={value}
-                  value={value}
-                  disabled={bloqueado}
-                  className={cn(
-                    'h-auto flex-none justify-start gap-2 px-2.5 py-2 text-slate-600 max-lg:w-auto lg:w-full',
-                    'hover:bg-slate-50 data-active:bg-blue-50 data-active:text-blue-700 data-active:shadow-none',
-                    bloqueado && 'opacity-50',
-                  )}
-                >
-                  {bloqueado ? <Lock size={14} /> : <Icon size={15} />}
-                  <span className="flex-1 text-left">{label}</span>
-                  {badge}
-                </TabsTrigger>
-              ))}
-            </div>
-          ))}
-        </TabsList>
 
         {pv('req:informacion') && (
           <TabsContent value="informacion">
@@ -437,7 +439,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             historial={historialFechas}
           />
         </TabsContent>
-      </Tabs>
-    </div>
+      </div>
+    </Tabs>
   )
 }
