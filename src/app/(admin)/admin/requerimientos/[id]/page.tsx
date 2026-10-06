@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Lock, Info, CalendarDays, Link2, Calculator, TrendingUp, Code2, FileCode, Workflow,
-  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, type LucideIcon,
+  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, type LucideIcon,
 } from 'lucide-react'
 import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
 import { formatFechaRelativa, cn } from '@/lib/utils'
@@ -23,7 +23,9 @@ import { TabFlujo } from '@/components/requerimientos/tabs/TabFlujo'
 import { TabDocumentacionTecnica } from '@/components/requerimientos/tabs/TabDocumentacionTecnica'
 import { TabActividad } from '@/components/requerimientos/tabs/TabActividad'
 import { TabVistoBueno } from '@/components/requerimientos/tabs/TabVistoBueno'
+import { TabPendientes } from '@/components/requerimientos/tabs/TabPendientes'
 import { getHistorialCompleto } from '@/actions/historial-detallado'
+import { getTareasConsolidadasRequerimiento } from '@/actions/pendientes-requerimiento'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
@@ -45,7 +47,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -57,6 +59,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getEtiquetaJerarquica(id),
     getHistorialFechas(id),
     getHistorialCompleto(id),
+    getTareasConsolidadasRequerimiento(id),
   ])
 
   if (error || !req) notFound()
@@ -108,11 +111,19 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   // Navegación lateral agrupada por sección
   type ItemNav = { value: string; label: string; Icon: LucideIcon; visible: boolean; bloqueado?: boolean; badge?: React.ReactNode }
   const impactoRealPendiente = ['ENTREGADO', 'CERRADO'].includes(req.estado)
+  const verPendientes = pv('req:reuniones') || pv('req:comentarios')
+  const numPendientes = tareasConsolidadas.filter(t => !t.completada).length
   const gruposNav: { titulo: string; items: ItemNav[] }[] = [
     {
       titulo: 'General',
       items: [
         { value: 'informacion',  label: 'Información',  Icon: Info,         visible: pv('req:informacion') },
+        {
+          value: 'pendientes', label: 'Tareas pendientes', Icon: ListTodo, visible: verPendientes,
+          badge: numPendientes > 0 ? (
+            <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{numPendientes}</span>
+          ) : undefined,
+        },
         { value: 'fechas',       label: 'Fechas',       Icon: CalendarDays, visible: true },
         { value: 'asociaciones', label: 'Asociaciones', Icon: Link2,        visible: true },
       ],
@@ -292,6 +303,12 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         {pv('req:informacion') && (
           <TabsContent value="informacion">
             <TabInformacion req={req as any} canEdit={pe('req:general') && !infoLocked} isAdmin={isAdmin} />
+          </TabsContent>
+        )}
+
+        {verPendientes && (
+          <TabsContent value="pendientes">
+            <TabPendientes requerimientoId={id} initialData={tareasConsolidadas} />
           </TabsContent>
         )}
 
