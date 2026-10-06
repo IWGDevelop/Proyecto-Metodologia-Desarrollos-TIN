@@ -3,7 +3,10 @@ import Link from 'next/link'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
-import { ArrowLeft, Lock } from 'lucide-react'
+import {
+  ArrowLeft, Lock, Info, CalendarDays, Link2, Calculator, TrendingUp, Code2, FileCode, Workflow,
+  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, type LucideIcon,
+} from 'lucide-react'
 import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
 import { formatFechaRelativa, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
@@ -102,6 +105,64 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   ]
   const defaultTab = tabsDef.find(t => pv(t.recurso))?.value ?? 'informacion'
 
+  // Navegación lateral agrupada por sección
+  type ItemNav = { value: string; label: string; Icon: LucideIcon; visible: boolean; bloqueado?: boolean; badge?: React.ReactNode }
+  const impactoRealPendiente = ['ENTREGADO', 'CERRADO'].includes(req.estado)
+  const gruposNav: { titulo: string; items: ItemNav[] }[] = [
+    {
+      titulo: 'General',
+      items: [
+        { value: 'informacion',  label: 'Información',  Icon: Info,         visible: pv('req:informacion') },
+        { value: 'fechas',       label: 'Fechas',       Icon: CalendarDays, visible: true },
+        { value: 'asociaciones', label: 'Asociaciones', Icon: Link2,        visible: true },
+      ],
+    },
+    {
+      titulo: 'Impacto',
+      items: [
+        { value: 'impacto', label: 'Impacto HH', Icon: Calculator, visible: pv('req:impacto-hh') },
+        {
+          value: 'impacto-real', label: 'Impacto Real', Icon: TrendingUp, visible: pv('req:impacto-real'),
+          badge: impactoRealPendiente ? (
+            <span className={cn(
+              'rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white',
+              req.impacto_economico_total_anual_real ? 'bg-emerald-500' : 'bg-amber-500',
+            )}>
+              {req.impacto_economico_total_anual_real ? '✓' : '!'}
+            </span>
+          ) : undefined,
+        },
+      ],
+    },
+    {
+      titulo: 'Técnico',
+      items: [
+        { value: 'desarrollo',  label: 'Desarrollo',   Icon: Code2,    visible: true, bloqueado: !isAdmin },
+        { value: 'doc-tecnica', label: 'Doc. Técnica', Icon: FileCode, visible: true, bloqueado: !isAdmin },
+      ],
+    },
+    {
+      titulo: 'Seguimiento',
+      items: [
+        { value: 'flujo',       label: 'Flujo',       Icon: Workflow,    visible: true },
+        { value: 'historial',   label: 'Historial',   Icon: History,     visible: pv('req:historial') },
+        { value: 'actividad',   label: 'Actividad',   Icon: Activity,    visible: pv('req:actividad') },
+        { value: 'visto-bueno', label: 'Visto Bueno', Icon: BadgeCheck,  visible: pv('req:visto-bueno') },
+      ],
+    },
+    {
+      titulo: 'Colaboración',
+      items: [
+        { value: 'comentarios',    label: 'Comentarios',    Icon: MessageSquare, visible: pv('req:comentarios') },
+        { value: 'reuniones',      label: 'Reuniones',      Icon: Users,         visible: pv('req:reuniones') },
+        { value: 'anexos',         label: 'Anexos',         Icon: Paperclip,     visible: pv('req:anexos') },
+        { value: 'penalizaciones', label: 'Penalizaciones', Icon: AlertTriangle, visible: pv('req:penalizaciones') },
+      ],
+    },
+  ]
+    .map(g => ({ ...g, items: g.items.filter(i => i.visible) }))
+    .filter(g => g.items.length > 0)
+
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
 
@@ -192,37 +253,38 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         </div>
       </div>
 
-      <Tabs defaultValue={defaultTab}>
-        <TabsList className="w-full justify-start flex-wrap">
-          {pv('req:informacion')    && <TabsTrigger value="informacion">Información</TabsTrigger>}
-          <TabsTrigger value="desarrollo" disabled={!isAdmin} className={!isAdmin ? 'opacity-50' : ''}>
-            {!isAdmin && <Lock size={11} className="mr-1" />}
-            Desarrollo
-          </TabsTrigger>
-          <TabsTrigger value="doc-tecnica" disabled={!isAdmin} className={!isAdmin ? 'opacity-50' : ''}>
-            {!isAdmin && <Lock size={11} className="mr-1" />}
-            Doc. Técnica
-          </TabsTrigger>
-          {pv('req:impacto-hh')    && <TabsTrigger value="impacto">Impacto HH</TabsTrigger>}
-          {pv('req:historial')      && <TabsTrigger value="historial">Historial</TabsTrigger>}
-          {pv('req:actividad')      && <TabsTrigger value="actividad">Actividad</TabsTrigger>}
-          {pv('req:visto-bueno')    && <TabsTrigger value="visto-bueno">Visto Bueno</TabsTrigger>}
-          {pv('req:impacto-real')  && (
-            <TabsTrigger value="impacto-real">
-              Impacto Real{['ENTREGADO','CERRADO'].includes(req.estado) && (
-                <span className="ml-1.5 rounded-full bg-emerald-500 px-1.5 py-0.5 text-[10px] text-white">
-                  {req.impacto_economico_total_anual_real ? '✓' : '!'}
-                </span>
-              )}
-            </TabsTrigger>
-          )}
-          {pv('req:reuniones')      && <TabsTrigger value="reuniones">Reuniones</TabsTrigger>}
-          {pv('req:penalizaciones') && <TabsTrigger value="penalizaciones">Penalizaciones</TabsTrigger>}
-          {pv('req:comentarios')    && <TabsTrigger value="comentarios">Comentarios</TabsTrigger>}
-          {pv('req:anexos')         && <TabsTrigger value="anexos">Anexos</TabsTrigger>}
-          <TabsTrigger value="asociaciones">Asociaciones</TabsTrigger>
-          <TabsTrigger value="fechas">Fechas</TabsTrigger>
-          <TabsTrigger value="flujo">Flujo</TabsTrigger>
+      <Tabs
+        defaultValue={defaultTab}
+        orientation="vertical"
+        className="flex-col gap-5 lg:flex-row lg:items-start [&>[data-slot=tabs-content]]:min-w-0"
+      >
+        <TabsList className="h-auto w-full shrink-0 items-stretch gap-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm max-lg:flex-row max-lg:flex-wrap lg:sticky lg:top-4 lg:w-56">
+          {gruposNav.map((grupo, gi) => (
+            <div key={grupo.titulo} className="contents lg:block">
+              <p className={cn(
+                'hidden px-2.5 pb-1 text-[10px] font-semibold uppercase tracking-wider text-slate-400 lg:block',
+                gi > 0 && 'mt-3 border-t border-slate-100 pt-3',
+              )}>
+                {grupo.titulo}
+              </p>
+              {grupo.items.map(({ value, label, Icon, bloqueado, badge }) => (
+                <TabsTrigger
+                  key={value}
+                  value={value}
+                  disabled={bloqueado}
+                  className={cn(
+                    'h-auto flex-none justify-start gap-2 px-2.5 py-2 text-slate-600 max-lg:w-auto lg:w-full',
+                    'hover:bg-slate-50 data-active:bg-blue-50 data-active:text-blue-700 data-active:shadow-none',
+                    bloqueado && 'opacity-50',
+                  )}
+                >
+                  {bloqueado ? <Lock size={14} /> : <Icon size={15} />}
+                  <span className="flex-1 text-left">{label}</span>
+                  {badge}
+                </TabsTrigger>
+              ))}
+            </div>
+          ))}
         </TabsList>
 
         {pv('req:informacion') && (
