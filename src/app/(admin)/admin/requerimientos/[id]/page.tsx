@@ -256,7 +256,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       <Tabs
         defaultValue={defaultTab}
         orientation="vertical"
-        className="flex-col gap-5 lg:flex-row lg:items-start [&>[data-slot=tabs-content]]:min-w-0"
+        className="flex-col gap-5 lg:flex-row-reverse lg:items-start [&>[data-slot=tabs-content]]:min-w-0"
       >
         <TabsList className="h-auto w-full shrink-0 items-stretch gap-0.5 rounded-xl border border-slate-200 bg-white p-2 shadow-sm max-lg:flex-row max-lg:flex-wrap lg:sticky lg:top-4 lg:w-56">
           {gruposNav.map((grupo, gi) => (
