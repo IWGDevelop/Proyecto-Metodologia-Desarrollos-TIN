@@ -87,6 +87,54 @@ export async function toggleTareaSolicitud(
   }
 }
 
+export async function guardarRespuestaTareaSolicitud(
+  id: string,
+  requerimientoId: string,
+  respuesta: string,
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('tareas_solicitud')
+      .update({ respuesta: respuesta.trim() || null })
+      .eq('id', id)
+    if (error) return { ok: false, error: error.message }
+    revalidatePath(`/admin/requerimientos/${requerimientoId}`)
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function registrarAnexoTareaSolicitud(
+  tareaId: string,
+  payload: { nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
+): Promise<{ ok: boolean; error?: string }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_tarea_solicitud')
+      .insert({ tarea_solicitud_id: tareaId, ...payload })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true }
+  } catch (e: any) {
+    return { ok: false, error: e.message }
+  }
+}
+
+export async function eliminarAnexoTareaSolicitud(id: string): Promise<{ ok: boolean }> {
+  try {
+    const supabase = createAdminClient()
+    const { error } = await (supabase as any)
+      .from('anexos_tarea_solicitud')
+      .delete()
+      .eq('id', id)
+    return { ok: !error }
+  } catch {
+    return { ok: false }
+  }
+}
+
 export async function actualizarMotivoYPenalizacionSolicitud(
   id: string,
   requerimientoId: string,
