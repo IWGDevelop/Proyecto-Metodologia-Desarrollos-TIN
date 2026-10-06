@@ -21,12 +21,15 @@ import { cn } from '@/lib/utils'
 interface Props {
   requerimientoId: string
   tareas: TareaConsolidadaReq[]
+  /** Responsable y partes interesadas del requerimiento (emails) */
+  partesInteresadas?: string[]
 }
 
-export function EnviarPendientesDialog({ requerimientoId, tareas }: Props) {
+export function EnviarPendientesDialog({ requerimientoId, tareas, partesInteresadas = [] }: Props) {
   const [open, setOpen] = useState(false)
   const [alcance, setAlcance] = useState<EnviarResumenInput['alcance']>('TODAS')
   const [responsables, setResponsables] = useState(true)
+  const [partes, setPartes] = useState(false)
   const [listaGlobal, setListaGlobal] = useState(false)
   const [adicionales, setAdicionales] = useState<string[]>([])
   const [mensaje, setMensaje] = useState('')
@@ -55,7 +58,7 @@ export function EnviarPendientesDialog({ requerimientoId, tareas }: Props) {
   async function enviar() {
     setEnviando(true)
     const res = await enviarResumenTareasPendientes(requerimientoId, {
-      alcance, responsables, listaGlobal, adicionales, mensaje,
+      alcance, responsables, partesInteresadas: partes, listaGlobal, adicionales, mensaje,
     })
     setEnviando(false)
     if (!res.ok) { toast.error(res.error ?? 'No se pudo enviar el correo'); return }
@@ -64,7 +67,11 @@ export function EnviarPendientesDialog({ requerimientoId, tareas }: Props) {
     setMensaje('')
   }
 
-  const sinDestinatarios = !(responsables && emailsResponsables.length > 0) && !listaGlobal && adicionales.length === 0
+  const sinDestinatarios =
+    !(responsables && emailsResponsables.length > 0) &&
+    !(partes && partesInteresadas.length > 0) &&
+    !listaGlobal && adicionales.length === 0
+  const nombre = (e: string) => usuarios.find(u => u.email === e)?.nombre_completo ?? e
 
   return (
     <>
@@ -138,8 +145,25 @@ export function EnviarPendientesDialog({ requerimientoId, tareas }: Props) {
                   Responsables de las tareas
                   <span className="block text-xs text-slate-400">
                     {emailsResponsables.length > 0
-                      ? emailsResponsables.map(e => usuarios.find(u => u.email === e)?.nombre_completo ?? e).join(', ')
+                      ? emailsResponsables.map(nombre).join(', ')
                       : 'Ninguna tarea incluida tiene responsable'}
+                  </span>
+                </span>
+              </label>
+              <label className={cn('flex items-start gap-2 text-sm text-slate-700', partesInteresadas.length === 0 && 'opacity-50')}>
+                <input
+                  type="checkbox"
+                  checked={partes}
+                  disabled={partesInteresadas.length === 0}
+                  onChange={e => setPartes(e.target.checked)}
+                  className="mt-0.5 accent-blue-600"
+                />
+                <span>
+                  Todas las partes interesadas del requerimiento
+                  <span className="block text-xs text-slate-400">
+                    {partesInteresadas.length > 0
+                      ? partesInteresadas.map(nombre).join(', ')
+                      : 'El requerimiento no tiene partes interesadas registradas'}
                   </span>
                 </span>
               </label>

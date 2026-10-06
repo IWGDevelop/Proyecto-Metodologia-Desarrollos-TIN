@@ -26,6 +26,8 @@ import {
 interface Props {
   requerimientoId: string
   initialData?: TareaConsolidadaReq[]
+  /** Responsable y partes interesadas del requerimiento (emails) para notificaciones */
+  partesInteresadas?: string[]
 }
 
 type Filtro = 'PENDIENTES' | 'COMPLETADAS' | 'TODAS'
@@ -287,7 +289,7 @@ function PanelCumplimiento({
   )
 }
 
-export function TabPendientes({ requerimientoId, initialData }: Props) {
+export function TabPendientes({ requerimientoId, initialData, partesInteresadas = [] }: Props) {
   const qc = useQueryClient()
   const router = useRouter()
   const [filtro, setFiltro] = useState<Filtro>('PENDIENTES')
@@ -349,7 +351,7 @@ export function TabPendientes({ requerimientoId, initialData }: Props) {
         </div>
         <div className="flex items-center gap-3">
           <p className="hidden text-xs text-slate-400 xl:block">Orden cronológico según la fecha en que surgió cada tarea</p>
-          <EnviarPendientesDialog requerimientoId={requerimientoId} tareas={tareas} />
+          <EnviarPendientesDialog requerimientoId={requerimientoId} tareas={tareas} partesInteresadas={partesInteresadas} />
         </div>
       </div>
 

@@ -129,6 +129,8 @@ export interface EnviarResumenInput {
   alcance: 'TODAS' | 'URGENTES'
   /** Enviar a los responsables de las tareas incluidas */
   responsables: boolean
+  /** Enviar al responsable y a todas las partes interesadas del requerimiento */
+  partesInteresadas: boolean
   /** Enviar a la lista global de notificaciones (Configuración → Notificaciones Email) */
   listaGlobal: boolean
   /** Correos adicionales */
@@ -157,7 +159,7 @@ export async function enviarResumenTareasPendientes(
     const [{ data: req }, todas] = await Promise.all([
       (supabase as any)
         .from('requerimientos')
-        .select('identificacion, nombre_desarrollo')
+        .select('identificacion, nombre_desarrollo, responsable, partes_interesadas')
         .eq('id', requerimientoId)
         .single(),
       getTareasConsolidadasRequerimiento(requerimientoId),
@@ -183,6 +185,10 @@ export async function enviarResumenTareasPendientes(
     const destinatarios = new Set<string>()
     if (input.responsables) {
       for (const { t } of incluidas) if (t.responsable_email) destinatarios.add(t.responsable_email.trim().toLowerCase())
+    }
+    if (input.partesInteresadas) {
+      const partes = [req.responsable, ...((req.partes_interesadas ?? []) as string[])]
+      for (const e of partes) if (e && EMAIL_RE.test(e.trim())) destinatarios.add(e.trim().toLowerCase())
     }
     if (input.listaGlobal) {
       for (const e of await getEmailsActivos()) destinatarios.add(e.trim().toLowerCase())

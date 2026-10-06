@@ -308,7 +308,13 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
 
         {verPendientes && (
           <TabsContent value="pendientes">
-            <TabPendientes requerimientoId={id} initialData={tareasConsolidadas} />
+            <TabPendientes
+              requerimientoId={id}
+              initialData={tareasConsolidadas}
+              partesInteresadas={[...new Set(
+                [req.responsable, ...(req.partes_interesadas ?? [])].filter((e): e is string => !!e?.trim())
+              )]}
+            />
           </TabsContent>
         )}
 
