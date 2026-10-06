@@ -114,8 +114,9 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const verPendientes = pv('req:reuniones') || pv('req:comentarios')
   const numPendientes = tareasConsolidadas.filter(t => !t.completada).length
   const gruposNav: { titulo: string; items: ItemNav[] }[] = [
+    // Lo que el usuario consulta y diligencia constantemente va primero
     {
-      titulo: 'General',
+      titulo: 'Gestión diaria',
       items: [
         { value: 'informacion',  label: 'Información',  Icon: Info,         visible: pv('req:informacion') },
         { value: 'actividad',    label: 'Resumen de Actividad', Icon: Activity, visible: pv('req:actividad') },
@@ -125,7 +126,19 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             <span className="rounded-full bg-blue-600 px-1.5 py-0.5 text-[10px] font-bold text-white">{numPendientes}</span>
           ) : undefined,
         },
+        { value: 'comentarios',    label: 'Comentarios',    Icon: MessageSquare, visible: pv('req:comentarios') },
+        { value: 'reuniones',      label: 'Reuniones',      Icon: Users,         visible: pv('req:reuniones') },
+        { value: 'anexos',         label: 'Anexos',         Icon: Paperclip,     visible: pv('req:anexos') },
+        { value: 'penalizaciones', label: 'Penalizaciones', Icon: AlertTriangle, visible: pv('req:penalizaciones') },
+      ],
+    },
+    {
+      titulo: 'Seguimiento',
+      items: [
+        { value: 'visto-bueno',  label: 'Visto Bueno',  Icon: BadgeCheck,   visible: pv('req:visto-bueno') },
         { value: 'fechas',       label: 'Fechas',       Icon: CalendarDays, visible: true },
+        { value: 'flujo',        label: 'Flujo',        Icon: Workflow,     visible: true },
+        { value: 'historial',    label: 'Historial',    Icon: History,      visible: pv('req:historial') },
         { value: 'asociaciones', label: 'Asociaciones', Icon: Link2,        visible: true },
       ],
     },
@@ -151,23 +164,6 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       items: [
         { value: 'desarrollo',  label: 'Desarrollo',   Icon: Code2,    visible: true, bloqueado: !isAdmin },
         { value: 'doc-tecnica', label: 'Doc. Técnica', Icon: FileCode, visible: true, bloqueado: !isAdmin },
-      ],
-    },
-    {
-      titulo: 'Seguimiento',
-      items: [
-        { value: 'flujo',       label: 'Flujo',       Icon: Workflow,    visible: true },
-        { value: 'historial',   label: 'Historial',   Icon: History,     visible: pv('req:historial') },
-        { value: 'visto-bueno', label: 'Visto Bueno', Icon: BadgeCheck,  visible: pv('req:visto-bueno') },
-      ],
-    },
-    {
-      titulo: 'Colaboración',
-      items: [
-        { value: 'comentarios',    label: 'Comentarios',    Icon: MessageSquare, visible: pv('req:comentarios') },
-        { value: 'reuniones',      label: 'Reuniones',      Icon: Users,         visible: pv('req:reuniones') },
-        { value: 'anexos',         label: 'Anexos',         Icon: Paperclip,     visible: pv('req:anexos') },
-        { value: 'penalizaciones', label: 'Penalizaciones', Icon: AlertTriangle, visible: pv('req:penalizaciones') },
       ],
     },
   ]
