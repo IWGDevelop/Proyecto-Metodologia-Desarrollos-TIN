@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { Building2, Calendar, ChevronRight, Timer } from 'lucide-react'
 import { getCasosUsoIA } from '@/actions/casos-uso-ia'
 import { BadgeEstadoCasoIA } from './BadgeEstadoCasoIA'
-import { labelTipoRegistroCasoIA, minutosAhorradosMes, fmtMinutos } from '@/lib/casos-uso-ia'
+import { labelTipoRegistroCasoIA, labelProcesoCasoIA, minutosAhorradosMes, fmtMinutos } from '@/lib/casos-uso-ia'
 
 interface Props {
   estado?: string
@@ -25,7 +25,7 @@ export async function TablaCasosUsoIA({ estado, alcance, tipo, search }: Props) 
     return (
       <div className="rounded-xl border border-dashed border-slate-300 bg-slate-50 p-12 text-center">
         <p className="text-sm font-medium text-slate-500">No hay casos de uso IA registrados</p>
-        <p className="mt-1 text-xs text-slate-400">Crea el primero con el botón "Nuevo registro"</p>
+        <p className="mt-1 text-xs text-slate-400">Crea el primero con el botón &quot;Nuevo registro&quot;</p>
       </div>
     )
   }
@@ -67,7 +67,7 @@ export async function TablaCasosUsoIA({ estado, alcance, tipo, search }: Props) 
                 )}
               </td>
               <td className="max-w-[180px] px-4 py-3">
-                <p className="truncate font-medium text-slate-800">{caso.proceso_solicitante}</p>
+                <p className="truncate font-medium text-slate-800">{labelProcesoCasoIA(caso.proceso_solicitante)}</p>
                 <p className="truncate text-xs text-slate-400">{caso.proposito}</p>
               </td>
               <td className="px-4 py-3">

@@ -147,7 +147,7 @@ function BuscadorUsuario({
 }
 
 /* ── Combobox multi-select (Partes interesadas) ──────────────────────────── */
-function BuscadorMultiUsuario({
+export function BuscadorMultiUsuario({
   usuarios, values, onChange, placeholder, exclude,
 }: {
   usuarios: Perfil[]

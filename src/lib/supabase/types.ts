@@ -396,6 +396,12 @@ export type FuenteDatosIA =
 
 export type FrecuenciaUsoIA = 'DIARIA' | 'SEMANAL' | 'QUINCENAL' | 'MENSUAL'
 
+export interface ImpactoIndirectoIA {
+  descripcion: string
+  /** Valor anual estimado en COP (opcional, 0 si no se cuantifica) */
+  valor_anual_cop: number
+}
+
 export interface CasoUsoIA {
   id: string
   numero: number
@@ -418,6 +424,12 @@ export interface CasoUsoIA {
   fuentes_datos_detalle: string | null
   minutos_ahorrados: number | null
   frecuencia_uso: FrecuenciaUsoIA | null
+  /** Emails de perfiles que usan la herramienta */
+  usuarios_emails: string[]
+  cargo_ahorro: string | null
+  /** Salario mensual aproximado (COP) del cargo que ahorra horas hombre */
+  salario_cargo: number | null
+  impactos_indirectos: ImpactoIndirectoIA[]
   nivel_riesgo: NivelRiesgoIA | null
   observaciones_ajuste: string | null
   fecha_autorizacion: string | null

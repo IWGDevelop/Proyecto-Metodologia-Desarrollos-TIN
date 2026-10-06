@@ -4,8 +4,9 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import type {
   CasoUsoIA, CasoUsoIAHistorial, CasoUsoIAAnexo, EstadoCasoUsoIA, Alcance, NivelRiesgoIA,
-  TipoRegistroCasoIA, FuenteDatosIA, FrecuenciaUsoIA,
+  TipoRegistroCasoIA, FuenteDatosIA, FrecuenciaUsoIA, ImpactoIndirectoIA,
 } from '@/lib/supabase/types'
+import { HERRAMIENTAS_IA } from '@/lib/casos-uso-ia'
 
 export async function getCasosUsoIA(params?: {
   estado?: string
@@ -110,18 +111,20 @@ export interface NuevoCasoUsoIAInput {
   proceso_solicitante: string
   alcance: Alcance
   proposito: string
-  herramienta_proveedor: string
-  herramienta_producto: string
-  herramienta_modelo?: string
-  herramienta_modalidad_acceso?: string
+  /** Valor de HERRAMIENTAS_IA; 'OTRO' requiere herramienta_otra */
+  herramienta: string
+  herramienta_otra?: string
   tipo_datos: string
   sistemas_conectar?: string
-  usuarios_previstos: string
+  usuarios_emails: string[]
   beneficios_esperados: string
   fuentes_datos: FuenteDatosIA[]
-  fuentes_datos_detalle?: string
+  fuentes_datos_detalle: string
   minutos_ahorrados?: number
   frecuencia_uso?: FrecuenciaUsoIA
+  cargo_ahorro?: string
+  salario_cargo?: number
+  impactos_indirectos: ImpactoIndirectoIA[]
 }
 
 export async function crearCasoUsoIA(
@@ -132,12 +135,36 @@ export async function crearCasoUsoIA(
     if (input.fuentes_datos.length === 0) {
       return { ok: false, error: 'Selecciona al menos una fuente de datos' }
     }
+    if (!input.fuentes_datos_detalle?.trim()) {
+      return { ok: false, error: 'Indica el link o la ruta de la fuente de datos' }
+    }
+    if (input.usuarios_emails.length === 0) {
+      return { ok: false, error: 'Selecciona al menos un usuario' }
+    }
     if (esUsoExistente && (input.minutos_ahorrados == null || !input.frecuencia_uso)) {
       return { ok: false, error: 'Indica los minutos ahorrados y la frecuencia de uso' }
     }
+    if (esUsoExistente && (!input.cargo_ahorro?.trim() || !input.salario_cargo)) {
+      return { ok: false, error: 'Indica el cargo y su salario aproximado' }
+    }
+
+    const herramienta = HERRAMIENTAS_IA.find(h => h.value === input.herramienta)
+    if (!herramienta) return { ok: false, error: 'Selecciona una herramienta válida' }
+    const herramientaProducto = herramienta.value === 'OTRO' ? input.herramienta_otra?.trim() : herramienta.label
+    if (!herramientaProducto) return { ok: false, error: 'Indica el nombre de la herramienta' }
 
     const perfil = await getPerfil()
     const supabase = createAdminClient()
+
+    // usuarios_previstos conserva un texto legible (nombres) para listados y registros antiguos
+    const { data: perfilesUsuarios } = await (supabase as any)
+      .from('perfiles')
+      .select('email, nombre_completo')
+      .in('email', input.usuarios_emails)
+    const nombrePorEmail = new Map<string, string>(
+      (perfilesUsuarios ?? []).map((p: { email: string; nombre_completo: string }) => [p.email, p.nombre_completo])
+    )
+    const usuariosPrevistos = input.usuarios_emails.map(e => nombrePorEmail.get(e) ?? e).join(', ')
 
     const { data, error } = await (supabase as any)
       .from('casos_uso_ia')
@@ -145,20 +172,24 @@ export async function crearCasoUsoIA(
         estado: 'RECIBIDO',
         tipo_registro: input.tipo_registro,
         fuentes_datos: input.fuentes_datos,
-        fuentes_datos_detalle: input.fuentes_datos_detalle ?? null,
+        fuentes_datos_detalle: input.fuentes_datos_detalle.trim(),
         minutos_ahorrados: esUsoExistente ? input.minutos_ahorrados : null,
         frecuencia_uso: esUsoExistente ? input.frecuencia_uso : null,
+        cargo_ahorro: esUsoExistente ? input.cargo_ahorro?.trim() : null,
+        salario_cargo: esUsoExistente ? input.salario_cargo : null,
+        impactos_indirectos: input.impactos_indirectos
+          .filter(i => i.descripcion.trim())
+          .map(i => ({ descripcion: i.descripcion.trim(), valor_anual_cop: i.valor_anual_cop || 0 })),
         solicitante_id: perfil?.id ?? null,
         proceso_solicitante: input.proceso_solicitante,
         alcance: input.alcance,
         proposito: input.proposito,
-        herramienta_proveedor: input.herramienta_proveedor,
-        herramienta_producto: input.herramienta_producto,
-        herramienta_modelo: input.herramienta_modelo ?? null,
-        herramienta_modalidad_acceso: input.herramienta_modalidad_acceso ?? null,
+        herramienta_proveedor: herramienta.proveedor,
+        herramienta_producto: herramientaProducto,
         tipo_datos: input.tipo_datos,
         sistemas_conectar: input.sistemas_conectar ?? null,
-        usuarios_previstos: input.usuarios_previstos,
+        usuarios_emails: input.usuarios_emails,
+        usuarios_previstos: usuariosPrevistos,
         beneficios_esperados: input.beneficios_esperados,
       })
       .select('id')

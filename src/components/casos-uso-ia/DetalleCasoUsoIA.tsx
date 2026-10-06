@@ -4,8 +4,10 @@ import {
   Database, Server, ShieldCheck, Sparkles, Users, AlertTriangle, FileText, Timer, FolderOpen,
 } from 'lucide-react'
 import {
-  labelTipoRegistroCasoIA, labelFuenteDatosIA, FRECUENCIAS_USO_IA, minutosAhorradosMes, fmtMinutos,
+  labelTipoRegistroCasoIA, labelFuenteDatosIA, labelProcesoCasoIA, FRECUENCIAS_USO_IA,
+  minutosAhorradosMes, ahorroMensualCOP, fmtMinutos,
 } from '@/lib/casos-uso-ia'
+import { formatCOP } from '@/lib/utils'
 import { BadgeEstadoCasoIA } from '@/components/casos-uso-ia/BadgeEstadoCasoIA'
 import type { CasoUsoIA, CasoUsoIAHistorial, CasoUsoIAAnexo } from '@/lib/supabase/types'
 
@@ -42,6 +44,10 @@ export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel,
   const esUso = caso.tipo_registro === 'USO_EXISTENTE'
   const minMes = esUso ? minutosAhorradosMes(caso.minutos_ahorrados, caso.frecuencia_uso) : null
   const fuentes = caso.fuentes_datos ?? []
+  const ahorroMes = esUso ? ahorroMensualCOP(minMes, caso.salario_cargo) : null
+  const impactosIndirectos = caso.impactos_indirectos ?? []
+  const totalIndirectos = impactosIndirectos.reduce((s, i) => s + (i.valor_anual_cop || 0), 0)
+  const proceso = labelProcesoCasoIA(caso.proceso_solicitante)
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">
@@ -73,7 +79,7 @@ export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel,
               )}
             </div>
             <h1 className="mt-1 text-lg font-bold text-slate-800">
-              {caso.herramienta_producto} — {caso.proceso_solicitante}
+              {caso.herramienta_producto} — {proceso}
             </h1>
             <p className="text-xs text-slate-500">
               {caso.herramienta_proveedor} · {caso.alcance} · Radicado {fmtDate(caso.created_at)}
@@ -142,6 +148,48 @@ export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel,
                 <p className="text-lg font-bold text-slate-800">{minMes != null ? fmtMinutos(minMes) : '—'}</p>
               </div>
             </div>
+            {(caso.cargo_ahorro || caso.salario_cargo) && (
+              <div className="mt-4 grid grid-cols-1 gap-4 border-t border-emerald-200 pt-4 sm:grid-cols-3">
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Cargo</p>
+                  <p className="text-sm font-semibold text-slate-800">{caso.cargo_ahorro ?? '—'}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Salario aprox.</p>
+                  <p className="text-sm font-semibold text-slate-800">{formatCOP(caso.salario_cargo)}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium uppercase tracking-wide text-emerald-600">Ahorro mensual / anual</p>
+                  <p className="text-sm font-semibold text-slate-800">
+                    {ahorroMes != null ? `${formatCOP(ahorroMes)} / ${formatCOP(ahorroMes * 12)}` : '—'}
+                  </p>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Impactos indirectos */}
+        {impactosIndirectos.length > 0 && (
+          <div className="col-span-2 rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+            <div className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
+              <Sparkles size={15} className="text-violet-500" /> Impactos indirectos
+            </div>
+            <ul className="divide-y divide-slate-100">
+              {impactosIndirectos.map((imp, i) => (
+                <li key={i} className="flex items-center justify-between gap-4 py-2 text-sm">
+                  <span className="text-slate-700">{imp.descripcion}</span>
+                  <span className="shrink-0 font-medium text-slate-800">
+                    {imp.valor_anual_cop > 0 ? `${formatCOP(imp.valor_anual_cop)} / año` : 'No cuantificado'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            {totalIndirectos > 0 && (
+              <p className="mt-2 text-right text-xs text-slate-500">
+                Total: <strong className="text-slate-700">{formatCOP(totalIndirectos)}</strong> / año
+              </p>
+            )}
           </div>
         )}
 
@@ -162,7 +210,24 @@ export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel,
             <p className="text-sm text-slate-400">No especificadas</p>
           )}
           {caso.fuentes_datos_detalle && (
-            <p className="mt-3 text-sm leading-relaxed text-slate-700 whitespace-pre-wrap">{caso.fuentes_datos_detalle}</p>
+            <div className="mt-3 space-y-1">
+              <p className="text-xs font-medium uppercase tracking-wide text-slate-400">Link o ruta</p>
+              {caso.fuentes_datos_detalle.split('\n').filter(l => l.trim()).map((linea, i) =>
+                /^https?:\/\//i.test(linea.trim()) ? (
+                  <a
+                    key={i}
+                    href={linea.trim()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block break-all text-sm text-violet-600 hover:underline"
+                  >
+                    {linea.trim()}
+                  </a>
+                ) : (
+                  <p key={i} className="break-all text-sm text-slate-700">{linea}</p>
+                )
+              )}
+            </div>
           )}
         </div>
 
@@ -246,7 +311,7 @@ export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel,
               <dt className="w-28 shrink-0 text-slate-400">Proceso</dt>
               <dd className="flex items-center gap-1 text-slate-700">
                 <Building2 size={11} />
-                {caso.proceso_solicitante} · {caso.alcance}
+                {proceso} · {caso.alcance}
               </dd>
             </div>
           </dl>

@@ -1,4 +1,5 @@
 import type { FrecuenciaUsoIA, FuenteDatosIA, TipoRegistroCasoIA } from '@/lib/supabase/types'
+import { PROCESOS_INTERNOS } from '@/lib/constants'
 
 export const TIPOS_REGISTRO_CASO_IA: { value: TipoRegistroCasoIA; label: string; descripcion: string }[] = [
   {
@@ -15,6 +16,32 @@ export const TIPOS_REGISTRO_CASO_IA: { value: TipoRegistroCasoIA; label: string;
 
 export function labelTipoRegistroCasoIA(tipo: TipoRegistroCasoIA | null | undefined) {
   return TIPOS_REGISTRO_CASO_IA.find(t => t.value === tipo)?.label ?? 'Solicitud de uso'
+}
+
+/** Herramientas de IA habilitadas para registrar. `proveedor` se guarda en herramienta_proveedor. */
+export const HERRAMIENTAS_IA: { value: string; label: string; proveedor: string }[] = [
+  { value: 'Gemini',     label: 'Gemini',     proveedor: 'Google' },
+  { value: 'Claude',     label: 'Claude',     proveedor: 'Anthropic' },
+  { value: 'ChatGPT',    label: 'ChatGPT',    proveedor: 'OpenAI' },
+  { value: 'Copilot',    label: 'Copilot',    proveedor: 'Microsoft' },
+  { value: 'ElevenLabs', label: 'ElevenLabs', proveedor: 'ElevenLabs' },
+  { value: 'OTRO',       label: 'Otra',       proveedor: 'Otro' },
+]
+
+/** Procesos para el selector (sin el valor legacy GENERAL) */
+export const PROCESOS_CASO_IA = PROCESOS_INTERNOS.filter(p => p.value !== 'GENERAL')
+
+/** Muestra la etiqueta del proceso; los registros antiguos guardaban texto libre. */
+export function labelProcesoCasoIA(proceso: string) {
+  return PROCESOS_INTERNOS.find(p => p.value === proceso)?.label ?? proceso
+}
+
+export const HORAS_LABORALES_MES = 160
+
+/** Ahorro mensual en COP = horas ahorradas al mes × (salario / horas laborales al mes). */
+export function ahorroMensualCOP(minutosMes: number | null | undefined, salario: number | null | undefined) {
+  if (!minutosMes || !salario) return null
+  return Math.round((minutosMes / 60) * (salario / HORAS_LABORALES_MES))
 }
 
 export const FUENTES_DATOS_IA: { value: FuenteDatosIA; label: string }[] = [
