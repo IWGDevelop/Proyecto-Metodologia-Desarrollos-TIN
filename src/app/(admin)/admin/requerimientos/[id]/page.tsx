@@ -157,7 +157,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       items: [
         { value: 'flujo',       label: 'Flujo',       Icon: Workflow,    visible: true },
         { value: 'historial',   label: 'Historial',   Icon: History,     visible: pv('req:historial') },
-        { value: 'actividad',   label: 'Actividad',   Icon: Activity,    visible: pv('req:actividad') },
+        { value: 'actividad',   label: 'Resumen de Actividad', Icon: Activity,    visible: pv('req:actividad') },
         { value: 'visto-bueno', label: 'Visto Bueno', Icon: BadgeCheck,  visible: pv('req:visto-bueno') },
       ],
     },

@@ -57,7 +57,7 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'req:doc-tecnica',    label: 'Doc. Técnica',   permisos: ['puede_ver', 'puede_crear'] },
       { id: 'req:impacto-hh',    label: 'Impacto HH',     permisos: ['puede_ver', 'puede_editar'] },
       { id: 'req:historial',      label: 'Historial',      permisos: ['puede_ver'] },
-      { id: 'req:actividad',      label: 'Actividad',      permisos: ['puede_ver'] },
+      { id: 'req:actividad',      label: 'Resumen de Actividad', permisos: ['puede_ver'] },
       { id: 'req:visto-bueno',    label: 'Visto Bueno',    permisos: ['puede_ver', 'puede_crear'] },
       { id: 'req:impacto-real',  label: 'Impacto Real',   permisos: ['puede_ver', 'puede_editar'] },
       { id: 'req:reuniones',      label: 'Reuniones',      permisos: ['puede_ver', 'puede_editar', 'puede_crear'] },
