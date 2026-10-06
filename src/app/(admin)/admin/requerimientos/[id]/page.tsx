@@ -118,6 +118,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       titulo: 'General',
       items: [
         { value: 'informacion',  label: 'Información',  Icon: Info,         visible: pv('req:informacion') },
+        { value: 'actividad',    label: 'Resumen de Actividad', Icon: Activity, visible: pv('req:actividad') },
         {
           value: 'pendientes', label: 'Tareas pendientes', Icon: ListTodo, visible: verPendientes,
           badge: numPendientes > 0 ? (
@@ -157,7 +158,6 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       items: [
         { value: 'flujo',       label: 'Flujo',       Icon: Workflow,    visible: true },
         { value: 'historial',   label: 'Historial',   Icon: History,     visible: pv('req:historial') },
-        { value: 'actividad',   label: 'Resumen de Actividad', Icon: Activity,    visible: pv('req:actividad') },
         { value: 'visto-bueno', label: 'Visto Bueno', Icon: BadgeCheck,  visible: pv('req:visto-bueno') },
       ],
     },
