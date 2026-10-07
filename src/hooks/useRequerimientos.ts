@@ -16,8 +16,6 @@ export interface FiltrosRequerimientos {
   proceso_interno?: string
   tipo_solucion?: string
   es_borrador?: boolean
-  /** perfil_id del desarrollador asignado, o 'sin_asignar' */
-  desarrollador?: string
 }
 
 export interface SortConfig {

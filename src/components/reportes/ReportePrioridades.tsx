@@ -12,14 +12,8 @@ import { ESTADOS } from '@/lib/constants'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
-import { coincideDesarrollador, SIN_DESARROLLADOR } from '@/lib/filtro-desarrollador'
 
-interface Props {
-  datos: MetricaRequerimiento[]
-  /** Para el filtro por desarrollador */
-  desarrolladores?: { id: string; nombre: string }[]
-  porRequerimiento?: Record<string, string[]>
-}
+interface Props { datos: MetricaRequerimiento[] }
 
 const PRIORIDAD_BG: Record<number, string> = {
   1: 'bg-red-100 text-red-700 border-red-300',
@@ -89,11 +83,8 @@ function labelJerarquico(
 // Ordenamiento DFS: raíces ordenadas por prioridad, hijos siguen a su padre
 function sortByTree(reqs: MetricaRequerimiento[]): MetricaRequerimiento[] {
   const childrenOf = new Map<string | null, MetricaRequerimiento[]>()
-  const ids = new Set(reqs.map(r => r.id))
   reqs.forEach(r => {
-    // Si el padre quedó fuera por los filtros, el hijo se muestra como raíz para no perderlo
-    const parent = (r as any).parent_id ?? null
-    const pid = parent && ids.has(parent) ? parent : null
+    const pid = (r as any).parent_id ?? null
     if (!childrenOf.has(pid)) childrenOf.set(pid, [])
     childrenOf.get(pid)!.push(r)
   })
@@ -198,20 +189,14 @@ function seccionTitle(title: string) {
   )
 }
 
-export function ReportePrioridades({ datos, desarrolladores = [], porRequerimiento = {} }: Props) {
+export function ReportePrioridades({ datos }: Props) {
   const [fEmpresa,   setFEmpresa]   = useState('')
   const [fPrioridad, setFPrioridad] = useState('')
   const [fEstados,   setFEstados]   = useState<string[]>([])
   const [fProceso,   setFProceso]   = useState('')
   const [fOrigen,    setFOrigen]    = useState('')
-  const [fDesarrollador, setFDesarrollador] = useState('')
 
-  const hayFiltros = fEmpresa || fPrioridad || fEstados.length > 0 || fProceso || fOrigen || fDesarrollador
-
-  const opcionesDesarrollador = [
-    { value: SIN_DESARROLLADOR, label: 'Sin desarrollador asignado' },
-    ...desarrolladores.map(d => ({ value: d.id, label: d.nombre })),
-  ]
+  const hayFiltros = fEmpresa || fPrioridad || fEstados.length > 0 || fProceso || fOrigen
 
   // ── Datos filtrados ───────────────────────────────────────────────────────
   const filtrados = useMemo(() => {
@@ -221,11 +206,10 @@ export function ReportePrioridades({ datos, desarrolladores = [], porRequerimien
       if (fEstados.length > 0   && !fEstados.includes(r.estado))                    return false
       if (fProceso              && r.proceso_interno   !== fProceso)                 return false
       if (fOrigen               && (r as any).origen_requerimiento !== fOrigen)      return false
-      if (!coincideDesarrollador(r.id, fDesarrollador, porRequerimiento))            return false
       return true
     })
     return sortByTree(base)
-  }, [datos, fEmpresa, fPrioridad, fEstados, fProceso, fOrigen, fDesarrollador, porRequerimiento])
+  }, [datos, fEmpresa, fPrioridad, fEstados, fProceso, fOrigen])
 
   // Activos (excluye solo ENTREGADO) para secciones 1 y 2
   const activosFiltrados = useMemo(() =>
@@ -378,13 +362,13 @@ export function ReportePrioridades({ datos, desarrolladores = [], porRequerimien
           <Filter size={13} className="text-slate-400" />
           <span className="text-xs font-semibold text-slate-500">Filtros</span>
           {hayFiltros && (
-            <button onClick={() => { setFEmpresa(''); setFPrioridad(''); setFEstados([]); setFProceso(''); setFOrigen(''); setFDesarrollador('') }}
+            <button onClick={() => { setFEmpresa(''); setFPrioridad(''); setFEstados([]); setFProceso(''); setFOrigen('') }}
               className="ml-auto flex items-center gap-1 text-xs text-slate-400 hover:text-red-500">
               <X size={11} /> Limpiar
             </button>
           )}
         </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
           <Select label="Empresa" value={fEmpresa} onChange={setFEmpresa}
             options={[{ value: 'IWF', label: 'IWF' }, { value: 'ILT', label: 'ILT' }, { value: 'IWG', label: 'IWG' }]} />
           <Select label="Prioridad" value={fPrioridad} onChange={setFPrioridad}
@@ -392,7 +376,6 @@ export function ReportePrioridades({ datos, desarrolladores = [], porRequerimien
           <MultiSelect label="Estado" values={fEstados} onChange={setFEstados} options={estadosDisponibles} />
           <Select label="Proceso" value={fProceso} onChange={setFProceso} options={procesosDisponibles} />
           <Select label="Origen" value={fOrigen} onChange={setFOrigen} options={origenesDisponibles} />
-          <Select label="Desarrollador" value={fDesarrollador} onChange={setFDesarrollador} options={opcionesDesarrollador} />
         </div>
         <p className="mt-2 text-[11px] text-slate-400">{activosFiltrados.length} en curso · {entregadosFiltrados.length} entregados · {datos.length} total en BD</p>
       </div>

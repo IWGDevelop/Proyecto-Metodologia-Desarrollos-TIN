@@ -17,7 +17,6 @@ import {
 } from '@/components/ui/select'
 import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLUCION, getEstadoCfg } from '@/lib/constants'
 import { cn } from '@/lib/utils'
-import { SIN_DESARROLLADOR } from '@/lib/filtro-desarrollador'
 
 const ALCANCES = [
   { value: 'IWF', color: 'bg-blue-100 text-blue-700 border-blue-300' },
@@ -38,16 +37,9 @@ interface Props {
   totalFiltrado: number
   total: number
   estadosDisponibles?: string[]
-  /** Desarrolladores con requerimientos asignados */
-  desarrolladores?: { id: string; nombre: string }[]
 }
 
-export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles, desarrolladores = [] }: Props) {
-  const itemsDesarrollador = [
-    { value: '_all', label: 'Todos los desarrolladores' },
-    { value: SIN_DESARROLLADOR, label: 'Sin desarrollador asignado' },
-    ...desarrolladores.map(d => ({ value: d.id, label: d.nombre })),
-  ]
+export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles }: Props) {
   // Combina estados de la BD con los hardcodeados para no perder ninguno
   const todosLosEstados = estadosDisponibles && estadosDisponibles.length > 0
     ? Array.from(new Set([...Object.keys(ESTADOS), ...estadosDisponibles])).sort()
@@ -71,10 +63,9 @@ export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles
   const procesoActivo  = getParam('proceso')
   const tipoActivo     = getParam('tipo')
   const soloBorradores = searchParams.get('borrador') === 'true'
-  const desarrolladorActivo = getParam('dev')
 
   const hayFiltros = !!(debouncedSearch || estadosActivos.length || alcanceActivo ||
-    prioridadActiva || procesoActivo || tipoActivo || soloBorradores || desarrolladorActivo)
+    prioridadActiva || procesoActivo || tipoActivo || soloBorradores)
 
   const updateParams = useCallback(
     (updates: Record<string, string | null>) => {
@@ -236,25 +227,6 @@ export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles
             <SelectItem value="_all">Todos los procesos</SelectItem>
             {PROCESOS_INTERNOS.map(p => (
               <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Desarrollador */}
-        <Select
-          items={itemsDesarrollador}
-          value={desarrolladorActivo || '_all'}
-          onValueChange={v => updateParams({ dev: !v || v === '_all' ? null : String(v) })}
-        >
-          <SelectTrigger className={cn(
-            'h-8 w-[200px] text-xs',
-            desarrolladorActivo && 'border-blue-400 bg-blue-50 text-blue-700',
-          )}>
-            <SelectValue placeholder="Desarrollador" />
-          </SelectTrigger>
-          <SelectContent>
-            {itemsDesarrollador.map(d => (
-              <SelectItem key={d.value} value={d.value}>{d.label}</SelectItem>
             ))}
           </SelectContent>
         </Select>

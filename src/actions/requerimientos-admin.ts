@@ -3,7 +3,6 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
-import { aplicarFiltroDesarrollador } from '@/lib/filtro-desarrollador'
 
 export interface FiltrosAdmin {
   search?: string
@@ -13,8 +12,6 @@ export interface FiltrosAdmin {
   proceso_interno?: string
   tipo_solucion?: string
   es_borrador?: boolean
-  /** perfil_id del desarrollador asignado, o SIN_DESARROLLADOR */
-  desarrollador?: string
 }
 
 export interface SortAdmin {
@@ -71,7 +68,6 @@ export async function fetchTodosAdminParaExportar(
     if (filtros.tipo_solucion)              query = query.eq('tipo_solucion', filtros.tipo_solucion)
     if (filtros.es_borrador !== undefined)  query = query.eq('es_borrador', filtros.es_borrador)
     if (perfilFiltro)                       query = aplicarFiltroUsuario(query, perfilFiltro)
-    query = await aplicarFiltroDesarrollador(supabase, query, filtros.desarrollador)
 
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
     const isImpacto = ['impacto_economico_total_anual', 'ahorro_anual_cop',
@@ -122,7 +118,6 @@ export async function fetchRequerimientosAdmin(
     if (filtros.tipo_solucion)         query = query.eq('tipo_solucion', filtros.tipo_solucion)
     if (filtros.es_borrador !== undefined) query = query.eq('es_borrador', filtros.es_borrador)
     if (perfilFiltro)                  query = aplicarFiltroUsuario(query, perfilFiltro)
-    query = await aplicarFiltroDesarrollador(supabase, query, filtros.desarrollador)
 
     // Ordenamiento — columnas de impacto siempre con nulls al final
     const col = sort.column === 'identificacion' ? 'nombre_desarrollo' : sort.column
