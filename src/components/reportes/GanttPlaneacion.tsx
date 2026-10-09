@@ -16,7 +16,6 @@ const HEADER_H = MES_H + DIA_H
 const GROUP_H  = 46
 const CARRIL_H = 34
 const BARRA_H  = 22
-const BARRA_Y  = (CARRIL_H - BARRA_H) / 2
 const FINDE_W  = 10            // sábados y domingos: columna angosta rayada, sin etiqueta
 const NAVY     = '#0f2a47'
 const DIAS_LETRA = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
@@ -216,52 +215,66 @@ function RenglonCarril({ tipo, etapas, escala }: { tipo: 'plan' | 'real'; etapas
       </div>
 
       <div className="relative shrink-0" style={{ width: escala.totalWidth, height: CARRIL_H }}>
-        {etapas.map(e => {
-          const color = COLOR_ETAPA[e.estado]
-          const icono = ICONO_CUMPLIMIENTO[e.cumplimiento]
-          const t = tramos(e, escala)[tipo]
-          if (!t) return null
-          const esHito = e.estado === 'CERRADO'
-          const titulo = esPlan
-            ? `${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}${e.duracionPlan != null ? ` (${e.duracionPlan}d)` : ''}`
-            : `${e.label} · ejecutado: ${formatFecha(e.realInicio)} → ${e.enCurso ? 'en curso' : formatFecha(e.realFin)}${e.duracionReal != null ? ` (${e.duracionReal}d)` : ''} · ${icono.label}`
-          const desv = esPlan ? null : e.desvFin
+        <BarrasEtapas tipo={tipo} etapas={etapas} escala={escala} alto={CARRIL_H} />
+      </div>
+    </div>
+  )
+}
 
-          // Cerrado es un hito: rombo (planeado) o círculo (ejecutado) con su nombre al lado
-          if (esHito) {
-            return (
-              <div key={e.estado} title={titulo} className="absolute flex items-center gap-1.5" style={{ left: t.x + 4, top: (CARRIL_H - 12) / 2 }}>
-                <span
-                  className={cn('h-3 w-3 shrink-0', esPlan ? 'rotate-45' : 'rounded-full border-2 border-white shadow-sm')}
-                  style={esPlan ? { backgroundColor: color.plan, border: `1.5px solid ${color.borde}` } : { backgroundColor: color.real }}
-                />
-                <span className="whitespace-nowrap text-[10px] font-semibold text-slate-600">{e.label}</span>
-                {desv != null && desv !== 0 && <BadgeDesv dias={desv} />}
-              </div>
-            )
-          }
+/** Barras de las etapas (planeadas o ejecutadas) con su nombre, centradas en un renglón de `alto` px */
+function BarrasEtapas({
+  tipo, etapas, escala, alto,
+}: {
+  tipo: 'plan' | 'real'; etapas: EtapaReporte[]; escala: Escala; alto: number
+}) {
+  const esPlan = tipo === 'plan'
+  return (
+    <>
+      {etapas.map(e => {
+        const color = COLOR_ETAPA[e.estado]
+        const icono = ICONO_CUMPLIMIENTO[e.cumplimiento]
+        const t = tramos(e, escala)[tipo]
+        if (!t) return null
+        const esHito = e.estado === 'CERRADO'
+        const titulo = esPlan
+          ? `${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}${e.duracionPlan != null ? ` (${e.duracionPlan}d)` : ''}`
+          : `${e.label} · ejecutado: ${formatFecha(e.realInicio)} → ${e.enCurso ? 'en curso' : formatFecha(e.realFin)}${e.duracionReal != null ? ` (${e.duracionReal}d)` : ''} · ${icono.label}`
+        const desv = esPlan ? null : e.desvFin
 
+        // Cerrado es un hito: rombo (planeado) o círculo (ejecutado) con su nombre al lado
+        if (esHito) {
           return (
-            <div
-              key={e.estado}
-              title={titulo}
-              className="absolute flex items-center justify-center gap-1 overflow-hidden rounded-[4px] px-1.5"
-              style={{
-                left: t.x + 1, width: t.w - 2, top: BARRA_Y, height: BARRA_H,
-                ...(esPlan
-                  ? { backgroundColor: color.plan, border: `1px solid ${color.borde}`, color: '#334155' }
-                  : { backgroundColor: color.real, color: color.texto }),
-                // En curso: textura diagonal para distinguirla de una etapa terminada
-                ...(!esPlan && e.enCurso && { backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }),
-              }}
-            >
-              <span className="min-w-0 truncate text-[10px] font-semibold leading-none">{e.label}</span>
+            <div key={e.estado} title={titulo} className="absolute flex items-center gap-1.5" style={{ left: t.x + 4, top: (alto - 12) / 2 }}>
+              <span
+                className={cn('h-3 w-3 shrink-0', esPlan ? 'rotate-45' : 'rounded-full border-2 border-white shadow-sm')}
+                style={esPlan ? { backgroundColor: color.plan, border: `1.5px solid ${color.borde}` } : { backgroundColor: color.real }}
+              />
+              <span className="whitespace-nowrap text-[10px] font-semibold text-slate-600">{e.label}</span>
               {desv != null && desv !== 0 && <BadgeDesv dias={desv} />}
             </div>
           )
-        })}
-      </div>
-    </div>
+        }
+
+        return (
+          <div
+            key={e.estado}
+            title={titulo}
+            className="absolute flex items-center justify-center gap-1 overflow-hidden rounded-[4px] px-1.5"
+            style={{
+              left: t.x + 1, width: t.w - 2, top: (alto - BARRA_H) / 2, height: BARRA_H,
+              ...(esPlan
+                ? { backgroundColor: color.plan, border: `1px solid ${color.borde}`, color: '#334155' }
+                : { backgroundColor: color.real, color: color.texto }),
+              // En curso: textura diagonal para distinguirla de una etapa terminada
+              ...(!esPlan && e.enCurso && { backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }),
+            }}
+          >
+            <span className="min-w-0 truncate text-[10px] font-semibold leading-none">{e.label}</span>
+            {desv != null && desv !== 0 && <BadgeDesv dias={desv} />}
+          </div>
+        )
+      })}
+    </>
   )
 }
 
@@ -276,7 +289,7 @@ function BadgeDesv({ dias }: { dias: number }) {
   )
 }
 
-// ── Fila de requerimiento: encabezado; contraída muestra el resumen compacto ─
+// ── Fila de requerimiento: encabezado; minimizada muestra solo lo planeado ──
 function FilaRequerimiento({
   req, abierto, onToggle, escala,
 }: {
@@ -313,28 +326,8 @@ function FilaRequerimiento({
       </div>
 
       <div className="relative shrink-0 cursor-pointer" style={{ width: escala.totalWidth, height: GROUP_H }} onClick={onToggle}>
-        {!abierto && req.etapas.map(e => {
-          const { plan, real } = tramos(e, escala)
-          const color = COLOR_ETAPA[e.estado]
-          return (
-            <div key={e.estado}>
-              {plan && (
-                <div
-                  title={`${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}`}
-                  className="absolute rounded-[3px]"
-                  style={{ left: plan.x + 1, width: plan.w - 2, top: 9, height: 11, backgroundColor: color.plan, border: `1px solid ${color.borde}` }}
-                />
-              )}
-              {real && (
-                <div
-                  title={`${e.label} · ejecutado: ${formatFecha(e.realInicio)} → ${e.enCurso ? 'en curso' : formatFecha(e.realFin)}`}
-                  className="absolute rounded-[3px]"
-                  style={{ left: real.x + 1, width: real.w - 2, top: 24, height: 11, backgroundColor: color.real }}
-                />
-              )}
-            </div>
-          )
-        })}
+        {/* Minimizado: solo lo planeado, con el nombre de cada etapa */}
+        {!abierto && <BarrasEtapas tipo="plan" etapas={req.etapas} escala={escala} alto={GROUP_H} />}
       </div>
     </div>
   )
