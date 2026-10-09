@@ -16,20 +16,22 @@ const MONTH_H  = 22
 const WEEK_H   = 18
 const HEADER_H = YEAR_H + MONTH_H + WEEK_H
 const GROUP_H  = 46
-const ETAPA_H  = 34
+const CARRIL_H = 32
+const BARRA_H  = 20
+const BARRA_Y  = (CARRIL_H - BARRA_H) / 2
 const HOY      = '#f87171'
 const TEXTURA_EN_CURSO =
   'linear-gradient(135deg, rgba(255,255,255,.35) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.35) 50%, rgba(255,255,255,.35) 75%, transparent 75%)'
 
-/** Color fijo por etapa: tono claro = planeado, tono sólido = ejecutado */
-export const COLOR_ETAPA: Record<string, { plan: string; borde: string; real: string }> = {
-  EN_DEFINICION_USUARIO:          { plan: '#e9d5ff', borde: '#c084fc', real: '#9333ea' },
-  ANALISIS:                       { plan: '#a5f3fc', borde: '#22d3ee', real: '#0891b2' },
-  EN_DESARROLLO:                  { plan: '#c7d2fe', borde: '#818cf8', real: '#4f46e5' },
-  PRUEBAS_DE_TESTING_Y_QA:        { plan: '#fbcfe8', borde: '#f472b6', real: '#db2777' },
-  PRUEBAS_USUARIO:                { plan: '#fde68a', borde: '#fbbf24', real: '#d97706' },
-  PROGRAMADO_PARA_SALIDA_EN_VIVO: { plan: '#a7f3d0', borde: '#34d399', real: '#059669' },
-  CERRADO:                        { plan: '#fecdd3', borde: '#fb7185', real: '#be123c' },
+/** Color fijo por etapa: tono claro = planeado, tono sólido = ejecutado (texto = tinta legible sobre el sólido) */
+export const COLOR_ETAPA: Record<string, { plan: string; borde: string; real: string; texto: string }> = {
+  EN_DEFINICION_USUARIO:          { plan: '#e9d5ff', borde: '#c084fc', real: '#9333ea', texto: '#ffffff' },
+  ANALISIS:                       { plan: '#a5f3fc', borde: '#22d3ee', real: '#0891b2', texto: '#ffffff' },
+  EN_DESARROLLO:                  { plan: '#c7d2fe', borde: '#818cf8', real: '#4f46e5', texto: '#ffffff' },
+  PRUEBAS_DE_TESTING_Y_QA:        { plan: '#fbcfe8', borde: '#f472b6', real: '#db2777', texto: '#ffffff' },
+  PRUEBAS_USUARIO:                { plan: '#fde68a', borde: '#fbbf24', real: '#d97706', texto: '#1c1917' },
+  PROGRAMADO_PARA_SALIDA_EN_VIVO: { plan: '#a7f3d0', borde: '#34d399', real: '#059669', texto: '#ffffff' },
+  CERRADO:                        { plan: '#fecdd3', borde: '#fb7185', real: '#be123c', texto: '#ffffff' },
 }
 
 export const ICONO_CUMPLIMIENTO: Record<CumplimientoEtapa, { simbolo: string; clase: string; label: string }> = {
@@ -88,83 +90,91 @@ function FondoFila({ weeks, todayX, totalWidth }: { weeks: { x: number }[]; toda
   )
 }
 
-// ── Fila de etapa: barra planeada arriba, ejecutada abajo ───────────────────
-function FilaEtapa({
-  etapa, origin, pxDay, weeks, todayX, totalWidth,
+// ── Renglón Planeado / Ejecutado: una barra por etapa con su nombre ─────────
+function RenglonCarril({
+  tipo, etapas, origin, pxDay, weeks, todayX, totalWidth,
 }: {
-  etapa: EtapaReporte; origin: Date; pxDay: number
+  tipo: 'plan' | 'real'
+  etapas: EtapaReporte[]; origin: Date; pxDay: number
   weeks: { x: number }[]; todayX: number; totalWidth: number
 }) {
-  const color = COLOR_ETAPA[etapa.estado]
-  const icono = ICONO_CUMPLIMIENTO[etapa.cumplimiento]
-  const { plan, real } = tramos(etapa, origin, pxDay)
-  const esHito = etapa.estado === 'CERRADO'
-  const desv = etapa.desvFin
+  const esPlan = tipo === 'plan'
+  const alertas = esPlan ? 0 : etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length
 
   return (
-    <div className="flex" style={{ height: ETAPA_H }}>
+    <div className="flex" style={{ height: CARRIL_H }}>
       <div
         className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-100 bg-white pl-9 pr-3"
         style={{ width: LEFT_W, minWidth: LEFT_W }}
       >
-        <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ backgroundColor: color.real }} />
-        <span className="min-w-0 flex-1 truncate text-[11px] text-slate-600" title={etapa.label}>{etapa.label}</span>
-        <span className={cn('shrink-0 text-[10px] font-semibold', icono.clase)} title={icono.label}>
-          {icono.simbolo} {icono.label}
-        </span>
+        <span
+          className="h-2.5 w-5 shrink-0 rounded-[3px]"
+          style={esPlan ? { backgroundColor: '#e2e8f0', border: '1px solid #94a3b8' } : { backgroundColor: '#475569' }}
+        />
+        <span className="flex-1 text-[11px] font-semibold text-slate-600">{esPlan ? 'Planeado' : 'Ejecutado'}</span>
+        {alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
       </div>
 
-      <div className="relative shrink-0 border-b border-slate-100 bg-white" style={{ width: totalWidth, height: ETAPA_H }}>
+      <div className="relative shrink-0 border-b border-slate-100 bg-white" style={{ width: totalWidth, height: CARRIL_H }}>
         <FondoFila weeks={weeks} todayX={todayX} totalWidth={totalWidth} />
 
-        {/* Planeado */}
-        {plan && (esHito ? (
-          <div
-            title={`${etapa.label} · planeado: ${formatFecha(etapa.planFin ?? etapa.planInicio)}`}
-            className="absolute"
-            style={{
-              left: plan.x - 5, top: 5, width: 10, height: 10,
-              backgroundColor: color.plan, border: `1.5px solid ${color.borde}`, transform: 'rotate(45deg)',
-            }}
-          />
-        ) : (
-          <div
-            title={`${etapa.label} · planeado: ${formatFecha(etapa.planInicio)} → ${formatFecha(etapa.planFin)}${etapa.duracionPlan != null ? ` (${etapa.duracionPlan}d)` : ''}`}
-            className="absolute rounded-[4px]"
-            style={{ left: plan.x, width: plan.w, top: 5, height: 10, backgroundColor: color.plan, border: `1px solid ${color.borde}` }}
-          />
-        ))}
+        {etapas.map(e => {
+          const color = COLOR_ETAPA[e.estado]
+          const icono = ICONO_CUMPLIMIENTO[e.cumplimiento]
+          const tramo = tramos(e, origin, pxDay)[tipo]
+          if (!tramo) return null
+          const esHito = e.estado === 'CERRADO'
+          const titulo = esPlan
+            ? `${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}${e.duracionPlan != null ? ` (${e.duracionPlan}d)` : ''}`
+            : `${e.label} · ejecutado: ${formatFecha(e.realInicio)} → ${e.enCurso ? 'en curso' : formatFecha(e.realFin)}${e.duracionReal != null ? ` (${e.duracionReal}d)` : ''} · ${icono.label}`
+          const desv = esPlan ? null : e.desvFin
 
-        {/* Ejecutado */}
-        {real && (esHito ? (
-          <div
-            title={`${etapa.label} · ejecutado: ${formatFecha(etapa.realInicio)}`}
-            className="absolute rounded-full border-2 border-white shadow-sm"
-            style={{ left: real.x - 6, top: 17, width: 12, height: 12, backgroundColor: color.real }}
-          />
-        ) : (
-          <div
-            title={`${etapa.label} · ejecutado: ${formatFecha(etapa.realInicio)} → ${etapa.enCurso ? 'en curso' : formatFecha(etapa.realFin)}${etapa.duracionReal != null ? ` (${etapa.duracionReal}d)` : ''} · ${icono.label}`}
-            className="absolute rounded-[4px]"
-            style={{
-              left: real.x, width: real.w, top: 18, height: 11, backgroundColor: color.real,
-              // En curso: textura diagonal para distinguirla de una etapa terminada
-              ...(etapa.enCurso && { backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }),
-            }}
-          />
-        ))}
+          // Cerrado es un hito: rombo (planeado) o círculo (ejecutado) con su nombre al lado
+          if (esHito) {
+            return (
+              <div key={e.estado} title={titulo} className="absolute flex items-center gap-1.5" style={{ left: tramo.x - 6, top: (CARRIL_H - 12) / 2 }}>
+                <span
+                  className={cn('h-3 w-3 shrink-0', esPlan ? 'rotate-45' : 'rounded-full border-2 border-white shadow-sm')}
+                  style={esPlan ? { backgroundColor: color.plan, border: `1.5px solid ${color.borde}` } : { backgroundColor: color.real }}
+                />
+                <span className="whitespace-nowrap text-[10px] font-semibold text-slate-600">{e.label}</span>
+                {desv != null && desv !== 0 && <BadgeDesv dias={desv} />}
+              </div>
+            )
+          }
 
-        {/* Desviación del fin, junto a la barra ejecutada */}
-        {real && desv != null && desv !== 0 && (
-          <span
-            className={cn('absolute whitespace-nowrap text-[10px] font-semibold', desv > 0 ? 'text-red-600' : 'text-emerald-600')}
-            style={{ left: real.x + (esHito ? 10 : real.w + 4), top: 17 }}
-          >
-            {formatDesv(desv)}
-          </span>
-        )}
+          return (
+            <div
+              key={e.estado}
+              title={titulo}
+              className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1.5"
+              style={{
+                left: tramo.x, width: tramo.w, top: BARRA_Y, height: BARRA_H,
+                ...(esPlan
+                  ? { backgroundColor: color.plan, border: `1px solid ${color.borde}`, color: '#334155' }
+                  : { backgroundColor: color.real, color: color.texto }),
+                // En curso: textura diagonal para distinguirla de una etapa terminada
+                ...(!esPlan && e.enCurso && { backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }),
+              }}
+            >
+              <span className="min-w-0 truncate text-[10px] font-semibold leading-none">{e.label}</span>
+              {desv != null && desv !== 0 && <BadgeDesv dias={desv} />}
+            </div>
+          )
+        })}
       </div>
     </div>
+  )
+}
+
+function BadgeDesv({ dias }: { dias: number }) {
+  return (
+    <span className={cn(
+      'shrink-0 rounded bg-white/90 px-1 text-[9px] font-bold leading-[14px]',
+      dias > 0 ? 'text-red-600' : 'text-emerald-700'
+    )}>
+      {formatDesv(dias)}
+    </span>
   )
 }
 
@@ -217,7 +227,8 @@ function FilaRequerimiento({
         onClick={onToggle}
       >
         <FondoFila weeks={weeks} todayX={todayX} totalWidth={totalWidth} />
-        {etapas.map(e => {
+        {/* Contraído: resumen compacto; desplegado: el detalle va en los renglones Planeado / Ejecutado */}
+        {!abierto && etapas.map(e => {
           const { plan, real } = tramos(e, origin, pxDay)
           const color = COLOR_ETAPA[e.estado]
           return (
@@ -246,11 +257,10 @@ function FilaRequerimiento({
 
 // ── Gantt ───────────────────────────────────────────────────────────────────
 export function GanttPlaneacion({ requerimientos }: { requerimientos: RequerimientoPlaneacion[] }) {
-  const [pxDay, setPxDay] = useState(4)
-  // Con pocos requerimientos se muestran desplegados por defecto
-  const [abiertos, setAbiertos] = useState<Set<string>>(
-    () => new Set(requerimientos.length <= 5 ? requerimientos.map(r => r.id) : [])
-  )
+  // Un poco más ancho que el Cronograma para que el nombre de la etapa quepa en la barra
+  const [pxDay, setPxDay] = useState(6)
+  // Desplegados por defecto: cada requerimiento muestra sus renglones Planeado y Ejecutado
+  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set(requerimientos.map(r => r.id)))
 
   const toggle = (id: string) => setAbiertos(prev => {
     const next = new Set(prev)
@@ -366,7 +376,7 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
 
             <div className="flex border-t border-slate-100" style={{ height: WEEK_H }}>
               <div className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-white px-3 text-[10px] text-slate-400" style={{ width: LEFT_W, minWidth: LEFT_W }}>
-                Arriba planeado · abajo ejecutado
+                Requerimiento · renglón planeado y ejecutado
               </div>
               <div className="relative shrink-0 bg-white" style={{ width: totalWidth, height: WEEK_H }}>
                 {weeks.map((wk, i) => {
@@ -397,10 +407,11 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
                   origin={origin} pxDay={pxDay} weeks={weeks} todayX={todayX} totalWidth={totalWidth}
                   isEven={i % 2 === 0}
                 />
-                {abiertos.has(req.id) && req.etapas.map(e => (
-                  <FilaEtapa
-                    key={e.estado}
-                    etapa={e}
+                {abiertos.has(req.id) && (['plan', 'real'] as const).map(tipo => (
+                  <RenglonCarril
+                    key={tipo}
+                    tipo={tipo}
+                    etapas={req.etapas}
                     origin={origin} pxDay={pxDay} weeks={weeks} todayX={todayX} totalWidth={totalWidth}
                   />
                 ))}
