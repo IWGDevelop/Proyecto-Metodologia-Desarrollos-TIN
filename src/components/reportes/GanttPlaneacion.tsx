@@ -6,22 +6,23 @@ import { ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpD
 import { cn } from '@/lib/utils'
 import { getEstadoCfg } from '@/lib/constants'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
-import { buildMonths, buildWeeks, buildYears, getX, monthEnd, toD } from '@/components/cronograma/GanttCronograma'
 import type { CumplimientoEtapa, EtapaReporte, RequerimientoPlaneacion } from '@/actions/reporte-planeacion'
 
-// ── Layout (mismas proporciones que el Gantt de Cronograma) ─────────────────
+// ── Layout: escala diaria ───────────────────────────────────────────────────
 const LEFT_W   = 320
-const YEAR_H   = 20
-const MONTH_H  = 22
-const WEEK_H   = 18
-const HEADER_H = YEAR_H + MONTH_H + WEEK_H
+const MES_H    = 30
+const DIA_H    = 40
+const HEADER_H = MES_H + DIA_H
 const GROUP_H  = 46
-const CARRIL_H = 32
-const BARRA_H  = 20
+const CARRIL_H = 34
+const BARRA_H  = 22
 const BARRA_Y  = (CARRIL_H - BARRA_H) / 2
-const HOY      = '#f87171'
+const FINDE_W  = 10            // sábados y domingos: columna angosta rayada, sin etiqueta
+const NAVY     = '#0f2a47'
+const DIAS_LETRA = ['D', 'L', 'M', 'X', 'J', 'V', 'S']
 const TEXTURA_EN_CURSO =
   'linear-gradient(135deg, rgba(255,255,255,.35) 25%, transparent 25%, transparent 50%, rgba(255,255,255,.35) 50%, rgba(255,255,255,.35) 75%, transparent 75%)'
+const RAYADO_FINDE = 'repeating-linear-gradient(135deg, #f1f5f9 0 3px, #e2e8f0 3px 5px)'
 
 /** Color fijo por etapa: tono claro = planeado, tono sólido = ejecutado (texto = tinta legible sobre el sólido) */
 export const COLOR_ETAPA: Record<string, { plan: string; borde: string; real: string; texto: string }> = {
@@ -47,6 +48,12 @@ export const ICONO_CUMPLIMIENTO: Record<CumplimientoEtapa, { simbolo: string; cl
 
 const ALERTAS: CumplimientoEtapa[] = ['RETRASADA', 'VENCIDA', 'INICIO_ATRASADO']
 
+// ── Fechas ──────────────────────────────────────────────────────────────────
+const toD = (s: string) => new Date(s + 'T12:00:00')
+const isoLocal = (d: Date) =>
+  `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+const HOY_ISO = isoLocal(new Date())
+
 function formatFecha(s: string | null) {
   if (!s) return '—'
   return toD(s).toLocaleDateString('es-CO', { day: '2-digit', month: 'short', year: 'numeric' })
@@ -56,55 +63,148 @@ function formatDesv(d: number) {
   return d > 0 ? `+${d}d` : `${d}d`
 }
 
-const hoyISO = () => new Date().toISOString().slice(0, 10)
+interface Dia { iso: string; fecha: Date; x: number; w: number; finde: boolean }
 
-/** Tramo planeado y ejecutado de una etapa en coordenadas de la línea de tiempo */
-function tramos(e: EtapaReporte, origin: Date, px: number) {
-  const hoy = hoyISO()
-  const planDesde = e.planInicio ?? e.planFin
-  const planHasta = e.planFin ?? e.planInicio
-  const realHasta = e.enCurso ? hoy : (e.realFin ?? e.realInicio)
-
-  const plan = planDesde && planHasta ? {
-    x: getX(toD(planDesde), origin, px),
-    w: Math.max(getX(toD(planHasta), origin, px) - getX(toD(planDesde), origin, px) + px, 6),
-  } : null
-  const real = e.realInicio && realHasta ? {
-    x: getX(toD(e.realInicio), origin, px),
-    w: Math.max(getX(toD(realHasta), origin, px) - getX(toD(e.realInicio), origin, px) + px, 6),
-  } : null
-  return { plan, real }
+interface Escala {
+  dias: Dia[]
+  porIso: Map<string, Dia>
+  totalWidth: number
 }
 
-// ── Fondo común de cada fila: semanas + línea de hoy ────────────────────────
-function FondoFila({ weeks, todayX, totalWidth }: { weeks: { x: number }[]; todayX: number; totalWidth: number }) {
+/** Columnas diarias de lunes a domingo: los días hábiles con ancho completo y el fin de semana angosto */
+function construirEscala(desde: Date, hasta: Date, dayW: number): Escala {
+  const dias: Dia[] = []
+  let x = 0
+  for (let d = new Date(desde); d <= hasta; d = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1)) {
+    const finde = d.getDay() === 0 || d.getDay() === 6
+    const w = finde ? FINDE_W : dayW
+    dias.push({ iso: isoLocal(d), fecha: d, x, w, finde })
+    x += w
+  }
+  return { dias, porIso: new Map(dias.map(d => [d.iso, d])), totalWidth: x }
+}
+
+function tramo(escala: Escala, desde: string | null, hasta: string | null) {
+  if (!desde || !hasta) return null
+  const a = escala.porIso.get(desde)
+  const b = escala.porIso.get(hasta)
+  if (!a || !b) return null
+  return { x: a.x, w: Math.max(b.x + b.w - a.x, 6) }
+}
+
+/** Tramo planeado y ejecutado de una etapa en coordenadas de la escala */
+function tramos(e: EtapaReporte, escala: Escala) {
+  return {
+    plan: tramo(escala, e.planInicio ?? e.planFin, e.planFin ?? e.planInicio),
+    real: tramo(escala, e.realInicio, e.enCurso ? HOY_ISO : (e.realFin ?? e.realInicio)),
+  }
+}
+
+// ── Cuadrícula de fondo (una sola capa para todas las filas) ────────────────
+function Cuadricula({ escala }: { escala: Escala }) {
   return (
-    <>
-      {weeks.map((wk, i) => wk.x > 0 && (
-        <div key={i} className="absolute inset-y-0 w-px bg-slate-100" style={{ left: wk.x }} />
-      ))}
-      {todayX >= 0 && todayX <= totalWidth && (
-        <div className="absolute inset-y-0 w-px bg-red-300/60" style={{ left: todayX }} />
-      )}
-    </>
+    <div className="pointer-events-none absolute inset-y-0" style={{ left: LEFT_W, width: escala.totalWidth }}>
+      {escala.dias.map(d => {
+        const esHoy = d.iso === HOY_ISO
+        const inicioMes = d.fecha.getDate() === 1
+        if (d.finde) {
+          return <div key={d.iso} className="absolute inset-y-0" style={{ left: d.x, width: d.w, backgroundImage: RAYADO_FINDE }} />
+        }
+        return (
+          <div
+            key={d.iso}
+            className={cn(
+              'absolute inset-y-0 border-l',
+              esHoy ? 'border-amber-300 bg-amber-50' : inicioMes ? 'border-slate-300' : 'border-slate-100'
+            )}
+            style={{ left: d.x, width: d.w, ...(esHoy && { borderRight: '1px solid #fcd34d' }) }}
+          />
+        )
+      })}
+    </div>
+  )
+}
+
+// ── Cabecera: mes / día ─────────────────────────────────────────────────────
+function Cabecera({ escala, total }: { escala: Escala; total: number }) {
+  const meses = useMemo(() => {
+    const out: { clave: string; label: string; x: number; w: number }[] = []
+    for (const d of escala.dias) {
+      const clave = `${d.fecha.getFullYear()}-${d.fecha.getMonth()}`
+      const ultimo = out[out.length - 1]
+      if (ultimo?.clave === clave) ultimo.w += d.w
+      else out.push({
+        clave,
+        label: `${d.fecha.toLocaleDateString('es-CO', { month: 'short' }).replace('.', '').toUpperCase()} ${d.fecha.getFullYear()}`,
+        x: d.x, w: d.w,
+      })
+    }
+    return out
+  }, [escala])
+
+  return (
+    <div className="sticky top-0 z-20 flex" style={{ height: HEADER_H, backgroundColor: NAVY }}>
+      <div
+        className="sticky left-0 z-30 flex shrink-0 flex-col justify-center border-r border-white/10 px-4"
+        style={{ width: LEFT_W, minWidth: LEFT_W, backgroundColor: NAVY }}
+      >
+        <span className="text-xs font-bold uppercase tracking-wide text-white">Requerimiento</span>
+        <span className="mt-0.5 text-[10px] text-slate-300">
+          {total} requerimiento{total !== 1 ? 's' : ''} · renglón planeado y ejecutado
+        </span>
+      </div>
+      <div className="relative shrink-0" style={{ width: escala.totalWidth }}>
+        {/* Mes */}
+        <div className="relative" style={{ height: MES_H }}>
+          {meses.map(m => (
+            <div
+              key={m.clave}
+              className="absolute inset-y-0 flex items-center overflow-hidden border-l border-white/20 px-2.5 text-[11px] font-bold tracking-wider text-white"
+              style={{ left: m.x, width: m.w }}
+            >
+              <span className="truncate">{m.w > 70 ? m.label : ''}</span>
+            </div>
+          ))}
+        </div>
+        {/* Día */}
+        <div className="relative" style={{ height: DIA_H }}>
+          {escala.dias.map(d => {
+            const esHoy = d.iso === HOY_ISO
+            if (d.finde) {
+              return <div key={d.iso} className="absolute inset-y-0 bg-white/5" style={{ left: d.x, width: d.w }} />
+            }
+            return (
+              <div
+                key={d.iso}
+                className={cn(
+                  'absolute inset-y-0 flex flex-col items-center justify-center border-l leading-tight',
+                  esHoy ? 'border-amber-300 bg-amber-400 text-slate-900' : 'border-white/10 text-white'
+                )}
+                style={{ left: d.x, width: d.w }}
+                title={d.fecha.toLocaleDateString('es-CO', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+              >
+                <span className={cn('text-[9px] font-semibold', esHoy ? 'text-slate-800' : 'text-slate-300')}>
+                  {DIAS_LETRA[d.fecha.getDay()]}
+                </span>
+                <span className="text-xs font-bold">{d.fecha.getDate()}</span>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+    </div>
   )
 }
 
 // ── Renglón Planeado / Ejecutado: una barra por etapa con su nombre ─────────
-function RenglonCarril({
-  tipo, etapas, origin, pxDay, weeks, todayX, totalWidth,
-}: {
-  tipo: 'plan' | 'real'
-  etapas: EtapaReporte[]; origin: Date; pxDay: number
-  weeks: { x: number }[]; todayX: number; totalWidth: number
-}) {
+function RenglonCarril({ tipo, etapas, escala }: { tipo: 'plan' | 'real'; etapas: EtapaReporte[]; escala: Escala }) {
   const esPlan = tipo === 'plan'
   const alertas = esPlan ? 0 : etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length
 
   return (
-    <div className="flex" style={{ height: CARRIL_H }}>
+    <div className="flex border-b border-slate-100" style={{ height: CARRIL_H }}>
       <div
-        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-100 bg-white pl-9 pr-3"
+        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white pl-9 pr-3"
         style={{ width: LEFT_W, minWidth: LEFT_W }}
       >
         <span
@@ -115,14 +215,12 @@ function RenglonCarril({
         {alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
       </div>
 
-      <div className="relative shrink-0 border-b border-slate-100 bg-white" style={{ width: totalWidth, height: CARRIL_H }}>
-        <FondoFila weeks={weeks} todayX={todayX} totalWidth={totalWidth} />
-
+      <div className="relative shrink-0" style={{ width: escala.totalWidth, height: CARRIL_H }}>
         {etapas.map(e => {
           const color = COLOR_ETAPA[e.estado]
           const icono = ICONO_CUMPLIMIENTO[e.cumplimiento]
-          const tramo = tramos(e, origin, pxDay)[tipo]
-          if (!tramo) return null
+          const t = tramos(e, escala)[tipo]
+          if (!t) return null
           const esHito = e.estado === 'CERRADO'
           const titulo = esPlan
             ? `${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}${e.duracionPlan != null ? ` (${e.duracionPlan}d)` : ''}`
@@ -132,7 +230,7 @@ function RenglonCarril({
           // Cerrado es un hito: rombo (planeado) o círculo (ejecutado) con su nombre al lado
           if (esHito) {
             return (
-              <div key={e.estado} title={titulo} className="absolute flex items-center gap-1.5" style={{ left: tramo.x - 6, top: (CARRIL_H - 12) / 2 }}>
+              <div key={e.estado} title={titulo} className="absolute flex items-center gap-1.5" style={{ left: t.x + 4, top: (CARRIL_H - 12) / 2 }}>
                 <span
                   className={cn('h-3 w-3 shrink-0', esPlan ? 'rotate-45' : 'rounded-full border-2 border-white shadow-sm')}
                   style={esPlan ? { backgroundColor: color.plan, border: `1.5px solid ${color.borde}` } : { backgroundColor: color.real }}
@@ -147,9 +245,9 @@ function RenglonCarril({
             <div
               key={e.estado}
               title={titulo}
-              className="absolute flex items-center gap-1 overflow-hidden rounded-[4px] px-1.5"
+              className="absolute flex items-center justify-center gap-1 overflow-hidden rounded-[4px] px-1.5"
               style={{
-                left: tramo.x, width: tramo.w, top: BARRA_Y, height: BARRA_H,
+                left: t.x + 1, width: t.w - 2, top: BARRA_Y, height: BARRA_H,
                 ...(esPlan
                   ? { backgroundColor: color.plan, border: `1px solid ${color.borde}`, color: '#334155' }
                   : { backgroundColor: color.real, color: color.texto }),
@@ -178,24 +276,19 @@ function BadgeDesv({ dias }: { dias: number }) {
   )
 }
 
-// ── Fila de requerimiento: resumen compacto de todas sus etapas ─────────────
+// ── Fila de requerimiento: encabezado; contraída muestra el resumen compacto ─
 function FilaRequerimiento({
-  req, abierto, onToggle, origin, pxDay, weeks, todayX, totalWidth, isEven,
+  req, abierto, onToggle, escala,
 }: {
-  req: RequerimientoPlaneacion; abierto: boolean; onToggle: () => void
-  origin: Date; pxDay: number; weeks: { x: number }[]; todayX: number; totalWidth: number; isEven: boolean
+  req: RequerimientoPlaneacion; abierto: boolean; onToggle: () => void; escala: Escala
 }) {
   const estadoCfg = getEstadoCfg(req.estado)
   const alertas = req.etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length
-  const etapas = req.etapas.filter(e => e.cumplimiento !== 'SIN_PLAN' || e.realInicio)
 
   return (
-    <div className="flex" style={{ height: GROUP_H }}>
+    <div className="flex border-b border-slate-200 bg-slate-50/40" style={{ height: GROUP_H }}>
       <div
-        className={cn(
-          'sticky left-0 z-10 flex shrink-0 items-center gap-2 border-b border-r border-slate-200 px-3',
-          isEven ? 'bg-slate-50' : 'bg-white'
-        )}
+        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-slate-50 px-3"
         style={{ width: LEFT_W, minWidth: LEFT_W }}
       >
         <button onClick={onToggle} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label={abierto ? 'Contraer' : 'Expandir'}>
@@ -204,7 +297,7 @@ function FilaRequerimiento({
         <div className="min-w-0 flex-1">
           <Link
             href={`/admin/requerimientos/${req.id}`}
-            className="block truncate text-xs font-medium text-slate-700 hover:text-blue-600"
+            className="block truncate text-xs font-semibold text-slate-700 hover:text-blue-600"
             title={req.nombre}
           >
             {req.numero && <span className="mr-1 font-mono text-[10px] text-slate-400">#{req.numero}</span>}
@@ -214,22 +307,14 @@ function FilaRequerimiento({
             <span className={cn('inline-block rounded-full px-1.5 py-px text-[10px] font-medium leading-none', estadoCfg.bgColor, estadoCfg.textColor)}>
               {estadoCfg.label}
             </span>
-            {alertas > 0 && (
-              <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>
-            )}
+            {alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
           </div>
         </div>
       </div>
 
-      <div
-        className={cn('relative shrink-0 cursor-pointer border-b border-slate-200', isEven ? 'bg-slate-50/30' : 'bg-white')}
-        style={{ width: totalWidth, height: GROUP_H }}
-        onClick={onToggle}
-      >
-        <FondoFila weeks={weeks} todayX={todayX} totalWidth={totalWidth} />
-        {/* Contraído: resumen compacto; desplegado: el detalle va en los renglones Planeado / Ejecutado */}
-        {!abierto && etapas.map(e => {
-          const { plan, real } = tramos(e, origin, pxDay)
+      <div className="relative shrink-0 cursor-pointer" style={{ width: escala.totalWidth, height: GROUP_H }} onClick={onToggle}>
+        {!abierto && req.etapas.map(e => {
+          const { plan, real } = tramos(e, escala)
           const color = COLOR_ETAPA[e.estado]
           return (
             <div key={e.estado}>
@@ -237,14 +322,14 @@ function FilaRequerimiento({
                 <div
                   title={`${e.label} · planeado: ${formatFecha(e.planInicio)} → ${formatFecha(e.planFin)}`}
                   className="absolute rounded-[3px]"
-                  style={{ left: plan.x, width: plan.w, top: 9, height: 11, backgroundColor: color.plan, border: `1px solid ${color.borde}` }}
+                  style={{ left: plan.x + 1, width: plan.w - 2, top: 9, height: 11, backgroundColor: color.plan, border: `1px solid ${color.borde}` }}
                 />
               )}
               {real && (
                 <div
                   title={`${e.label} · ejecutado: ${formatFecha(e.realInicio)} → ${e.enCurso ? 'en curso' : formatFecha(e.realFin)}`}
                   className="absolute rounded-[3px]"
-                  style={{ left: real.x, width: real.w, top: 24, height: 11, backgroundColor: color.real }}
+                  style={{ left: real.x + 1, width: real.w - 2, top: 24, height: 11, backgroundColor: color.real }}
                 />
               )}
             </div>
@@ -257,8 +342,7 @@ function FilaRequerimiento({
 
 // ── Gantt ───────────────────────────────────────────────────────────────────
 export function GanttPlaneacion({ requerimientos }: { requerimientos: RequerimientoPlaneacion[] }) {
-  // Un poco más ancho que el Cronograma para que el nombre de la etapa quepa en la barra
-  const [pxDay, setPxDay] = useState(6)
+  const [dayW, setDayW] = useState(36)
   // Desplegados por defecto: cada requerimiento muestra sus renglones Planeado y Ejecutado
   const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set(requerimientos.map(r => r.id)))
 
@@ -269,24 +353,21 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
   })
   const todosAbiertos = requerimientos.length > 0 && requerimientos.every(r => abiertos.has(r.id))
 
-  const { origin, end, totalDays } = useMemo(() => {
+  // Rango: desde el lunes de la semana más temprana hasta el domingo siguiente a la fecha más tardía
+  const { desde, hasta } = useMemo(() => {
     const fechas = requerimientos
       .flatMap(r => r.etapas.flatMap(e => [e.planInicio, e.planFin, e.realInicio, e.realFin]))
       .filter((d): d is string => !!d)
       .map(toD)
-    fechas.push(new Date())
+    fechas.push(toD(HOY_ISO))
     const minD = new Date(Math.min(...fechas.map(d => d.getTime())))
     const maxD = new Date(Math.max(...fechas.map(d => d.getTime())))
-    const o = new Date(minD.getFullYear(), minD.getMonth(), 1)
-    const e = monthEnd(new Date(maxD.getFullYear(), maxD.getMonth() + 1, 1))
-    return { origin: o, end: e, totalDays: Math.ceil((e.getTime() - o.getTime()) / 86400000) }
+    const lunes = new Date(minD.getFullYear(), minD.getMonth(), minD.getDate() - ((minD.getDay() + 6) % 7))
+    const domingo = new Date(maxD.getFullYear(), maxD.getMonth(), maxD.getDate() + (7 - maxD.getDay()) % 7 + 7)
+    return { desde: lunes, hasta: domingo }
   }, [requerimientos])
 
-  const years      = useMemo(() => buildYears(origin, end, pxDay),  [origin, end, pxDay])
-  const months     = useMemo(() => buildMonths(origin, end, pxDay), [origin, end, pxDay])
-  const weeks      = useMemo(() => buildWeeks(origin, end, pxDay),  [origin, end, pxDay])
-  const totalWidth = totalDays * pxDay
-  const todayX     = getX(new Date(), origin, pxDay)
+  const escala = useMemo(() => construirEscala(desde, hasta, dayW), [desde, hasta, dayW])
 
   return (
     <div className="space-y-3">
@@ -300,10 +381,10 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
           {todosAbiertos ? 'Contraer todo' : 'Expandir todo'}
         </button>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
-          <button onClick={() => setPxDay(p => Math.max(2, p - 1))}
+          <button onClick={() => setDayW(w => Math.max(24, w - 6))}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Alejar"><ZoomOut size={14} /></button>
-          <span className="w-16 text-center text-xs font-medium text-slate-500">{pxDay} px/día</span>
-          <button onClick={() => setPxDay(p => Math.min(10, p + 1))}
+          <span className="w-20 text-center text-xs font-medium text-slate-500">{dayW} px/día</span>
+          <button onClick={() => setDayW(w => Math.min(72, w + 6))}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Acercar"><ZoomIn size={14} /></button>
         </div>
       </div>
@@ -318,14 +399,14 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
           <span className="inline-block h-2.5 w-8 rounded-[3px] bg-slate-600" /> Ejecutado (tono sólido)
         </span>
         <span className="flex items-center gap-1.5">
-          <span
-            className="inline-block h-2.5 w-8 rounded-[3px] bg-slate-600"
-            style={{ backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }}
-          /> En curso
+          <span className="inline-block h-2.5 w-8 rounded-[3px] bg-slate-600" style={{ backgroundImage: TEXTURA_EN_CURSO, backgroundSize: '8px 8px' }} /> En curso
         </span>
         <span className="flex items-center gap-1.5"><span className="font-semibold text-red-600">+Nd</span> días de retraso al cierre</span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-3" style={{ backgroundColor: HOY, width: 2 }} /> Hoy
+          <span className="inline-block h-3 w-3 rounded-sm border border-amber-300 bg-amber-400" /> Hoy
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3 w-3 rounded-sm" style={{ backgroundImage: RAYADO_FINDE }} /> Fin de semana
         </span>
         <span className="mx-1 h-3 w-px bg-slate-200" />
         {ETAPAS_PLANEACION.map(e => (
@@ -338,85 +419,23 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
 
       {/* Gantt */}
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: 200 }}>
-        <div style={{ minWidth: LEFT_W + totalWidth + 1 }}>
-          {/* Cabecera 3 niveles: Año / Mes / Semana */}
-          <div className="sticky top-0 z-20 border-b border-slate-200" style={{ height: HEADER_H }}>
-            <div className="flex" style={{ height: YEAR_H }}>
-              <div className="sticky left-0 z-30 shrink-0 border-r border-slate-300 bg-slate-100" style={{ width: LEFT_W, minWidth: LEFT_W }} />
-              <div className="relative shrink-0 bg-slate-100" style={{ width: totalWidth, height: YEAR_H }}>
-                {years.map((y, i) => (
-                  <div key={i} className="absolute inset-y-0 flex items-center justify-center border-l border-slate-300 text-[10px] font-bold text-slate-600"
-                    style={{ left: y.x, width: y.w }}>
-                    {y.year}
-                  </div>
-                ))}
-              </div>
-            </div>
+        <div style={{ minWidth: LEFT_W + escala.totalWidth + 1 }}>
+          <Cabecera escala={escala} total={requerimientos.length} />
 
-            <div className="flex border-t border-slate-200" style={{ height: MONTH_H }}>
-              <div className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-slate-50 px-3" style={{ width: LEFT_W, minWidth: LEFT_W }}>
-                <span className="text-xs font-semibold text-slate-400">
-                  {requerimientos.length} requerimiento{requerimientos.length !== 1 ? 's' : ''}
-                </span>
-              </div>
-              <div className="relative shrink-0 bg-slate-50" style={{ width: totalWidth, height: MONTH_H }}>
-                {months.map((m, i) => (
-                  <div key={i} className="absolute inset-y-0 flex items-center justify-center border-l border-slate-200 text-[10px] font-semibold text-slate-500"
-                    style={{ left: m.x, width: m.w }}>
-                    {m.w > 52 ? m.label : m.w > 22 ? m.shortLabel : ''}
-                  </div>
-                ))}
-                {todayX >= 0 && todayX <= totalWidth && (
-                  <div className="absolute inset-y-0 w-0.5" style={{ left: todayX, backgroundColor: HOY }}>
-                    <span className="absolute top-0 left-1 whitespace-nowrap rounded bg-red-400 px-1 py-px text-[8px] font-bold text-white">Hoy</span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="flex border-t border-slate-100" style={{ height: WEEK_H }}>
-              <div className="sticky left-0 z-30 flex shrink-0 items-center border-r border-slate-200 bg-white px-3 text-[10px] text-slate-400" style={{ width: LEFT_W, minWidth: LEFT_W }}>
-                Requerimiento · renglón planeado y ejecutado
-              </div>
-              <div className="relative shrink-0 bg-white" style={{ width: totalWidth, height: WEEK_H }}>
-                {weeks.map((wk, i) => {
-                  const x = Math.max(0, wk.x)
-                  const w = wk.x < 0 ? wk.w + wk.x : wk.w
-                  if (w <= 0) return null
-                  return (
-                    <div key={i} className="absolute inset-y-0 flex items-center justify-center border-l border-slate-200 text-[9px] text-slate-500"
-                      style={{ left: x, width: w }}>
-                      {w > 16 ? `S${wk.weekNum}` : ''}
-                    </div>
-                  )
-                })}
-              </div>
-            </div>
-          </div>
-
-          {/* Filas */}
           {requerimientos.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-400">No hay resultados para los filtros aplicados</div>
           ) : (
-            requerimientos.map((req, i) => (
-              <div key={req.id}>
-                <FilaRequerimiento
-                  req={req}
-                  abierto={abiertos.has(req.id)}
-                  onToggle={() => toggle(req.id)}
-                  origin={origin} pxDay={pxDay} weeks={weeks} todayX={todayX} totalWidth={totalWidth}
-                  isEven={i % 2 === 0}
-                />
-                {abiertos.has(req.id) && (['plan', 'real'] as const).map(tipo => (
-                  <RenglonCarril
-                    key={tipo}
-                    tipo={tipo}
-                    etapas={req.etapas}
-                    origin={origin} pxDay={pxDay} weeks={weeks} todayX={todayX} totalWidth={totalWidth}
-                  />
-                ))}
-              </div>
-            ))
+            <div className="relative">
+              <Cuadricula escala={escala} />
+              {requerimientos.map(req => (
+                <div key={req.id} className="relative">
+                  <FilaRequerimiento req={req} abierto={abiertos.has(req.id)} onToggle={() => toggle(req.id)} escala={escala} />
+                  {abiertos.has(req.id) && (['plan', 'real'] as const).map(tipo => (
+                    <RenglonCarril key={tipo} tipo={tipo} etapas={req.etapas} escala={escala} />
+                  ))}
+                </div>
+              ))}
+            </div>
           )}
         </div>
       </div>

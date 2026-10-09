@@ -48,11 +48,11 @@ const C = {
 }
 
 // ── Date helpers ─────────────────────────────────────────────────────────────
-export const toD  = (s: string)              => new Date(s + 'T12:00:00')
-export const getX = (d: Date, o: Date, px: number) => Math.round((d.getTime() - o.getTime()) / 86400000 * px)
+const toD  = (s: string)              => new Date(s + 'T12:00:00')
+const getX = (d: Date, o: Date, px: number) => Math.round((d.getTime() - o.getTime()) / 86400000 * px)
 
 function monthStart(d: Date) { return new Date(d.getFullYear(), d.getMonth(), 1) }
-export function monthEnd  (d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59) }
+function monthEnd  (d: Date) { return new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59) }
 
 function isoWeek(d: Date): number {
   const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()))
@@ -70,7 +70,7 @@ function allDates(r: ReqGantt): Date[] {
   ].filter(Boolean).map(s => toD(s!))
 }
 
-export function buildYears(origin: Date, end: Date, pxDay: number) {
+function buildYears(origin: Date, end: Date, pxDay: number) {
   const out: { year: number; x: number; w: number }[] = []
   for (let yr = origin.getFullYear(); yr <= end.getFullYear(); yr++) {
     const yStart = new Date(Math.max(new Date(yr, 0, 1).getTime(), origin.getTime()))
@@ -83,7 +83,7 @@ export function buildYears(origin: Date, end: Date, pxDay: number) {
   return out
 }
 
-export function buildMonths(origin: Date, end: Date, pxDay: number) {
+function buildMonths(origin: Date, end: Date, pxDay: number) {
   const out: { label: string; shortLabel: string; x: number; w: number }[] = []
   let cur = new Date(origin)
   while (cur <= end) {
@@ -99,7 +99,7 @@ export function buildMonths(origin: Date, end: Date, pxDay: number) {
   return out
 }
 
-export function buildWeeks(origin: Date, end: Date, pxDay: number) {
+function buildWeeks(origin: Date, end: Date, pxDay: number) {
   const out: { weekNum: number; x: number; w: number }[] = []
   const dow = origin.getDay()
   const daysBack = dow === 0 ? 6 : dow - 1
