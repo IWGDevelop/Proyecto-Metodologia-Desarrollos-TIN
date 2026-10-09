@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { labelTipoFechaPlaneacion } from '@/lib/etapas-planeacion'
 
 export type EventoTipo =
   | 'estado'
@@ -218,7 +219,7 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
   }
 
   for (const f of fechas ?? []) {
-    const label = LABEL_FECHA[f.tipo_fecha] ?? f.tipo_fecha
+    const label = LABEL_FECHA[f.tipo_fecha] ?? labelTipoFechaPlaneacion(f.tipo_fecha) ?? f.tipo_fecha
     eventos.push({
       id: `fecha-${f.id}`,
       tipo: 'fecha',

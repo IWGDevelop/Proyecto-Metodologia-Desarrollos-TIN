@@ -28,6 +28,8 @@ import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getTareasConsolidadasRequerimiento } from '@/actions/pendientes-requerimiento'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
 import { getHistorialFechas, getResponsablesFechas } from '@/actions/fechas-entrega'
+import { getPlaneacionEtapas } from '@/actions/planeacion-etapas'
+import { calcularEjecucionEtapas } from '@/lib/etapas-planeacion'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
@@ -47,7 +49,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas, responsablesFechas] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas, responsablesFechas, planeacionEtapas] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -61,6 +63,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getHistorialCompleto(id),
     getTareasConsolidadasRequerimiento(id),
     getResponsablesFechas(id),
+    getPlaneacionEtapas(id),
   ])
 
   if (error || !req) notFound()
@@ -461,6 +464,8 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               fecha_salida_vivo:               (req as any).fecha_salida_vivo ?? null,
             }}
             responsablesActuales={responsablesFechas}
+            planeacion={planeacionEtapas}
+            ejecucion={calcularEjecucionEtapas(historial ?? [])}
             historial={historialFechas}
           />
         </TabsContent>

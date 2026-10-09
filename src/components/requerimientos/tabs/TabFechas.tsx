@@ -4,6 +4,7 @@ import { useState, useTransition } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import {
   CheckCircle2, FlaskConical, Rocket, History, Wrench, UserPen, Bug, ListTodo,
+  CalendarCheck, CalendarRange,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import {
@@ -13,11 +14,16 @@ import { getPerfilesActivos } from '@/actions/perfiles'
 import { ETAPAS_FECHA, type TipoEtapaFecha } from '@/lib/etapas-fecha'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
+import type { PlaneacionEtapa } from '@/actions/planeacion-etapas'
+import type { EjecucionEtapa } from '@/lib/etapas-planeacion'
+import { FechasPlaneacion } from './FechasPlaneacion'
 
 interface Props {
   requerimientoId: string
   fechasActuales: FechasEntrega
   responsablesActuales: ResponsablesFechas
+  planeacion: PlaneacionEtapa[]
+  ejecucion: Record<string, EjecucionEtapa>
   historial: HistorialFecha[]
 }
 
@@ -101,7 +107,10 @@ function Seccion({
   )
 }
 
-export function TabFechas({ requerimientoId, fechasActuales, responsablesActuales, historial }: Props) {
+export function TabFechas({
+  requerimientoId, fechasActuales, responsablesActuales, planeacion, ejecucion, historial,
+}: Props) {
+  const [vista, setVista] = useState<'compromisos' | 'planeacion'>('compromisos')
   const [fechas, setFechas] = useState<FechasEntrega>(fechasActuales)
   const [responsables, setResponsables] = useState<ResponsablesFechas>(responsablesActuales)
   const [isPending, startTransition] = useTransition()
@@ -137,6 +146,30 @@ export function TabFechas({ requerimientoId, fechasActuales, responsablesActuale
   return (
     <div className="mt-4 space-y-5">
 
+      {/* ── Sub-menú ─────────────────────────────────────────────────────── */}
+      <div className="inline-flex rounded-lg border border-slate-200 bg-white p-1">
+        {([
+          { value: 'compromisos', label: 'Fechas compromiso', Icon: CalendarCheck },
+          { value: 'planeacion',  label: 'Fechas de planeación', Icon: CalendarRange },
+        ] as const).map(({ value, label, Icon }) => (
+          <button
+            key={value}
+            onClick={() => setVista(value)}
+            className={cn(
+              'flex items-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-semibold transition-colors',
+              vista === value ? 'bg-blue-50 text-blue-700' : 'text-slate-500 hover:bg-slate-50'
+            )}
+          >
+            <Icon size={13} />
+            {label}
+          </button>
+        ))}
+      </div>
+
+      {vista === 'planeacion' ? (
+        <FechasPlaneacion requerimientoId={requerimientoId} planeacion={planeacion} ejecucion={ejecucion} />
+      ) : (
+      <>
       <p className="flex items-center gap-1.5 text-xs text-slate-500">
         <ListTodo size={13} className="text-slate-400" />
         Cada fecha estimada se guarda como tarea del responsable asignado; la fecha real la marca como cumplida.
@@ -193,6 +226,8 @@ export function TabFechas({ requerimientoId, fechasActuales, responsablesActuale
           {isPending ? 'Guardando...' : 'Guardar fechas'}
         </button>
       </div>
+      </>
+      )}
 
       {/* ── Historial de cambios ─────────────────────────────────────────── */}
       {historial.length > 0 && (

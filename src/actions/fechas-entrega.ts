@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
 import { ETAPAS_FECHA, descripcionTareaEtapa, type TipoEtapaFecha } from '@/lib/etapas-fecha'
+import { labelTipoFechaPlaneacion } from '@/lib/etapas-planeacion'
 
 function getAppUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL
@@ -308,6 +309,6 @@ export async function getHistorialFechas(reqId: string): Promise<HistorialFecha[
     .order('created_at', { ascending: false })
   return (data ?? []).map((r: any) => ({
     ...r,
-    label_fecha: LABEL_FECHA[r.tipo_fecha] ?? r.tipo_fecha,
+    label_fecha: LABEL_FECHA[r.tipo_fecha] ?? labelTipoFechaPlaneacion(r.tipo_fecha) ?? r.tipo_fecha,
   }))
 }
