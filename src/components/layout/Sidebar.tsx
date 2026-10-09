@@ -23,6 +23,7 @@ import {
   CalendarClock,
   Brain,
   AlarmClock,
+  CalendarRange,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -44,7 +45,8 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/reporte-presidencial',  label: 'Rep. Presidencial',  Icon: Star,  menuResource: 'menu:reporte-presidencial' },
   { href: '/admin/reporte-desarrolladores', label: 'Rep. Desarrolladores', Icon: Code2,        menuResource: 'menu:reporte-desarrolladores' },
   { href: '/admin/reporte-prioridades',   label: 'Rep. Prioridades',    Icon: ListOrdered,      menuResource: 'menu:reporte-prioridades' },
-  { href: '/admin/pendientes',             label: 'Pendientes',            Icon: AlarmClock,       menuResource: 'menu:pendientes' },
+  { href: '/admin/reporte-planeacion',    label: 'Rep. Planeación',     Icon: CalendarRange,    menuResource: 'menu:reporte-planeacion' },
+  { href: '/admin/pendientes',            label: 'Pendientes',            Icon: AlarmClock,       menuResource: 'menu:pendientes' },
   { href: '/admin/cronograma',            label: 'Cronograma',           Icon: GanttChartSquare, menuResource: 'menu:cronograma' },
   { href: '/admin/cronograma-tin',       label: 'Cronograma TIN',       Icon: CalendarClock,    menuResource: 'menu:cronograma-tin' },
   { href: '/admin/casos-uso-ia',         label: 'Casos de Uso IA',       Icon: Brain,            menuResource: 'menu:casos-uso-ia' },  { href: '/admin/usuarios',             label: 'Usuarios',              Icon: Users,         menuResource: 'menu:usuarios' },
