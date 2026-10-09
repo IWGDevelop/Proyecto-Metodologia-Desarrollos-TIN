@@ -27,7 +27,7 @@ import { TabPendientes } from '@/components/requerimientos/tabs/TabPendientes'
 import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getTareasConsolidadasRequerimiento } from '@/actions/pendientes-requerimiento'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
-import { getHistorialFechas } from '@/actions/fechas-entrega'
+import { getHistorialFechas, getResponsablesFechas } from '@/actions/fechas-entrega'
 import { CambiarEstadoBtn } from '@/components/requerimientos/CambiarEstadoBtn'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
@@ -47,7 +47,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas, responsablesFechas] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -60,6 +60,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getHistorialFechas(id),
     getHistorialCompleto(id),
     getTareasConsolidadasRequerimiento(id),
+    getResponsablesFechas(id),
   ])
 
   if (error || !req) notFound()
@@ -446,8 +447,12 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
           <TabFechas
             requerimientoId={id}
             fechasActuales={{
+              fecha_estimada_definicion_usuario: (req as any).fecha_estimada_definicion_usuario ?? null,
+              fecha_real_definicion_usuario:     (req as any).fecha_real_definicion_usuario ?? null,
               fecha_estimada_entrega:          (req as any).fecha_estimada_entrega ?? null,
               fecha_real_entrega:              (req as any).fecha_real_entrega ?? null,
+              fecha_estimada_fin_testing:      (req as any).fecha_estimada_fin_testing ?? null,
+              fecha_real_fin_testing:          (req as any).fecha_real_fin_testing ?? null,
               fecha_estimada_feedback_pruebas: (req as any).fecha_estimada_feedback_pruebas ?? null,
               fecha_real_feedback_pruebas:     (req as any).fecha_real_feedback_pruebas ?? null,
               fecha_estimada_ajustes_tecnicos: (req as any).fecha_estimada_ajustes_tecnicos ?? null,
@@ -455,6 +460,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               fecha_estimada_salida_vivo:      (req as any).fecha_estimada_salida_vivo ?? null,
               fecha_salida_vivo:               (req as any).fecha_salida_vivo ?? null,
             }}
+            responsablesActuales={responsablesFechas}
             historial={historialFechas}
           />
         </TabsContent>

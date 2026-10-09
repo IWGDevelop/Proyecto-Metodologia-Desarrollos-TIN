@@ -21,7 +21,9 @@ interface Props {
 }
 
 const TIPO_COLOR: Record<string, string> = {
+  definicion_usuario: 'bg-sky-100 text-sky-700 border-sky-200',
   entrega:     'bg-blue-100 text-blue-700 border-blue-200',
+  testing:     'bg-rose-100 text-rose-700 border-rose-200',
   pruebas:     'bg-purple-100 text-purple-700 border-purple-200',
   ajustes:     'bg-orange-100 text-orange-700 border-orange-200',
   salida_vivo: 'bg-green-100 text-green-700 border-green-200',

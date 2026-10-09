@@ -5,6 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { sendEmail } from '@/lib/email'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
+import { ETAPAS_FECHA, descripcionTareaEtapa, type TipoEtapaFecha } from '@/lib/etapas-fecha'
 
 function getAppUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL
@@ -13,8 +14,12 @@ function getAppUrl(): string {
 }
 
 export interface FechasEntrega {
+  fecha_estimada_definicion_usuario: string | null
+  fecha_real_definicion_usuario:     string | null
   fecha_estimada_entrega:            string | null
   fecha_real_entrega:                string | null
+  fecha_estimada_fin_testing:        string | null
+  fecha_real_fin_testing:            string | null
   fecha_estimada_feedback_pruebas:   string | null
   fecha_real_feedback_pruebas:       string | null
   fecha_estimada_ajustes_tecnicos:   string | null
@@ -33,9 +38,16 @@ export interface HistorialFecha {
   created_at: string
 }
 
+/** Responsable (email) de la tarea de cada etapa */
+export type ResponsablesFechas = Partial<Record<TipoEtapaFecha, string | null>>
+
 const LABEL_FECHA: Record<string, string> = {
+  fecha_estimada_definicion_usuario: 'Fecha estimada de definición de usuario',
+  fecha_real_definicion_usuario:     'Fecha real de definición de usuario',
   fecha_estimada_entrega:          'Fecha estimada de entrega del desarrollo',
   fecha_real_entrega:              'Fecha real de entrega del desarrollo',
+  fecha_estimada_fin_testing:      'Fecha estimada de fin de pruebas Testing',
+  fecha_real_fin_testing:          'Fecha real de fin de pruebas Testing',
   fecha_estimada_feedback_pruebas: 'Fecha estimada de feedback de pruebas',
   fecha_real_feedback_pruebas:     'Fecha real de feedback de pruebas',
   fecha_estimada_ajustes_tecnicos: 'Fecha estimada de ajustes técnicos',
@@ -55,27 +67,119 @@ function formatFecha(d: string | null): string {
   }
 }
 
+/** Responsables actuales de las tareas generadas desde el tab Fechas */
+export async function getResponsablesFechas(reqId: string): Promise<ResponsablesFechas> {
+  const supabase = createAdminClient()
+  const { data } = await (supabase as any)
+    .from('tareas_solicitud')
+    .select('tipo_fecha, responsable_email')
+    .eq('requerimiento_id', reqId)
+    .not('tipo_fecha', 'is', null)
+  const responsables: ResponsablesFechas = {}
+  for (const t of data ?? []) responsables[t.tipo_fecha as TipoEtapaFecha] = t.responsable_email ?? null
+  return responsables
+}
+
+/**
+ * Crea o actualiza una tarea (tareas_solicitud) por cada fecha estimada definida.
+ * La fecha estimada es la fecha compromiso y la fecha real marca la tarea como cumplida.
+ * Devuelve el mensaje de error, o null si todo salió bien.
+ */
+async function sincronizarTareasFechas(
+  reqId: string,
+  req: Record<string, any>,
+  nuevasFechas: FechasEntrega,
+  responsables: ResponsablesFechas,
+): Promise<string | null> {
+  const supabase = createAdminClient()
+
+  const { data: existentes, error } = await (supabase as any)
+    .from('tareas_solicitud')
+    .select('id, tipo_fecha, completada')
+    .eq('requerimiento_id', reqId)
+    .not('tipo_fecha', 'is', null)
+  if (error) return error.message
+
+  let createdBy = 'Sistema'
+  try {
+    const clientUser = await createClient()
+    const { data: { user } } = await clientUser.auth.getUser()
+    createdBy = user?.email ?? 'Sistema'
+  } catch { /* no session in server action */ }
+
+  for (const etapa of ETAPAS_FECHA) {
+    const estimada: string | null = nuevasFechas[etapa.estimada as keyof FechasEntrega] ?? null
+    const real: string | null = nuevasFechas[etapa.real as keyof FechasEntrega] ?? null
+    const realAnterior: string | null = req[etapa.real] ?? null
+    const tarea = (existentes ?? []).find((t: any) => t.tipo_fecha === etapa.tipo)
+
+    // Sin fecha estimada no hay compromiso: se quita la tarea si aún no se había cumplido
+    if (!estimada) {
+      if (tarea && !tarea.completada) {
+        const { error: errDel } = await (supabase as any).from('tareas_solicitud').delete().eq('id', tarea.id)
+        if (errDel) return errDel.message
+      }
+      continue
+    }
+
+    const datos: Record<string, any> = {
+      descripcion:       descripcionTareaEtapa(etapa),
+      responsable_email: responsables[etapa.tipo]?.trim() ?? null,
+      fecha_compromiso:  estimada,
+    }
+    if (real) {
+      datos.completada = true
+      datos.fecha_cumplimiento = real
+    } else if (realAnterior) {
+      // Se borró la fecha real: la tarea vuelve a quedar pendiente
+      datos.completada = false
+      datos.fecha_cumplimiento = null
+    }
+
+    const { error: errTarea } = tarea
+      ? await (supabase as any).from('tareas_solicitud').update(datos).eq('id', tarea.id)
+      : await (supabase as any).from('tareas_solicitud').insert({
+          requerimiento_id: reqId,
+          tipo_fecha:       etapa.tipo,
+          created_by:       createdBy,
+          ...datos,
+        })
+    if (errTarea) return errTarea.message
+  }
+
+  return null
+}
+
 export async function actualizarFechasEntrega(
   reqId: string,
-  nuevasFechas: FechasEntrega
+  nuevasFechas: FechasEntrega,
+  responsables: ResponsablesFechas = {},
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    // Toda fecha estimada se convierte en tarea, por lo que exige un responsable
+    const sinResponsable = ETAPAS_FECHA.filter(e =>
+      nuevasFechas[e.estimada as keyof FechasEntrega] && !responsables[e.tipo]?.trim()
+    )
+    if (sinResponsable.length > 0) {
+      return {
+        ok: false,
+        error: `Asigna un responsable para: ${sinResponsable.map(e => e.titulo).join(', ')}`,
+      }
+    }
+
     const supabase = createAdminClient()
 
+    const columnasFechas = ETAPAS_FECHA.flatMap(e => [e.estimada, e.real]).join(', ')
     const { data: req } = await (supabase as any)
       .from('requerimientos')
-      .select(`
-        nombre_desarrollo, identificacion, numero,
-        responsable, partes_interesadas,
-        fecha_estimada_entrega, fecha_real_entrega,
-        fecha_estimada_feedback_pruebas, fecha_real_feedback_pruebas,
-        fecha_estimada_ajustes_tecnicos, fecha_real_ajustes_tecnicos,
-        fecha_estimada_salida_vivo, fecha_salida_vivo
-      `)
+      .select(`nombre_desarrollo, identificacion, numero, responsable, partes_interesadas, ${columnasFechas}`)
       .eq('id', reqId)
       .single()
 
     if (!req) return { ok: false, error: 'Requerimiento no encontrado' }
+
+    const errTareas = await sincronizarTareasFechas(reqId, req, nuevasFechas, responsables)
+    if (errTareas) return { ok: false, error: `Error al guardar tareas: ${errTareas}` }
 
     // Detectar qué campos cambiaron
     const campos = Object.keys(nuevasFechas) as (keyof FechasEntrega)[]
@@ -89,7 +193,10 @@ export async function actualizarFechasEntrega(
       }
     }
 
-    if (cambios.length === 0) return { ok: true }
+    if (cambios.length === 0) {
+      revalidatePath(`/admin/requerimientos/${reqId}`)
+      return { ok: true }
+    }
 
     // Obtener usuario actual
     let userName = 'Sistema'

@@ -37,8 +37,12 @@ const LABEL_PENALIZACION: Record<string, string> = {
 }
 
 const LABEL_FECHA: Record<string, string> = {
+  fecha_estimada_definicion_usuario: 'Definición de usuario estimada',
+  fecha_real_definicion_usuario:     'Definición de usuario real',
   fecha_estimada_entrega:          'Entrega estimada del desarrollo',
   fecha_real_entrega:              'Entrega real del desarrollo',
+  fecha_estimada_fin_testing:      'Fin de pruebas Testing estimado',
+  fecha_real_fin_testing:          'Fin de pruebas Testing real',
   fecha_estimada_feedback_pruebas: 'Pruebas de usuario estimadas',
   fecha_real_feedback_pruebas:     'Pruebas de usuario reales',
   fecha_estimada_ajustes_tecnicos: 'Ajustes técnicos estimados',

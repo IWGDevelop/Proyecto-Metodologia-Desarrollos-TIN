@@ -3,6 +3,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
+import { getEtapaFecha } from '@/lib/etapas-fecha'
 
 export interface TareaSolicitud {
   id: string
@@ -16,6 +17,8 @@ export interface TareaSolicitud {
   penalizacion_cop: number | null
   created_by: string | null
   created_at: string
+  /** Etapa del tab Fechas que generó la tarea (null = creada desde comentarios) */
+  tipo_fecha: string | null
 }
 
 async function getCurrentUserName(): Promise<string> {
@@ -77,14 +80,43 @@ export async function toggleTareaSolicitud(
     } else {
       update.fecha_cumplimiento = null
     }
-    const { error } = await (supabase as any)
-      .from('tareas_solicitud').update(update).eq('id', id)
+    const { data: tarea, error } = await (supabase as any)
+      .from('tareas_solicitud').update(update).eq('id', id).select('tipo_fecha').single()
     if (error) return { ok: false, error: error.message }
+
+    // Tarea generada desde el tab Fechas: su cumplimiento es la fecha real de la etapa
+    const etapa = getEtapaFecha(tarea?.tipo_fecha)
+    if (etapa) await sincronizarFechaRealEtapa(requerimientoId, etapa.real, update.fecha_cumplimiento)
+
     revalidatePath(`/admin/requerimientos/${requerimientoId}`)
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }
   }
+}
+
+async function sincronizarFechaRealEtapa(requerimientoId: string, campoReal: string, fechaReal: string | null) {
+  const supabase = createAdminClient()
+  const { data: req } = await (supabase as any)
+    .from('requerimientos').select(campoReal).eq('id', requerimientoId).single()
+  const anterior: string | null = req?.[campoReal] ?? null
+  if (anterior === fechaReal) return
+
+  let usuario = 'Sistema'
+  try {
+    const authClient = await createClient()
+    const { data: { user } } = await authClient.auth.getUser()
+    usuario = user?.email ?? 'Sistema'
+  } catch { /* no session in server action */ }
+
+  await (supabase as any).from('requerimientos').update({ [campoReal]: fechaReal }).eq('id', requerimientoId)
+  await (supabase as any).from('historial_fechas').insert({
+    requerimiento_id: requerimientoId,
+    tipo_fecha:       campoReal,
+    fecha_anterior:   anterior,
+    fecha_nueva:      fechaReal,
+    usuario,
+  })
 }
 
 export async function guardarRespuestaTareaSolicitud(

@@ -1,15 +1,33 @@
 'use client'
 
 import { useState, useTransition } from 'react'
-import { CalendarDays, CheckCircle2, FlaskConical, Rocket, History, Wrench } from 'lucide-react'
+import { useQuery } from '@tanstack/react-query'
+import {
+  CheckCircle2, FlaskConical, Rocket, History, Wrench, UserPen, Bug, ListTodo,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import { actualizarFechasEntrega, type FechasEntrega, type HistorialFecha } from '@/actions/fechas-entrega'
+import {
+  actualizarFechasEntrega, type FechasEntrega, type HistorialFecha, type ResponsablesFechas,
+} from '@/actions/fechas-entrega'
+import { getPerfilesActivos } from '@/actions/perfiles'
+import { ETAPAS_FECHA, type TipoEtapaFecha } from '@/lib/etapas-fecha'
 import { cn } from '@/lib/utils'
+import type { Perfil } from '@/lib/supabase/types'
 
 interface Props {
   requerimientoId: string
   fechasActuales: FechasEntrega
+  responsablesActuales: ResponsablesFechas
   historial: HistorialFecha[]
+}
+
+const ESTILO_ETAPA: Record<TipoEtapaFecha, { icon: React.ReactNode; color: string }> = {
+  definicion_usuario: { icon: <UserPen size={14} className="text-sky-500" />,         color: 'border-sky-100 bg-sky-50/30' },
+  entrega:            { icon: <CheckCircle2 size={14} className="text-indigo-400" />, color: 'border-indigo-100 bg-indigo-50/30' },
+  testing:            { icon: <Bug size={14} className="text-rose-400" />,            color: 'border-rose-100 bg-rose-50/30' },
+  pruebas:            { icon: <FlaskConical size={14} className="text-amber-400" />,  color: 'border-amber-100 bg-amber-50/30' },
+  ajustes:            { icon: <Wrench size={14} className="text-violet-500" />,       color: 'border-violet-100 bg-violet-50/30' },
+  salida_vivo:        { icon: <Rocket size={14} className="text-emerald-500" />,      color: 'border-emerald-100 bg-emerald-50/30' },
 }
 
 function formatFecha(d: string | null): string {
@@ -83,18 +101,32 @@ function Seccion({
   )
 }
 
-export function TabFechas({ requerimientoId, fechasActuales, historial }: Props) {
+export function TabFechas({ requerimientoId, fechasActuales, responsablesActuales, historial }: Props) {
   const [fechas, setFechas] = useState<FechasEntrega>(fechasActuales)
+  const [responsables, setResponsables] = useState<ResponsablesFechas>(responsablesActuales)
   const [isPending, startTransition] = useTransition()
+
+  const { data: perfiles = [] } = useQuery<Perfil[]>({
+    queryKey: ['perfiles-activos'],
+    queryFn:  () => getPerfilesActivos(),
+    staleTime: 1000 * 60 * 5,
+  })
+
+  // Incluye al responsable actual aunque ya no esté entre los perfiles activos
+  const opcionesResponsable = (actual: string | null | undefined) => {
+    const opciones = perfiles.map(p => ({ email: p.email, nombre: p.nombre_completo }))
+    if (actual && !opciones.some(o => o.email === actual)) opciones.unshift({ email: actual, nombre: actual })
+    return opciones
+  }
 
   const setFecha = (campo: keyof FechasEntrega, valor: string) =>
     setFechas(f => ({ ...f, [campo]: valor || null }))
 
   const handleGuardar = () => {
     startTransition(async () => {
-      const res = await actualizarFechasEntrega(requerimientoId, fechas)
+      const res = await actualizarFechasEntrega(requerimientoId, fechas, responsables)
       if (res.ok) {
-        toast.success('Fechas guardadas · Se notificó a los interesados')
+        toast.success('Fechas y tareas guardadas · Se notificó a los interesados')
         window.location.reload()
       } else {
         toast.error(res.error ?? 'Error al guardar fechas')
@@ -105,89 +137,52 @@ export function TabFechas({ requerimientoId, fechasActuales, historial }: Props)
   return (
     <div className="mt-4 space-y-5">
 
-      {/* ── Entrega del desarrollo ──────────────────────────────────────── */}
-      <Seccion
-        titulo="Entrega del desarrollo"
-        icon={<CheckCircle2 size={14} className="text-indigo-400" />}
-        color="border-indigo-100 bg-indigo-50/30"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo
-            label="Fecha estimada"
-            value={fechas.fecha_estimada_entrega ?? ''}
-            onChange={v => setFecha('fecha_estimada_entrega', v)}
-          />
-          <Campo
-            label="Fecha real"
-            value={fechas.fecha_real_entrega ?? ''}
-            onChange={v => setFecha('fecha_real_entrega', v)}
-            isReal
-          />
-        </div>
-      </Seccion>
+      <p className="flex items-center gap-1.5 text-xs text-slate-500">
+        <ListTodo size={13} className="text-slate-400" />
+        Cada fecha estimada se guarda como tarea del responsable asignado; la fecha real la marca como cumplida.
+      </p>
 
-      {/* ── Feedback de pruebas de usuario ──────────────────────────────── */}
-      <Seccion
-        titulo="Feedback de pruebas de usuario"
-        icon={<FlaskConical size={14} className="text-amber-400" />}
-        color="border-amber-100 bg-amber-50/30"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo
-            label="Fecha estimada"
-            value={fechas.fecha_estimada_feedback_pruebas ?? ''}
-            onChange={v => setFecha('fecha_estimada_feedback_pruebas', v)}
-          />
-          <Campo
-            label="Fecha real"
-            value={fechas.fecha_real_feedback_pruebas ?? ''}
-            onChange={v => setFecha('fecha_real_feedback_pruebas', v)}
-            isReal
-          />
-        </div>
-      </Seccion>
-
-      {/* ── Ajustes técnicos ─────────────────────────────────────────────── */}
-      <Seccion
-        titulo="Ajustes técnicos"
-        icon={<Wrench size={14} className="text-violet-500" />}
-        color="border-violet-100 bg-violet-50/30"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo
-            label="Fecha estimada"
-            value={fechas.fecha_estimada_ajustes_tecnicos ?? ''}
-            onChange={v => setFecha('fecha_estimada_ajustes_tecnicos', v)}
-          />
-          <Campo
-            label="Fecha real"
-            value={fechas.fecha_real_ajustes_tecnicos ?? ''}
-            onChange={v => setFecha('fecha_real_ajustes_tecnicos', v)}
-            isReal
-          />
-        </div>
-      </Seccion>
-
-      {/* ── Salida en vivo ───────────────────────────────────────────────── */}
-      <Seccion
-        titulo="Salida en vivo"
-        icon={<Rocket size={14} className="text-emerald-500" />}
-        color="border-emerald-100 bg-emerald-50/30"
-      >
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Campo
-            label="Fecha estimada"
-            value={fechas.fecha_estimada_salida_vivo ?? ''}
-            onChange={v => setFecha('fecha_estimada_salida_vivo', v)}
-          />
-          <Campo
-            label="Fecha real"
-            value={fechas.fecha_salida_vivo ?? ''}
-            onChange={v => setFecha('fecha_salida_vivo', v)}
-            isReal
-          />
-        </div>
-      </Seccion>
+      {ETAPAS_FECHA.map(etapa => {
+        const estilo = ESTILO_ETAPA[etapa.tipo]
+        const estimada = etapa.estimada as keyof FechasEntrega
+        const real = etapa.real as keyof FechasEntrega
+        const faltaResponsable = !!fechas[estimada] && !responsables[etapa.tipo]
+        return (
+          <Seccion key={etapa.tipo} titulo={etapa.titulo} icon={estilo.icon} color={estilo.color}>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              <Campo
+                label="Fecha estimada"
+                value={fechas[estimada] ?? ''}
+                onChange={v => setFecha(estimada, v)}
+              />
+              <Campo
+                label="Fecha real"
+                value={fechas[real] ?? ''}
+                onChange={v => setFecha(real, v)}
+                isReal
+              />
+              <div className="space-y-1.5">
+                <label className="text-xs font-semibold text-slate-500">
+                  Responsable{fechas[estimada] && <span className="text-red-500"> *</span>}
+                </label>
+                <select
+                  value={responsables[etapa.tipo] ?? ''}
+                  onChange={e => setResponsables(r => ({ ...r, [etapa.tipo]: e.target.value || null }))}
+                  className={cn(
+                    'w-full rounded-lg border bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300',
+                    faltaResponsable ? 'border-red-300' : 'border-slate-200'
+                  )}
+                >
+                  <option value="">Sin asignar</option>
+                  {opcionesResponsable(responsables[etapa.tipo]).map(p => (
+                    <option key={p.email} value={p.email}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </Seccion>
+        )
+      })}
 
       <div className="flex justify-end">
         <button

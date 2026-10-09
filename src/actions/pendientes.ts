@@ -55,7 +55,7 @@ export interface CompromisoPendiente {
   requerimiento_numero: string | null
   estado: string
   proceso_interno: string | null
-  tipo: 'entrega' | 'pruebas' | 'ajustes' | 'salida_vivo'
+  tipo: 'definicion_usuario' | 'entrega' | 'testing' | 'pruebas' | 'ajustes' | 'salida_vivo'
   label: string
   fecha_estimada: string
   fecha_real: string | null
@@ -193,8 +193,10 @@ const TIPOS_FECHA: {
   estimada: string
   real: string
 }[] = [
+  { tipo: 'definicion_usuario', label: 'Definición usuario', estimada: 'fecha_estimada_definicion_usuario', real: 'fecha_real_definicion_usuario' },
   { tipo: 'entrega',     label: 'Entrega',          estimada: 'fecha_estimada_entrega',           real: 'fecha_real_entrega' },
-  { tipo: 'pruebas',     label: 'Pruebas usuario',   estimada: 'fecha_estimada_feedback_pruebas',  real: 'fecha_real_feedback_pruebas' },
+  { tipo: 'testing',     label: 'Fin Testing',      estimada: 'fecha_estimada_fin_testing',       real: 'fecha_real_fin_testing' },
+  { tipo: 'pruebas',    label: 'Pruebas usuario',   estimada: 'fecha_estimada_feedback_pruebas',  real: 'fecha_real_feedback_pruebas' },
   { tipo: 'ajustes',     label: 'Ajustes técnicos',  estimada: 'fecha_estimada_ajustes_tecnicos',  real: 'fecha_real_ajustes_tecnicos' },
   { tipo: 'salida_vivo', label: 'Salida en vivo',    estimada: 'fecha_estimada_salida_vivo',       real: 'fecha_salida_vivo' },
 ]
@@ -207,7 +209,9 @@ export async function getCompromisosFechasPendientes(): Promise<CompromisoPendie
   const campos = [
     'id', 'nombre_desarrollo', 'identificacion', 'numero', 'estado', 'proceso_interno',
     'responsable', 'partes_interesadas',
+    'fecha_estimada_definicion_usuario', 'fecha_real_definicion_usuario',
     'fecha_estimada_entrega', 'fecha_real_entrega',
+    'fecha_estimada_fin_testing', 'fecha_real_fin_testing',
     'fecha_estimada_feedback_pruebas', 'fecha_real_feedback_pruebas',
     'fecha_estimada_ajustes_tecnicos', 'fecha_real_ajustes_tecnicos',
     'fecha_estimada_salida_vivo', 'fecha_salida_vivo',
@@ -345,7 +349,9 @@ export async function getContadorPendientes(): Promise<number> {
   // ── Compromisos de fechas pendientes ──────────────────────────────────────
   const campos = [
     'id', 'responsable', 'partes_interesadas', 'proceso_interno',
+    'fecha_estimada_definicion_usuario', 'fecha_real_definicion_usuario',
     'fecha_estimada_entrega', 'fecha_real_entrega',
+    'fecha_estimada_fin_testing', 'fecha_real_fin_testing',
     'fecha_estimada_feedback_pruebas', 'fecha_real_feedback_pruebas',
     'fecha_estimada_ajustes_tecnicos', 'fecha_real_ajustes_tecnicos',
     'fecha_estimada_salida_vivo', 'fecha_salida_vivo',
