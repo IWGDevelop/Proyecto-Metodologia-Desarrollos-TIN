@@ -8,6 +8,7 @@ import { AVANCE_POR_ESTADO } from '@/lib/constants'
 import { sendEmail } from '@/lib/email'
 import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
+import { aplicarCriticidadProcesoNuevo } from '@/actions/criticidad-proceso'
 
 function getAppUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL
@@ -87,14 +88,22 @@ export async function crearRequerimiento(
   const { data: loteActivo } = await (supabase as any)
     .from('lotes').select('id').eq('activo', true).single()
 
+  // La criticidad en el proceso se aplica después de crear, con desplazamiento de los demás
+  const { prioridad_proceso, ...resto } = data as typeof data & { prioridad_proceso?: number | null }
+
   const payload = {
-    identificacion: data.nombre_desarrollo ?? '',
-    ...data,
+    identificacion: resto.nombre_desarrollo ?? '',
+    ...resto,
     ...(loteActivo ? { lote_id: loteActivo.id } : {}),
   }
 
   const { data: result, error } = await insertConFallback(supabase, 'requerimientos', payload)
   if (error) throw new Error(`Error al crear requerimiento: ${error.message}`)
+
+  if (prioridad_proceso && resto.proceso_interno && (result as any)?.id) {
+    const res = await aplicarCriticidadProcesoNuevo((result as any).id, resto.proceso_interno as string, prioridad_proceso)
+    if (!res.ok) throw new Error(`El requerimiento se creó, pero no se pudo asignar la criticidad: ${res.error}`)
+  }
 
   revalidatePath('/requerimientos')
   revalidatePath('/admin/requerimientos')

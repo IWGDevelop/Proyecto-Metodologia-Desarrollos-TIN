@@ -13,6 +13,7 @@ import {
 import { PRIORIDADES, PROCESOS_INTERNOS, SLA_DIAS, SUCURSALES } from '@/lib/constants'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
+import { SelectorCriticidadProceso } from '../SelectorCriticidadProceso'
 
 const ALCANCES = [
   { value: 'IWF' as const, color: 'border-blue-300 bg-blue-50 text-blue-700' },
@@ -273,10 +274,13 @@ interface Props {
   form: UseFormReturn<WizardData>
   usuarios?: Perfil[]
   isAdmin?: boolean
+  /** Requerimiento nuevo: exige la criticidad dentro del proceso */
+  esNuevo?: boolean
 }
 
-export function Paso2Solicitante({ form, usuarios = [], isAdmin = false }: Props) {
+export function Paso2Solicitante({ form, usuarios = [], isAdmin = false, esNuevo = false }: Props) {
   const { register, watch, setValue, formState: { errors } } = form
+  const procesoActual = watch('proceso_interno')
 
   const alcanceActual    = watch('alcance')
   const prioridadActual  = watch('prioridad')
@@ -334,7 +338,11 @@ export function Paso2Solicitante({ form, usuarios = [], isAdmin = false }: Props
         <Label>Proceso interno <span className="text-red-500">*</span></Label>
         <Select
           value={watch('proceso_interno') ?? ''}
-          onValueChange={v => setValue('proceso_interno', v as WizardData['proceso_interno'], { shouldValidate: true })}
+          onValueChange={v => {
+            setValue('proceso_interno', v as WizardData['proceso_interno'], { shouldValidate: true })
+            // La criticidad es relativa al proceso: al cambiarlo hay que volver a elegirla
+            setValue('prioridad_proceso', null)
+          }}
         >
           <SelectTrigger>
             <SelectValue placeholder="Selecciona el proceso..." />
@@ -347,6 +355,19 @@ export function Paso2Solicitante({ form, usuarios = [], isAdmin = false }: Props
         </Select>
         {errors.proceso_interno && <p className="text-xs text-red-500">{errors.proceso_interno.message}</p>}
       </div>
+
+      {/* Criticidad dentro del proceso — obligatoria al crear */}
+      {esNuevo && procesoActual && (
+        <SelectorCriticidadProceso
+          proceso={procesoActual}
+          value={watch('prioridad_proceso')}
+          onChange={pos => {
+            setValue('prioridad_proceso', pos)
+            form.clearErrors('prioridad_proceso')
+          }}
+          error={errors.prioridad_proceso?.message}
+        />
+      )}
 
       {/* Responsable — combobox con búsqueda */}
       <div className="space-y-1.5">

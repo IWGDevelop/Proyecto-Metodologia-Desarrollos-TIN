@@ -21,6 +21,8 @@ export const paso2Schema = z.object({
     .min(1, 'El nombre del desarrollo es requerido')
     .max(300, 'Máximo 300 caracteres'),
   prioridad: z.number().min(1).max(4).nullable().optional(),
+  /** Criticidad (posición) del requerimiento dentro de su proceso; obligatoria al crear */
+  prioridad_proceso: z.number().int().min(1).nullable().optional(),
 })
 
 export const paso3Schema = z.object({

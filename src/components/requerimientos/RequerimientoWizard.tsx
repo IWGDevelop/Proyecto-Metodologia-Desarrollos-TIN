@@ -228,6 +228,12 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
       const ok = await form.trigger(campos)
       if (!ok) return
     }
+    // Requerimiento nuevo: la criticidad dentro del proceso es obligatoria
+    if (pasoActual === 2 && !requerimiento && !form.getValues('prioridad_proceso')) {
+      form.setError('prioridad_proceso', { type: 'required', message: 'Selecciona la criticidad del requerimiento en tu proceso' })
+      toast.error('Selecciona la criticidad del requerimiento en tu proceso')
+      return
+    }
     setPasoActual(p => Math.min(p + 1, 6))
     window.scrollTo({ top: 0, behavior: 'smooth' })
   }
@@ -254,7 +260,13 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
           await actualizarRequerimiento(requerimiento.id, { ...payload, es_borrador: false })
           id = requerimiento.id
         } else {
-          const result = await crearRequerimiento({ ...payload, es_borrador: false })
+          if (!data.prioridad_proceso) {
+            setPasoActual(2)
+            form.setError('prioridad_proceso', { type: 'required', message: 'Selecciona la criticidad del requerimiento en tu proceso' })
+            toast.error('Falta la criticidad del requerimiento en tu proceso')
+            return
+          }
+          const result = await crearRequerimiento({ ...payload, prioridad_proceso: data.prioridad_proceso, es_borrador: false })
           id = result.id
         }
 
@@ -348,7 +360,7 @@ export function RequerimientoWizard({ requerimiento, redirectBasePath = '/admin/
 
         {/* Contenido del paso */}
         {pasoActual === 1 && <Paso1Encabezado form={form} />}
-        {pasoActual === 2 && <Paso2Solicitante form={form} usuarios={usuarios} isAdmin={isAdmin} />}
+        {pasoActual === 2 && <Paso2Solicitante form={form} usuarios={usuarios} isAdmin={isAdmin} esNuevo={!requerimiento} />}
         {pasoActual === 3 && (
           <Paso3Descripcion
             form={form}

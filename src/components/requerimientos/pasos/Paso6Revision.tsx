@@ -93,6 +93,13 @@ export function Paso6Revision({ form, confirmado, onConfirmadoChange }: Props) {
           <Row label="Empresa / Alcance" valor={data.alcance} />
           <Row label="Sucursal" valor={data.sucursal} />
           <Row label="Proceso interno" valor={procesoLabel} />
+          {data.prioridad_proceso != null && (
+            <Row label="Criticidad en el proceso" valor={
+              <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-700">
+                #{data.prioridad_proceso} en {procesoLabel}
+              </span>
+            } />
+          )}
           <Row label="Responsable" valor={data.responsable} />
           <Row label="Partes interesadas" valor={data.partes_interesadas?.join(', ')} />
           <Row label="Nombre del desarrollo" valor={data.nombre_desarrollo} />
