@@ -57,12 +57,21 @@ export function calcularEjecucionEtapas(
 
   ordenado.forEach((h, i) => {
     const siguiente = ordenado[i + 1]
-    const actual = resultado[h.estado_nuevo] ?? { inicio: null, fin: null, enCurso: false, veces: 0 }
+    // "Entregado y en funcionamiento" ahora se llama Cerrado: cuenta como la misma etapa
+    const estado = h.estado_nuevo === 'ENTREGADO' ? 'CERRADO' : h.estado_nuevo
+    // Pasar de Entregado a Cerrado no es un reingreso a la etapa
+    if (estado === 'CERRADO' && i > 0 && ordenado[i - 1].estado_nuevo !== h.estado_nuevo
+      && (ordenado[i - 1].estado_nuevo === 'ENTREGADO' || ordenado[i - 1].estado_nuevo === 'CERRADO')) {
+      const previo = resultado.CERRADO
+      if (previo) { previo.enCurso = !siguiente; previo.fin = siguiente ? aFecha(siguiente.created_at) : null }
+      return
+    }
+    const actual = resultado[estado] ?? { inicio: null, fin: null, enCurso: false, veces: 0 }
     actual.inicio ??= aFecha(h.created_at)
     actual.veces += 1
     actual.enCurso = !siguiente
     actual.fin = siguiente ? aFecha(siguiente.created_at) : null
-    resultado[h.estado_nuevo] = actual
+    resultado[estado] = actual
   })
 
   return resultado

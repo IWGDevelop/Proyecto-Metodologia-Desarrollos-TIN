@@ -45,8 +45,12 @@ const ETAPAS_FLUJO = [
 
 /** Estados que no son una etapa del flujo; se muestran después de Cerrado si tienen requerimientos */
 const ESTADOS_FUERA_DEL_FLUJO = [
-  'ENTREGADO', 'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'STAND_BY', 'EN_ESPERA_POR_TERCEROS', 'NO_VIABLE',
+  'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'STAND_BY', 'EN_ESPERA_POR_TERCEROS', 'NO_VIABLE',
 ]
+
+/** "Entregado y en funcionamiento" ahora se llama Cerrado: se reporta como la misma etapa */
+const estadoReporte = (estado: string | null | undefined) =>
+  !estado ? 'SIN_GESTION' : estado === 'ENTREGADO' ? 'CERRADO' : estado
 
 const LABEL_ESTADO_FLUJO: Record<string, string> = {
   SIN_GESTION:             'Recibido',
@@ -66,7 +70,7 @@ function computar(activos: RowPresidencial[]) {
   // Por estado — etapas del flujo en orden (siempre visibles, aunque estén en 0);
   // los demás estados solo si tienen requerimientos, y Desistido al final
   const estadoMap = new Map<string, number>()
-  activos.forEach(r => { const k = r.estado ?? 'SIN_GESTION'; estadoMap.set(k, (estadoMap.get(k) ?? 0) + 1) })
+  activos.forEach(r => { const k = estadoReporte(r.estado); estadoMap.set(k, (estadoMap.get(k) ?? 0) + 1) })
   const otrosEstados = [...estadoMap.keys()]
     .filter(e => !ETAPAS_FLUJO.includes(e) && e !== 'DESISTIDO')
     .sort((a, b) => (ESTADOS_FUERA_DEL_FLUJO.indexOf(a) + 1 || 99) - (ESTADOS_FUERA_DEL_FLUJO.indexOf(b) + 1 || 99) || a.localeCompare(b))
@@ -131,8 +135,7 @@ function computar(activos: RowPresidencial[]) {
     return { prioridad: p, label: cfg.label, cantidad: prioridadMap.get(p) ?? 0, porcentaje: total > 0 ? Math.round(((prioridadMap.get(p) ?? 0) / total) * 100) : 0, color: cfg.color, bgColor: cfg.bgColor, textColor: cfg.textColor }
   })
 
-  // Entregas por mes (solo ENTREGADO con fecha_real_entrega)
-  // Entregas por mes — incluye TODOS los ENTREGADO; sin fecha van a 'sin-fecha'
+  // Entregas por mes — incluye todos los cerrados (antes Entregado); sin fecha van a 'sin-fecha'
   const SIN_FECHA_KEY = 'sin-fecha'
   const entregasMesMap = new Map<string, {
     rows: RowPresidencial[]
@@ -141,7 +144,7 @@ function computar(activos: RowPresidencial[]) {
     horasAhorradasMes: number
   }>()
   activos
-    .filter(r => r.estado === 'ENTREGADO')
+    .filter(r => estadoReporte(r.estado) === 'CERRADO')
     .forEach(r => {
       const mes = r.fecha_real_entrega ? r.fecha_real_entrega.substring(0, 7) : SIN_FECHA_KEY
       const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horasAhorradasMes: 0 }
@@ -311,8 +314,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
         >
           <option value="">Todos los estados</option>
           {estadosDisponibles.map(k => {
-            const cfg = getEstadoCfg(k)
-            return <option key={k} value={k}>{cfg.label}</option>
+            return <option key={k} value={k}>{LABEL_ESTADO_FLUJO[k] ?? getEstadoCfg(k).label}</option>
           })}
         </select>
 
@@ -435,18 +437,20 @@ export default function ReportePresidencialPage() {
   const totalBorradores = todos.length - base.length
 
   // Estados distintos presentes en los datos (incluye personalizados)
+  // Entregado se presenta como Cerrado; se ordenan según las etapas del flujo
   const estadosDisponibles = useMemo(() => {
     const set = new Set<string>([
       ...Object.keys(ESTADOS),
       ...todos.map(r => r.estado).filter(Boolean) as string[],
-    ])
-    return Array.from(set).sort()
+    ].map(estadoReporte))
+    const orden = [...ETAPAS_FLUJO, ...ESTADOS_FUERA_DEL_FLUJO, 'DESISTIDO']
+    return Array.from(set).sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99) || a.localeCompare(b))
   }, [todos])
 
   const activos = useMemo(() => {
     return base.filter(r => {
       if (filtros.alcance       && r.alcance           !== filtros.alcance)                    return false
-      if (filtros.estado        && r.estado            !== filtros.estado)                     return false
+      if (filtros.estado        && estadoReporte(r.estado) !== filtros.estado)                 return false
       if (filtros.proceso       && r.proceso_interno   !== filtros.proceso)                    return false
       if (filtros.tipo_solicitud && r.tipo_solicitud   !== filtros.tipo_solicitud)             return false
       if (filtros.prioridad     && String(r.prioridad) !== filtros.prioridad)                  return false
