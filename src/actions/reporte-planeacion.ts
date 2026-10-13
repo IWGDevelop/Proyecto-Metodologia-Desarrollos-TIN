@@ -50,6 +50,7 @@ export interface RequerimientoPlaneacion {
   tienePlan: boolean
   /** Inicio planeado de la fase de Desarrollo (criterio de orden) */
   inicioDesarrollo: string | null
+  desarrolladores: { id: string; nombre: string }[]
   etapas: EtapaReporte[]
 }
 
@@ -96,10 +97,23 @@ export async function getReportePlaneacion(): Promise<RequerimientoPlaneacion[]>
   const ids = [...incluidos]
   if (ids.length === 0) return []
 
-  const { data: historial } = await (supabase as any)
-    .from('historial_estados')
-    .select('requerimiento_id, estado_nuevo, created_at')
-    .in('requerimiento_id', ids)
+  const [{ data: historial }, { data: asignaciones }] = await Promise.all([
+    (supabase as any)
+      .from('historial_estados')
+      .select('requerimiento_id, estado_nuevo, created_at')
+      .in('requerimiento_id', ids),
+    (supabase as any)
+      .from('requerimiento_desarrolladores')
+      .select('requerimiento_id, perfil:perfil_id(id, nombre_completo, email)')
+      .in('requerimiento_id', ids),
+  ])
+  const devsPorReq = new Map<string, { id: string; nombre: string }[]>()
+  for (const a of asignaciones ?? []) {
+    if (!a.perfil) continue
+    const lista = devsPorReq.get(a.requerimiento_id) ?? []
+    lista.push({ id: a.perfil.id, nombre: a.perfil.nombre_completo ?? a.perfil.email })
+    devsPorReq.set(a.requerimiento_id, lista)
+  }
 
   const hoy = new Date().toISOString().slice(0, 10)
 
@@ -161,6 +175,7 @@ export async function getReportePlaneacion(): Promise<RequerimientoPlaneacion[]>
       tieneHijos: false,
       tienePlan: idsConPlan.has(req.id),
       inicioDesarrollo: etapas.find(e => e.estado === 'EN_DESARROLLO')?.planInicio ?? null,
+      desarrolladores: devsPorReq.get(req.id) ?? [],
       etapas,
     }
   })

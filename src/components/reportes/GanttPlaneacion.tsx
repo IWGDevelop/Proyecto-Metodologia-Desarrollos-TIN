@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import {
-  ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpDown, Rows2, ListTree, CornerDownRight,
+  ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpDown, Rows2, ListTree, CornerDownRight, UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
@@ -103,9 +103,23 @@ function tramos(e: EtapaReporte, escala: Escala) {
 }
 
 // ── Cuadrícula de fondo (una sola capa para todas las filas) ────────────────
-function Cuadricula({ escala }: { escala: Escala }) {
+function Cuadricula({ escala, periodo }: { escala: Escala; periodo: { desde: string | null; hasta: string | null } | null }) {
+  // Franja del periodo filtrado
+  const franja = periodo && (() => {
+    const dentro = escala.dias.filter(d => (!periodo.desde || d.iso >= periodo.desde) && (!periodo.hasta || d.iso <= periodo.hasta))
+    if (dentro.length === 0) return null
+    const ultimo = dentro[dentro.length - 1]
+    return { x: dentro[0].x, w: ultimo.x + ultimo.w - dentro[0].x }
+  })()
+
   return (
     <div className="pointer-events-none absolute inset-y-0" style={{ left: LEFT_W, width: escala.totalWidth }}>
+      {franja && (
+        <div
+          className="absolute inset-y-0 border-x-2 border-blue-300 bg-blue-100/40"
+          style={{ left: franja.x, width: franja.w }}
+        />
+      )}
       {escala.dias.map(d => {
         const esHoy = d.iso === HOY_ISO
         const inicioMes = d.fecha.getDate() === 1
@@ -353,9 +367,18 @@ function FilaRequerimiento({
             <span className={cn('inline-block rounded-full px-1.5 py-px text-[10px] font-medium leading-none', estadoCfg.bgColor, estadoCfg.textColor)}>
               {estadoCfg.label}
             </span>
+            {req.desarrolladores.length > 0 && (
+              <span
+                className="flex min-w-0 items-center gap-0.5 truncate text-[10px] text-slate-500"
+                title={`Desarrollador: ${req.desarrolladores.map(d => d.nombre).join(', ')}`}
+              >
+                <UserCog size={10} className="shrink-0" />
+                <span className="truncate">{req.desarrolladores.map(d => d.nombre.split(' ').slice(0, 2).join(' ')).join(', ')}</span>
+              </span>
+            )}
             {!req.tienePlan
-              ? <span className="text-[10px] italic text-slate-400">Sin planeación</span>
-              : alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
+              ? <span className="shrink-0 text-[10px] italic text-slate-400">Sin planeación</span>
+              : alertas > 0 && <span className="shrink-0 text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
           </div>
         </div>
 
@@ -388,7 +411,13 @@ function FilaRequerimiento({
 }
 
 // ── Gantt ───────────────────────────────────────────────────────────────────
-export function GanttPlaneacion({ requerimientos }: { requerimientos: RequerimientoPlaneacion[] }) {
+export function GanttPlaneacion({
+  requerimientos, periodo = null,
+}: {
+  requerimientos: RequerimientoPlaneacion[]
+  /** Periodo filtrado: se resalta en la línea de tiempo */
+  periodo?: { desde: string | null; hasta: string | null } | null
+}) {
   const [dayW, setDayW] = useState(36)
   // Desplegados por defecto: cada requerimiento muestra sus renglones Planeado y Ejecutado
   const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set(requerimientos.map(r => r.id)))
@@ -506,7 +535,7 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
             <div className="py-12 text-center text-sm text-slate-400">No hay resultados para los filtros aplicados</div>
           ) : (
             <div className="relative">
-              <Cuadricula escala={escala} />
+              <Cuadricula escala={escala} periodo={periodo} />
               {visibles.map(req => (
                 <div key={req.id} className="relative">
                   <FilaRequerimiento

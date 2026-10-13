@@ -1,8 +1,10 @@
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Download, Search, CalendarRange } from 'lucide-react'
+import { Download, Search, CalendarRange, Filter, UserCog, ChevronDown, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
 import { getEstadoCfg, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
@@ -15,6 +17,66 @@ interface Props {
 }
 
 const CON_ALERTA: CumplimientoEtapa[] = ['RETRASADA', 'VENCIDA', 'INICIO_ATRASADO']
+const SIN_ASIGNAR = '__sin_asignar__'
+
+type FasePeriodo = 'AMBAS' | 'EN_DESARROLLO' | 'PRUEBAS_USUARIO'
+
+/** Devuelve un actualizador de Set que agrega o quita `valor` */
+const alternar = (valor: string) => (prev: Set<string>) => {
+  const next = new Set(prev)
+  next.has(valor) ? next.delete(valor) : next.add(valor)
+  return next
+}
+
+/** Filtro de selección múltiple en un desplegable (mismo patrón que el listado de Requerimientos) */
+function FiltroMultiple({
+  etiqueta, Icon, opciones, seleccion, onToggle, onLimpiar,
+}: {
+  etiqueta: string
+  Icon: React.ElementType
+  opciones: { valor: string; contenido: React.ReactNode }[]
+  seleccion: Set<string>
+  onToggle: (valor: string) => void
+  onLimpiar: () => void
+}) {
+  return (
+    <Popover>
+      <PopoverTrigger
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-lg border px-3 py-2 text-xs font-medium transition-colors',
+          seleccion.size
+            ? 'border-blue-400 bg-blue-50 text-blue-700'
+            : 'border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
+        )}
+      >
+        <Icon size={13} />
+        {etiqueta}
+        {seleccion.size > 0 && (
+          <span className="ml-0.5 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-600 px-1 text-[10px] text-white">
+            {seleccion.size}
+          </span>
+        )}
+        <ChevronDown size={12} />
+      </PopoverTrigger>
+      <PopoverContent className="max-h-80 w-72 overflow-y-auto p-2" align="start">
+        <div className="space-y-1">
+          {opciones.length === 0 && <p className="px-2 py-1.5 text-xs text-slate-400">Sin opciones</p>}
+          {opciones.map(o => (
+            <label key={o.valor} className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 hover:bg-slate-50">
+              <Checkbox checked={seleccion.has(o.valor)} onCheckedChange={() => onToggle(o.valor)} />
+              {o.contenido}
+            </label>
+          ))}
+        </div>
+        {seleccion.size > 0 && (
+          <button onClick={onLimpiar} className="mt-1 w-full rounded-md px-2 py-1.5 text-left text-xs text-slate-500 hover:bg-slate-50">
+            Quitar selección
+          </button>
+        )}
+      </PopoverContent>
+    </Popover>
+  )
+}
 
 function formatDesv(dias: number | null): string {
   if (dias === null) return '—'
@@ -51,15 +113,42 @@ export function ReportePlaneacion({ datos }: Props) {
   const [soloAlertas, setSoloAlertas] = useState(false)
   const [criticidad, setCriticidad] = useState('')
   const [estadosFiltro, setEstadosFiltro] = useState<Set<string>>(new Set())
+  const [devsFiltro, setDevsFiltro] = useState<Set<string>>(new Set())
+  const [fasePeriodo, setFasePeriodo] = useState<FasePeriodo>('AMBAS')
+  const [periodoDesde, setPeriodoDesde] = useState('')
+  const [periodoHasta, setPeriodoHasta] = useState('')
 
-  const toggleEstado = (e: string) =>
-    setEstadosFiltro(prev => {
-      const next = new Set(prev)
-      next.has(e) ? next.delete(e) : next.add(e)
-      return next
-    })
+  const periodoActivo = !!(periodoDesde || periodoHasta)
+  const hayFiltros = !!(busqueda || proceso || criticidad || soloAlertas || estadosFiltro.size || devsFiltro.size || periodoActivo)
+  const limpiarFiltros = () => {
+    setBusqueda(''); setProceso(''); setCriticidad(''); setSoloAlertas(false)
+    setEstadosFiltro(new Set()); setDevsFiltro(new Set())
+    setFasePeriodo('AMBAS'); setPeriodoDesde(''); setPeriodoHasta('')
+  }
 
   const estadosDisponibles = useMemo(() => [...new Set(datos.map(r => r.estado))].sort(), [datos])
+  const desarrolladoresDisponibles = useMemo(() => {
+    const porId = new Map<string, string>()
+    for (const r of datos) for (const d of r.desarrolladores) porId.set(d.id, d.nombre)
+    return [...porId].map(([id, nombre]) => ({ id, nombre })).sort((a, b) => a.nombre.localeCompare(b.nombre))
+  }, [datos])
+
+  /** La fase planeada del requerimiento se cruza con el periodo seleccionado */
+  const enPeriodo = (r: RequerimientoPlaneacion) => {
+    if (!periodoActivo) return true
+    const fases = fasePeriodo === 'AMBAS' ? ['EN_DESARROLLO', 'PRUEBAS_USUARIO'] : [fasePeriodo]
+    return r.etapas.some(e => {
+      if (!fases.includes(e.estado)) return false
+      const inicio = e.planInicio ?? e.planFin
+      const fin = e.planFin ?? e.planInicio
+      if (!inicio || !fin) return false
+      return (!periodoHasta || inicio <= periodoHasta) && (!periodoDesde || fin >= periodoDesde)
+    })
+  }
+
+  const coincideDesarrollador = (r: RequerimientoPlaneacion) =>
+    devsFiltro.size === 0 ||
+    (r.desarrolladores.length === 0 ? devsFiltro.has(SIN_ASIGNAR) : r.desarrolladores.some(d => devsFiltro.has(d.id)))
 
   const { filtrados, visibles } = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
@@ -68,6 +157,8 @@ export function ReportePlaneacion({ datos }: Props) {
       (!proceso || r.proceso_interno === proceso) &&
       (!criticidad || String(r.prioridad ?? '') === criticidad) &&
       (estadosFiltro.size === 0 || estadosFiltro.has(r.estado)) &&
+      coincideDesarrollador(r) &&
+      enPeriodo(r) &&
       (!soloAlertas || r.etapas.some(e => CON_ALERTA.includes(e.cumplimiento)))
     )
     // En el Gantt se conservan los ancestros de cada coincidencia para no romper la jerarquía
@@ -83,7 +174,7 @@ export function ReportePlaneacion({ datos }: Props) {
       filtrados: coinciden.filter(r => r.tienePlan),
       visibles: datos.filter(r => mostrar.has(r.id)),
     }
-  }, [datos, busqueda, proceso, criticidad, estadosFiltro, soloAlertas])
+  }, [datos, busqueda, proceso, criticidad, estadosFiltro, devsFiltro, fasePeriodo, periodoDesde, periodoHasta, soloAlertas]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const etapasPlaneadas = filtrados.flatMap(r => r.etapas.filter(e => e.cumplimiento !== 'SIN_PLAN'))
   const terminadas = etapasPlaneadas.filter(e => e.cumplimiento === 'A_TIEMPO' || e.cumplimiento === 'RETRASADA')
@@ -180,38 +271,73 @@ export function ReportePlaneacion({ datos }: Props) {
         </Button>
       </div>
 
-      {/* Filtro de estados (chips multi-selección, como en Cronograma) */}
+      {/* Estado · Desarrollador · Periodo */}
       <div className="flex flex-wrap items-center gap-2">
-        <span className="mr-1 text-[11px] font-semibold text-slate-400">Estado:</span>
-        <button
-          onClick={() => setEstadosFiltro(new Set())}
-          className={cn(
-            'rounded-full border px-3 py-1 text-[11px] font-semibold transition-colors',
-            estadosFiltro.size === 0
-              ? 'border-slate-400 bg-slate-700 text-white'
-              : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50'
-          )}
-        >
-          Todos
-        </button>
-        {estadosDisponibles.map(e => {
-          const cfg = getEstadoCfg(e)
-          const activo = estadosFiltro.has(e)
-          return (
-            <button
-              key={e}
-              onClick={() => toggleEstado(e)}
-              className={cn(
-                'rounded-full border px-3 py-1 text-[11px] font-semibold transition-all',
-                activo
-                  ? `${cfg.bgColor} ${cfg.textColor} border-transparent shadow-sm`
-                  : 'border-slate-200 bg-white text-slate-400 hover:border-slate-300 hover:text-slate-600'
-              )}
-            >
-              {cfg.label}
-            </button>
-          )
-        })}
+        <FiltroMultiple
+          etiqueta="Estado"
+          Icon={Filter}
+          seleccion={estadosFiltro}
+          onToggle={e => setEstadosFiltro(alternar(e))}
+          onLimpiar={() => setEstadosFiltro(new Set())}
+          opciones={estadosDisponibles.map(e => {
+            const cfg = getEstadoCfg(e)
+            return {
+              valor: e,
+              contenido: <span className={cn('rounded-full px-2 py-0.5 text-xs font-medium', cfg.bgColor, cfg.textColor)}>{cfg.label}</span>,
+            }
+          })}
+        />
+        <FiltroMultiple
+          etiqueta="Desarrollador"
+          Icon={UserCog}
+          seleccion={devsFiltro}
+          onToggle={d => setDevsFiltro(alternar(d))}
+          onLimpiar={() => setDevsFiltro(new Set())}
+          opciones={[
+            ...desarrolladoresDisponibles.map(d => ({ valor: d.id, contenido: <span className="text-xs text-slate-700">{d.nombre}</span> })),
+            { valor: SIN_ASIGNAR, contenido: <span className="text-xs italic text-slate-400">Sin desarrollador asignado</span> },
+          ]}
+        />
+
+        <div className={cn(
+          'flex flex-wrap items-center gap-1.5 rounded-lg border bg-white px-2 py-1',
+          periodoActivo ? 'border-blue-400 bg-blue-50/50' : 'border-slate-200'
+        )}>
+          <CalendarRange size={13} className={periodoActivo ? 'text-blue-600' : 'text-slate-400'} />
+          <select
+            value={fasePeriodo}
+            onChange={e => setFasePeriodo(e.target.value as FasePeriodo)}
+            className="bg-transparent py-0.5 text-xs font-medium text-slate-700 outline-none"
+            aria-label="Fase del periodo"
+          >
+            <option value="AMBAS">Desarrollo o pruebas de usuario</option>
+            <option value="EN_DESARROLLO">Desarrollo</option>
+            <option value="PRUEBAS_USUARIO">Pruebas de usuario</option>
+          </select>
+          <span className="text-xs text-slate-400">entre</span>
+          <input
+            type="date"
+            value={periodoDesde}
+            onChange={e => setPeriodoDesde(e.target.value)}
+            className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
+            aria-label="Desde"
+          />
+          <span className="text-xs text-slate-400">y</span>
+          <input
+            type="date"
+            value={periodoHasta}
+            min={periodoDesde || undefined}
+            onChange={e => setPeriodoHasta(e.target.value)}
+            className="rounded border border-slate-200 px-1.5 py-0.5 text-xs text-slate-700 focus:outline-none focus:ring-1 focus:ring-blue-300"
+            aria-label="Hasta"
+          />
+        </div>
+
+        {hayFiltros && (
+          <Button variant="ghost" size="sm" onClick={limpiarFiltros} className="gap-1 text-xs text-slate-500">
+            <X size={13} /> Limpiar filtros
+          </Button>
+        )}
       </div>
 
       {/* KPIs */}
@@ -228,7 +354,10 @@ export function ReportePlaneacion({ datos }: Props) {
       </div>
 
       {/* Gantt planeado vs. ejecutado */}
-      <GanttPlaneacion requerimientos={visibles} />
+      <GanttPlaneacion
+        requerimientos={visibles}
+        periodo={periodoActivo ? { desde: periodoDesde || null, hasta: periodoHasta || null } : null}
+      />
 
       {/* Resumen por etapa */}
       <div className="rounded-xl border border-slate-200 bg-white">
