@@ -29,6 +29,32 @@ function origenLabel(o: string) {
   return (ORIGENES_REQUERIMIENTO as unknown as { value: string; label: string }[]).find(x => x.value === o)?.label ?? o
 }
 
+/** Etapas del flujo de un requerimiento, en el orden en que ocurren */
+const ETAPAS_FLUJO = [
+  'SIN_GESTION',
+  'EN_DEFINICION_USUARIO',
+  'ANALISIS',
+  'PENDIENTE_DE_EJECUCION',
+  'EN_DESARROLLO',
+  'PRUEBAS_DE_TESTING_Y_QA',
+  'PRUEBAS_USUARIO',
+  'AJUSTES_TECNICOS',
+  'PROGRAMADO_PARA_SALIDA_EN_VIVO',
+  'CERRADO',
+]
+
+/** Estados que no son una etapa del flujo; se muestran después de Cerrado si tienen requerimientos */
+const ESTADOS_FUERA_DEL_FLUJO = [
+  'ENTREGADO', 'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'STAND_BY', 'EN_ESPERA_POR_TERCEROS', 'NO_VIABLE',
+]
+
+const LABEL_ESTADO_FLUJO: Record<string, string> = {
+  SIN_GESTION:             'Recibido',
+  ANALISIS:                'Estudio y evaluación técnica',
+  PENDIENTE_DE_EJECUCION:  'Pendiente de ejecución',
+  PRUEBAS_DE_TESTING_Y_QA: 'Pruebas de Testing y QA',
+}
+
 function computar(activos: RowPresidencial[]) {
   const total = activos.length
 
@@ -37,27 +63,23 @@ function computar(activos: RowPresidencial[]) {
   const impactoTotalReal = activos.reduce((s, r) => s + (r.impacto_economico_total_anual_real ?? 0), 0)
   const sinCuantificar = activos.filter(r => !r.impacto_economico_total_anual || r.impacto_economico_total_anual === 0).length
 
-  // Por estado — orden del flujo de trabajo
-  const ESTADO_ORDER = [
-    'SIN_GESTION', 'ANALISIS', 'EN_DEFINICION_USUARIO', 'EN_DESARROLLO',
-    'PRUEBAS_USUARIO', 'EN_ESPERA_POR_TERCEROS', 'ENTREGADO', 'DESISTIDO',
-  ]
+  // Por estado — etapas del flujo en orden (siempre visibles, aunque estén en 0);
+  // los demás estados solo si tienen requerimientos, y Desistido al final
   const estadoMap = new Map<string, number>()
   activos.forEach(r => { const k = r.estado ?? 'SIN_GESTION'; estadoMap.set(k, (estadoMap.get(k) ?? 0) + 1) })
-  const porEstado = Array.from(estadoMap.entries())
-    .sort((a, b) => {
-      const ia = ESTADO_ORDER.indexOf(a[0])
-      const ib = ESTADO_ORDER.indexOf(b[0])
-      if (ia === -1 && ib === -1) return a[0].localeCompare(b[0])
-      if (ia === -1) return 1
-      if (ib === -1) return -1
-      return ia - ib
+  const otrosEstados = [...estadoMap.keys()]
+    .filter(e => !ETAPAS_FLUJO.includes(e) && e !== 'DESISTIDO')
+    .sort((a, b) => (ESTADOS_FUERA_DEL_FLUJO.indexOf(a) + 1 || 99) - (ESTADOS_FUERA_DEL_FLUJO.indexOf(b) + 1 || 99) || a.localeCompare(b))
+  const porEstado = [...ETAPAS_FLUJO, ...otrosEstados, 'DESISTIDO']
+    .filter(estado => ETAPAS_FLUJO.includes(estado) || estadoMap.has(estado))
+    .map(estado => {
+      const cantidad = estadoMap.get(estado) ?? 0
+      return {
+        estado, cantidad,
+        label: LABEL_ESTADO_FLUJO[estado] ?? ESTADOS[estado]?.label ?? estado.replace(/_/g, ' '),
+        porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
+      }
     })
-    .map(([estado, cantidad]) => ({
-      estado, cantidad,
-      label: ESTADOS[estado]?.label ?? estado.replace(/_/g, ' '),
-      porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
-    }))
 
   // Por proceso
   const procesoMap = new Map<string, { cantidad: number; horas: number; impacto: number; sin: number }>()
@@ -222,7 +244,9 @@ const ESTADO_BAR: Record<string, string> = {
   EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'bg-slate-300',
   ANALISIS:                           'bg-blue-500',
   EN_DEFINICION_USUARIO:              'bg-violet-500',
+  PENDIENTE_DE_EJECUCION:             'bg-slate-500',
   EN_DESARROLLO:                      'bg-indigo-500',
+  PRUEBAS_DE_TESTING_Y_QA:            'bg-pink-500',
   PRUEBAS_USUARIO:                    'bg-amber-500',
   STAND_BY:                           'bg-orange-400',
   EN_ESPERA_POR_TERCEROS:             'bg-slate-400',
