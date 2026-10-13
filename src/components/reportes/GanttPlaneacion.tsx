@@ -87,9 +87,13 @@ function construirEscala(desde: Date, hasta: Date, dayW: number): Escala {
 }
 
 function tramo(escala: Escala, desde: string | null, hasta: string | null) {
-  if (!desde || !hasta) return null
-  const a = escala.porIso.get(desde)
-  const b = escala.porIso.get(hasta)
+  if (!desde || !hasta || escala.dias.length === 0) return null
+  const primero = escala.dias[0].iso
+  const ultimo = escala.dias[escala.dias.length - 1].iso
+  // Fuera del rango visible: no se dibuja; si lo cruza, se recorta en el borde
+  if (hasta < primero || desde > ultimo) return null
+  const a = escala.porIso.get(desde < primero ? primero : desde)
+  const b = escala.porIso.get(hasta > ultimo ? ultimo : hasta)
   if (!a || !b) return null
   return { x: a.x, w: Math.max(b.x + b.w - a.x, 6) }
 }
@@ -452,19 +456,22 @@ export function GanttPlaneacion({
     return out
   }, [requerimientos, subOcultos])
 
-  // Rango: desde el lunes de la semana más temprana hasta el domingo siguiente a la fecha más tardía
+  // Rango: si hay periodo filtrado, la línea de tiempo se ajusta a él (semanas completas);
+  // si no, va desde la fecha más temprana hasta una semana después de la más tardía
   const { desde, hasta } = useMemo(() => {
     const fechas = requerimientos
       .flatMap(r => r.etapas.flatMap(e => [e.planInicio, e.planFin, e.realInicio, e.realFin]))
       .filter((d): d is string => !!d)
       .map(toD)
-    fechas.push(toD(HOY_ISO))
-    const minD = new Date(Math.min(...fechas.map(d => d.getTime())))
-    const maxD = new Date(Math.max(...fechas.map(d => d.getTime())))
+    if (!periodo) fechas.push(toD(HOY_ISO))
+    if (fechas.length === 0) fechas.push(toD(HOY_ISO))
+    const minD = periodo?.desde ? toD(periodo.desde) : new Date(Math.min(...fechas.map(d => d.getTime())))
+    const maxD = periodo?.hasta ? toD(periodo.hasta) : new Date(Math.max(...fechas.map(d => d.getTime())))
     const lunes = new Date(minD.getFullYear(), minD.getMonth(), minD.getDate() - ((minD.getDay() + 6) % 7))
-    const domingo = new Date(maxD.getFullYear(), maxD.getMonth(), maxD.getDate() + (7 - maxD.getDay()) % 7 + 7)
+    const colchon = periodo?.hasta ? 0 : 7
+    const domingo = new Date(maxD.getFullYear(), maxD.getMonth(), maxD.getDate() + (7 - maxD.getDay()) % 7 + colchon)
     return { desde: lunes, hasta: domingo }
-  }, [requerimientos])
+  }, [requerimientos, periodo?.desde, periodo?.hasta]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const escala = useMemo(() => construirEscala(desde, hasta, dayW), [desde, hasta, dayW])
 
