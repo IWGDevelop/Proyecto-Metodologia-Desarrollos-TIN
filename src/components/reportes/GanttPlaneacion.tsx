@@ -419,8 +419,8 @@ export function GanttPlaneacion({
   periodo?: { desde: string | null; hasta: string | null } | null
 }) {
   const [dayW, setDayW] = useState(36)
-  // Desplegados por defecto: cada requerimiento muestra sus renglones Planeado y Ejecutado
-  const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set(requerimientos.map(r => r.id)))
+  // Recogidos al abrir: cada requerimiento muestra solo lo planeado hasta desplegar Planeado / Ejecutado
+  const [abiertos, setAbiertos] = useState<Set<string>>(new Set())
 
   // Requerimientos con sus subrequerimientos ocultos (por defecto todos desplegados)
   const [subOcultos, setSubOcultos] = useState<Set<string>>(new Set())
