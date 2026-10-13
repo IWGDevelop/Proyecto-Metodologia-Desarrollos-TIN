@@ -5,7 +5,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Lock, Info, CalendarDays, Link2, Calculator, TrendingUp, Code2, FileCode, Workflow,
-  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, type LucideIcon,
+  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, FileDiff, type LucideIcon,
 } from 'lucide-react'
 import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
 import { formatFechaRelativa, cn } from '@/lib/utils'
@@ -24,6 +24,7 @@ import { TabDocumentacionTecnica } from '@/components/requerimientos/tabs/TabDoc
 import { TabActividad } from '@/components/requerimientos/tabs/TabActividad'
 import { TabVistoBueno } from '@/components/requerimientos/tabs/TabVistoBueno'
 import { TabPendientes } from '@/components/requerimientos/tabs/TabPendientes'
+import { TabControlCambios } from '@/components/requerimientos/tabs/TabControlCambios'
 import { getHistorialCompleto } from '@/actions/historial-detallado'
 import { getTareasConsolidadasRequerimiento } from '@/actions/pendientes-requerimiento'
 import { getHijosRequerimiento, getEtiquetaJerarquica } from '@/actions/asociaciones'
@@ -140,6 +141,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
       titulo: 'Seguimiento',
       items: [
         { value: 'visto-bueno',  label: 'Visto Bueno',  Icon: BadgeCheck,   visible: pv('req:visto-bueno') },
+        { value: 'control-cambios', label: 'Control de cambios', Icon: FileDiff, visible: pv('req:control-cambios') },
         { value: 'fechas',       label: 'Fechas',       Icon: CalendarDays, visible: true },
         { value: 'flujo',        label: 'Flujo',        Icon: Workflow,     visible: true },
         { value: 'historial',    label: 'Historial',    Icon: History,      visible: pv('req:historial') },
@@ -370,6 +372,18 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
               userEmail={perfilAdmin?.email ?? null}
               userName={perfilAdmin?.nombre_completo ?? null}
               tipoSolicitudReq={req.tipo_solicitud ?? null}
+            />
+          </TabsContent>
+        )}
+
+        {pv('req:control-cambios') && (
+          <TabsContent value="control-cambios">
+            <TabControlCambios
+              requerimientoId={id}
+              canCreate={pc('req:control-cambios')}
+              canEdit={pe('req:control-cambios')}
+              isAdmin={isAdmin}
+              userName={perfilAdmin?.nombre_completo ?? null}
             />
           </TabsContent>
         )}

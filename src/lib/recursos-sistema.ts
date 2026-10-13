@@ -60,6 +60,7 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'req:historial',      label: 'Historial',      permisos: ['puede_ver'] },
       { id: 'req:actividad',      label: 'Resumen de Actividad', permisos: ['puede_ver'] },
       { id: 'req:visto-bueno',    label: 'Visto Bueno',    permisos: ['puede_ver', 'puede_crear'] },
+      { id: 'req:control-cambios', label: 'Control de cambios', permisos: ['puede_ver', 'puede_crear', 'puede_editar'] },
       { id: 'req:impacto-real',  label: 'Impacto Real',   permisos: ['puede_ver', 'puede_editar'] },
       { id: 'req:reuniones',      label: 'Reuniones',      permisos: ['puede_ver', 'puede_editar', 'puede_crear'] },
       { id: 'req:penalizaciones', label: 'Penalizaciones', permisos: ['puede_ver', 'puede_editar'] },
