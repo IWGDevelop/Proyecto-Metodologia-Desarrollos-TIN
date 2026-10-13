@@ -2,6 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ETAPAS_PLANEACION, calcularEjecucionEtapas } from '@/lib/etapas-planeacion'
+import { computeEtiquetaJerarquica } from '@/lib/constants'
 
 /** Cumplimiento de una etapa frente a su planeación */
 export type CumplimientoEtapa =
@@ -37,6 +38,18 @@ export interface RequerimientoPlaneacion {
   nombre: string
   estado: string
   proceso_interno: string | null
+  prioridad: number | null
+  sub_prioridad: number | null
+  parent_id: string | null
+  /** Etiqueta jerárquica de prioridad (ej. "1.2") */
+  etiqueta: string
+  /** Profundidad en el árbol de subrequerimientos (0 = raíz) */
+  nivel: number
+  tieneHijos: boolean
+  /** Tiene al menos una fecha de planeación propia */
+  tienePlan: boolean
+  /** Inicio planeado de la fase de Desarrollo (criterio de orden) */
+  inicioDesarrollo: string | null
   etapas: EtapaReporte[]
 }
 
@@ -54,25 +67,43 @@ export async function getReportePlaneacion(): Promise<RequerimientoPlaneacion[]>
     .from('planeacion_etapas')
     .select('requerimiento_id, estado, fecha_inicio, fecha_fin')
   const conPlan = (planes ?? []).filter((p: any) => p.fecha_inicio || p.fecha_fin)
-  const ids = [...new Set(conPlan.map((p: any) => p.requerimiento_id))] as string[]
+  const idsConPlan = new Set(conPlan.map((p: any) => p.requerimiento_id) as string[])
+  if (idsConPlan.size === 0) return []
+
+  const { data: reqs } = await (supabase as any)
+    .from('requerimientos')
+    .select('id, numero, identificacion, nombre_desarrollo, estado, proceso_interno, prioridad, sub_prioridad, parent_id')
+    .eq('es_borrador', false)
+    .not('estado', 'in', `(${ESTADOS_EXCLUIDOS.join(',')})`)
+  const todos: any[] = reqs ?? []
+  const porId = new Map(todos.map(r => [r.id, r]))
+  const hijosDe = new Map<string, string[]>()
+  for (const r of todos) {
+    if (r.parent_id && porId.has(r.parent_id)) hijosDe.set(r.parent_id, [...(hijosDe.get(r.parent_id) ?? []), r.id])
+  }
+
+  // Familia a mostrar: los requerimientos planeados, sus ancestros (contexto) y sus subrequerimientos
+  const incluidos = new Set<string>()
+  const agregarDescendientes = (id: string) => {
+    for (const h of hijosDe.get(id) ?? []) if (!incluidos.has(h)) { incluidos.add(h); agregarDescendientes(h) }
+  }
+  for (const id of idsConPlan) {
+    if (!porId.has(id)) continue
+    incluidos.add(id)
+    agregarDescendientes(id)
+    for (let p = porId.get(id)?.parent_id; p && porId.has(p) && !incluidos.has(p); p = porId.get(p)?.parent_id) incluidos.add(p)
+  }
+  const ids = [...incluidos]
   if (ids.length === 0) return []
 
-  const [{ data: reqs }, { data: historial }] = await Promise.all([
-    (supabase as any)
-      .from('requerimientos')
-      .select('id, numero, identificacion, nombre_desarrollo, estado, proceso_interno')
-      .in('id', ids)
-      .eq('es_borrador', false)
-      .not('estado', 'in', `(${ESTADOS_EXCLUIDOS.join(',')})`),
-    (supabase as any)
-      .from('historial_estados')
-      .select('requerimiento_id, estado_nuevo, created_at')
-      .in('requerimiento_id', ids),
-  ])
+  const { data: historial } = await (supabase as any)
+    .from('historial_estados')
+    .select('requerimiento_id, estado_nuevo, created_at')
+    .in('requerimiento_id', ids)
 
   const hoy = new Date().toISOString().slice(0, 10)
 
-  return (reqs ?? []).map((req: any) => {
+  const filas: RequerimientoPlaneacion[] = ids.map(id => porId.get(id)).map((req: any) => {
     const ejecucion = calcularEjecucionEtapas((historial ?? []).filter((h: any) => h.requerimiento_id === req.id))
     // Índice de la etapa planeable más avanzada a la que llegó el requerimiento
     const ultimaAlcanzada = ETAPAS_PLANEACION.reduce((max, e, i) => ejecucion[e.estado] ? i : max, -1)
@@ -115,13 +146,65 @@ export async function getReportePlaneacion(): Promise<RequerimientoPlaneacion[]>
       }
     })
 
+    const parentId: string | null = req.parent_id && incluidos.has(req.parent_id) ? req.parent_id : null
     return {
       id: req.id,
       numero: req.numero ?? null,
       nombre: req.nombre_desarrollo ?? req.identificacion ?? '—',
       estado: req.estado,
       proceso_interno: req.proceso_interno ?? null,
+      prioridad: req.prioridad ?? null,
+      sub_prioridad: req.sub_prioridad ?? null,
+      parent_id: parentId,
+      etiqueta: computeEtiquetaJerarquica(req.id, todos),
+      nivel: 0,
+      tieneHijos: false,
+      tienePlan: idsConPlan.has(req.id),
+      inicioDesarrollo: etapas.find(e => e.estado === 'EN_DESARROLLO')?.planInicio ?? null,
       etapas,
     }
-  }).sort((a: RequerimientoPlaneacion, b: RequerimientoPlaneacion) => a.nombre.localeCompare(b.nombre))
+  })
+
+  return ordenarPorInicioDesarrollo(filas)
+}
+
+/**
+ * Orden jerárquico: cada padre seguido de sus subrequerimientos.
+ * Entre hermanos se ordena por el inicio planeado de Desarrollo (si el nodo no lo tiene,
+ * se usa el más temprano de sus subrequerimientos); sin fecha al final, luego por prioridad.
+ */
+function ordenarPorInicioDesarrollo(filas: RequerimientoPlaneacion[]): RequerimientoPlaneacion[] {
+  const hijos = new Map<string | null, RequerimientoPlaneacion[]>()
+  for (const f of filas) hijos.set(f.parent_id, [...(hijos.get(f.parent_id) ?? []), f])
+
+  const claveOrden = new Map<string, string | null>()
+  const calcularClave = (f: RequerimientoPlaneacion): string | null => {
+    if (claveOrden.has(f.id)) return claveOrden.get(f.id)!
+    const candidatas = [f.inicioDesarrollo, ...(hijos.get(f.id) ?? []).map(calcularClave)].filter((d): d is string => !!d)
+    const clave = candidatas.length ? candidatas.sort()[0] : null
+    claveOrden.set(f.id, clave)
+    return clave
+  }
+
+  const comparar = (a: RequerimientoPlaneacion, b: RequerimientoPlaneacion) => {
+    const ka = calcularClave(a), kb = calcularClave(b)
+    if (ka !== kb) {
+      if (!ka) return 1
+      if (!kb) return -1
+      return ka < kb ? -1 : 1
+    }
+    return (a.prioridad ?? 99) - (b.prioridad ?? 99)
+      || (a.sub_prioridad ?? 99) - (b.sub_prioridad ?? 99)
+      || a.nombre.localeCompare(b.nombre)
+  }
+
+  const resultado: RequerimientoPlaneacion[] = []
+  const recorrer = (parentId: string | null, nivel: number) => {
+    for (const f of [...(hijos.get(parentId) ?? [])].sort(comparar)) {
+      resultado.push({ ...f, nivel, tieneHijos: (hijos.get(f.id)?.length ?? 0) > 0 })
+      recorrer(f.id, nivel + 1)
+    }
+  }
+  recorrer(null, 0)
+  return resultado
 }

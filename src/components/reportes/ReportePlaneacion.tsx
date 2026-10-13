@@ -5,7 +5,7 @@ import { Download, Search, CalendarRange } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { getEstadoCfg, PROCESOS_INTERNOS } from '@/lib/constants'
+import { getEstadoCfg, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
 import { GanttPlaneacion, ICONO_CUMPLIMIENTO } from './GanttPlaneacion'
 import type { CumplimientoEtapa, RequerimientoPlaneacion } from '@/actions/reporte-planeacion'
@@ -49,6 +49,7 @@ export function ReportePlaneacion({ datos }: Props) {
   const [busqueda, setBusqueda] = useState('')
   const [proceso, setProceso] = useState('')
   const [soloAlertas, setSoloAlertas] = useState(false)
+  const [criticidad, setCriticidad] = useState('')
   const [estadosFiltro, setEstadosFiltro] = useState<Set<string>>(new Set())
 
   const toggleEstado = (e: string) =>
@@ -60,15 +61,29 @@ export function ReportePlaneacion({ datos }: Props) {
 
   const estadosDisponibles = useMemo(() => [...new Set(datos.map(r => r.estado))].sort(), [datos])
 
-  const filtrados = useMemo(() => {
+  const { filtrados, visibles } = useMemo(() => {
     const q = busqueda.trim().toLowerCase()
-    return datos.filter(r =>
+    const coinciden = datos.filter(r =>
       (!q || r.nombre.toLowerCase().includes(q) || (r.numero ?? '').toLowerCase().includes(q)) &&
       (!proceso || r.proceso_interno === proceso) &&
+      (!criticidad || String(r.prioridad ?? '') === criticidad) &&
       (estadosFiltro.size === 0 || estadosFiltro.has(r.estado)) &&
       (!soloAlertas || r.etapas.some(e => CON_ALERTA.includes(e.cumplimiento)))
     )
-  }, [datos, busqueda, proceso, estadosFiltro, soloAlertas])
+    // En el Gantt se conservan los ancestros de cada coincidencia para no romper la jerarquía
+    const porId = new Map(datos.map(r => [r.id, r]))
+    const mostrar = new Set<string>()
+    for (const r of coinciden) {
+      for (let n: RequerimientoPlaneacion | undefined = r; n && !mostrar.has(n.id); n = n.parent_id ? porId.get(n.parent_id) : undefined) {
+        mostrar.add(n.id)
+      }
+    }
+    return {
+      // Indicadores, resumen y exportación: solo requerimientos con planeación propia
+      filtrados: coinciden.filter(r => r.tienePlan),
+      visibles: datos.filter(r => mostrar.has(r.id)),
+    }
+  }, [datos, busqueda, proceso, criticidad, estadosFiltro, soloAlertas])
 
   const etapasPlaneadas = filtrados.flatMap(r => r.etapas.filter(e => e.cumplimiento !== 'SIN_PLAN'))
   const terminadas = etapasPlaneadas.filter(e => e.cumplimiento === 'A_TIEMPO' || e.cumplimiento === 'RETRASADA')
@@ -98,7 +113,10 @@ export function ReportePlaneacion({ datos }: Props) {
       .map(e => ({ req: r, e })))
     exportarReporte('Planeacion_vs_Ejecutado', filas, [
       { titulo: 'N°',               ancho: 8,  render: ({ req }) => req.numero ?? '' },
-      { titulo: 'Requerimiento',    ancho: 45, render: ({ req }) => req.nombre },
+      { titulo: 'Requerimiento',    ancho: 45, render: ({ req }) => `${'   '.repeat(req.nivel)}${req.nivel > 0 ? '↳ ' : ''}${req.nombre}` },
+      { titulo: 'Criticidad',       ancho: 16, render: ({ req }) => req.prioridad ? `${req.etiqueta} ${PRIORIDADES[req.prioridad]?.label ?? ''}`.trim() : 'Sin prioridad' },
+      { titulo: 'Requerimiento padre', ancho: 40, render: ({ req }) => req.parent_id ? (datos.find(d => d.id === req.parent_id)?.nombre ?? '') : '' },
+      { titulo: 'Inicio Desarrollo planeado', ancho: 18, render: ({ req }) => req.inicioDesarrollo ?? '' },
       { titulo: 'Estado actual',    ancho: 24, render: ({ req }) => getEstadoCfg(req.estado).label },
       { titulo: 'Etapa',            ancho: 28, render: ({ e }) => e.label },
       { titulo: 'Inicio planeado',  ancho: 15, render: ({ e }) => e.planInicio ?? '' },
@@ -144,6 +162,14 @@ export function ReportePlaneacion({ datos }: Props) {
         >
           <option value="">Todos los procesos</option>
           {PROCESOS_INTERNOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+        </select>
+        <select
+          value={criticidad}
+          onChange={e => setCriticidad(e.target.value)}
+          className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
+        >
+          <option value="">Todas las criticidades</option>
+          {Object.entries(PRIORIDADES).map(([valor, p]) => <option key={valor} value={valor}>{p.label}</option>)}
         </select>
         <label className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-600">
           <input type="checkbox" checked={soloAlertas} onChange={e => setSoloAlertas(e.target.checked)} />
@@ -202,7 +228,7 @@ export function ReportePlaneacion({ datos }: Props) {
       </div>
 
       {/* Gantt planeado vs. ejecutado */}
-      <GanttPlaneacion requerimientos={filtrados} />
+      <GanttPlaneacion requerimientos={visibles} />
 
       {/* Resumen por etapa */}
       <div className="rounded-xl border border-slate-200 bg-white">

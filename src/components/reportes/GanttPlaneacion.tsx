@@ -2,14 +2,17 @@
 
 import { useMemo, useState } from 'react'
 import Link from 'next/link'
-import { ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpDown } from 'lucide-react'
+import {
+  ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpDown, Rows2, ListTree, CornerDownRight,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getEstadoCfg } from '@/lib/constants'
+import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
 import type { CumplimientoEtapa, EtapaReporte, RequerimientoPlaneacion } from '@/actions/reporte-planeacion'
 
 // ── Layout: escala diaria ───────────────────────────────────────────────────
-const LEFT_W   = 320
+const LEFT_W   = 380
+const INDENT   = 18            // sangría por nivel de subrequerimiento
 const MES_H    = 30
 const DIA_H    = 40
 const HEADER_H = MES_H + DIA_H
@@ -149,7 +152,7 @@ function Cabecera({ escala, total }: { escala: Escala; total: number }) {
       >
         <span className="text-xs font-bold uppercase tracking-wide text-white">Requerimiento</span>
         <span className="mt-0.5 text-[10px] text-slate-300">
-          {total} requerimiento{total !== 1 ? 's' : ''} · renglón planeado y ejecutado
+          {total} planeado{total !== 1 ? 's' : ''} · criticidad y subrequerimientos
         </span>
       </div>
       <div className="relative shrink-0" style={{ width: escala.totalWidth }}>
@@ -196,15 +199,19 @@ function Cabecera({ escala, total }: { escala: Escala; total: number }) {
 }
 
 // ── Renglón Planeado / Ejecutado: una barra por etapa con su nombre ─────────
-function RenglonCarril({ tipo, etapas, escala }: { tipo: 'plan' | 'real'; etapas: EtapaReporte[]; escala: Escala }) {
+function RenglonCarril({
+  tipo, etapas, escala, nivel,
+}: {
+  tipo: 'plan' | 'real'; etapas: EtapaReporte[]; escala: Escala; nivel: number
+}) {
   const esPlan = tipo === 'plan'
   const alertas = esPlan ? 0 : etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length
 
   return (
     <div className="flex border-b border-slate-100" style={{ height: CARRIL_H }}>
       <div
-        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white pl-9 pr-3"
-        style={{ width: LEFT_W, minWidth: LEFT_W }}
+        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-white pr-3"
+        style={{ width: LEFT_W, minWidth: LEFT_W, paddingLeft: 36 + nivel * INDENT }}
       >
         <span
           className="h-2.5 w-5 shrink-0 rounded-[3px]"
@@ -291,41 +298,88 @@ function BadgeDesv({ dias }: { dias: number }) {
 
 // ── Fila de requerimiento: encabezado; minimizada muestra solo lo planeado ──
 function FilaRequerimiento({
-  req, abierto, onToggle, escala,
+  req, abierto, onToggle, subAbierto, onToggleSub, escala,
 }: {
-  req: RequerimientoPlaneacion; abierto: boolean; onToggle: () => void; escala: Escala
+  req: RequerimientoPlaneacion; abierto: boolean; onToggle: () => void
+  subAbierto: boolean; onToggleSub: () => void; escala: Escala
 }) {
   const estadoCfg = getEstadoCfg(req.estado)
+  const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const alertas = req.etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length
 
   return (
-    <div className="flex border-b border-slate-200 bg-slate-50/40" style={{ height: GROUP_H }}>
+    <div className={cn('flex border-b border-slate-200', req.nivel === 0 ? 'bg-slate-50/40' : 'bg-white/40')} style={{ height: GROUP_H }}>
       <div
-        className="sticky left-0 z-10 flex shrink-0 items-center gap-2 border-r border-slate-200 bg-slate-50 px-3"
-        style={{ width: LEFT_W, minWidth: LEFT_W }}
+        className={cn('sticky left-0 z-10 flex shrink-0 items-center gap-1.5 border-r border-slate-200 pr-3', req.nivel === 0 ? 'bg-slate-50' : 'bg-white')}
+        style={{ width: LEFT_W, minWidth: LEFT_W, paddingLeft: 8 + req.nivel * INDENT }}
       >
-        <button onClick={onToggle} className="rounded p-0.5 text-slate-400 hover:bg-slate-200 hover:text-slate-600" aria-label={abierto ? 'Contraer' : 'Expandir'}>
-          {abierto ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
-        </button>
-        <div className="min-w-0 flex-1">
-          <Link
-            href={`/admin/requerimientos/${req.id}`}
-            className="block truncate text-xs font-semibold text-slate-700 hover:text-blue-600"
-            title={req.nombre}
+        {/* Despliegue de subrequerimientos */}
+        {req.tieneHijos ? (
+          <button
+            onClick={onToggleSub}
+            className="rounded p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+            aria-label={subAbierto ? 'Ocultar subrequerimientos' : 'Mostrar subrequerimientos'}
+            title={subAbierto ? 'Ocultar subrequerimientos' : 'Mostrar subrequerimientos'}
           >
-            {req.numero && <span className="mr-1 font-mono text-[10px] text-slate-400">#{req.numero}</span>}
-            {req.nombre}
-          </Link>
-          <div className="mt-0.5 flex items-center gap-1.5">
+            {subAbierto ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
+          </button>
+        ) : req.nivel > 0 ? (
+          <CornerDownRight size={13} className="mx-0.5 shrink-0 text-slate-300" />
+        ) : (
+          <span className="w-[18px] shrink-0" />
+        )}
+
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1.5">
+            <span
+              className={cn(
+                'shrink-0 rounded-full px-1.5 py-px text-[10px] font-bold leading-tight',
+                prioridadCfg ? cn(prioridadCfg.bgColor, prioridadCfg.textColor) : 'bg-slate-100 text-slate-400'
+              )}
+              title={prioridadCfg?.descripcion ?? 'Sin prioridad asignada'}
+            >
+              {prioridadCfg ? `${req.etiqueta !== '—' ? `${req.etiqueta} ` : ''}${prioridadCfg.label}` : 'Sin prioridad'}
+            </span>
+            <Link
+              href={`/admin/requerimientos/${req.id}`}
+              className="min-w-0 truncate text-xs font-semibold text-slate-700 hover:text-blue-600"
+              title={req.nombre}
+            >
+              {req.numero && <span className="mr-1 font-mono text-[10px] text-slate-400">#{req.numero}</span>}
+              {req.nombre}
+            </Link>
+          </div>
+          <div className="mt-1 flex items-center gap-1.5">
             <span className={cn('inline-block rounded-full px-1.5 py-px text-[10px] font-medium leading-none', estadoCfg.bgColor, estadoCfg.textColor)}>
               {estadoCfg.label}
             </span>
-            {alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
+            {!req.tienePlan
+              ? <span className="text-[10px] italic text-slate-400">Sin planeación</span>
+              : alertas > 0 && <span className="text-[10px] font-semibold text-red-600">{alertas} con alerta</span>}
           </div>
         </div>
+
+        {/* Renglones Planeado / Ejecutado */}
+        {req.tienePlan && (
+          <button
+            onClick={onToggle}
+            className={cn(
+              'shrink-0 rounded p-1 transition-colors',
+              abierto ? 'bg-blue-50 text-blue-600 hover:bg-blue-100' : 'text-slate-400 hover:bg-slate-200 hover:text-slate-600'
+            )}
+            aria-label={abierto ? 'Ocultar planeado y ejecutado' : 'Ver planeado y ejecutado'}
+            title={abierto ? 'Ocultar planeado y ejecutado' : 'Ver planeado y ejecutado'}
+          >
+            <Rows2 size={14} />
+          </button>
+        )}
       </div>
 
-      <div className="relative shrink-0 cursor-pointer" style={{ width: escala.totalWidth, height: GROUP_H }} onClick={onToggle}>
+      <div
+        className={cn('relative shrink-0', req.tienePlan && 'cursor-pointer')}
+        style={{ width: escala.totalWidth, height: GROUP_H }}
+        onClick={req.tienePlan ? onToggle : undefined}
+      >
         {/* Minimizado: solo lo planeado, con el nombre de cada etapa */}
         {!abierto && <BarrasEtapas tipo="plan" etapas={req.etapas} escala={escala} alto={GROUP_H} />}
       </div>
@@ -339,12 +393,35 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
   // Desplegados por defecto: cada requerimiento muestra sus renglones Planeado y Ejecutado
   const [abiertos, setAbiertos] = useState<Set<string>>(() => new Set(requerimientos.map(r => r.id)))
 
-  const toggle = (id: string) => setAbiertos(prev => {
+  // Requerimientos con sus subrequerimientos ocultos (por defecto todos desplegados)
+  const [subOcultos, setSubOcultos] = useState<Set<string>>(new Set())
+
+  const alternar = (setter: typeof setAbiertos) => (id: string) => setter(prev => {
     const next = new Set(prev)
     next.has(id) ? next.delete(id) : next.add(id)
     return next
   })
-  const todosAbiertos = requerimientos.length > 0 && requerimientos.every(r => abiertos.has(r.id))
+  const toggle = alternar(setAbiertos)
+  const toggleSub = alternar(setSubOcultos)
+
+  const conPlan = requerimientos.filter(r => r.tienePlan)
+  const todosAbiertos = conPlan.length > 0 && conPlan.every(r => abiertos.has(r.id))
+  const conHijos = requerimientos.filter(r => r.tieneHijos)
+
+  // Filas visibles: se omiten los descendientes de un requerimiento con subrequerimientos ocultos
+  const visibles = useMemo(() => {
+    const out: RequerimientoPlaneacion[] = []
+    let ocultarSobreNivel: number | null = null
+    for (const r of requerimientos) {
+      if (ocultarSobreNivel !== null) {
+        if (r.nivel > ocultarSobreNivel) continue
+        ocultarSobreNivel = null
+      }
+      out.push(r)
+      if (r.tieneHijos && subOcultos.has(r.id)) ocultarSobreNivel = r.nivel
+    }
+    return out
+  }, [requerimientos, subOcultos])
 
   // Rango: desde el lunes de la semana más temprana hasta el domingo siguiente a la fecha más tardía
   const { desde, hasta } = useMemo(() => {
@@ -367,12 +444,22 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
       {/* Controles del Gantt */}
       <div className="flex flex-wrap items-center gap-3">
         <button
-          onClick={() => setAbiertos(todosAbiertos ? new Set() : new Set(requerimientos.map(r => r.id)))}
+          onClick={() => setAbiertos(todosAbiertos ? new Set() : new Set(conPlan.map(r => r.id)))}
           className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
         >
           {todosAbiertos ? <ChevronsDownUp size={14} /> : <ChevronsUpDown size={14} />}
           {todosAbiertos ? 'Contraer todo' : 'Expandir todo'}
         </button>
+        {conHijos.length > 0 && (
+          <button
+            onClick={() => setSubOcultos(subOcultos.size > 0 ? new Set() : new Set(conHijos.map(r => r.id)))}
+            className="flex items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-slate-600 hover:bg-slate-50"
+          >
+            <ListTree size={14} />
+            {subOcultos.size > 0 ? 'Mostrar subrequerimientos' : 'Ocultar subrequerimientos'}
+          </button>
+        )}
+        <span className="text-[11px] text-slate-400">Ordenado por inicio planeado de Desarrollo</span>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 bg-white p-1">
           <button onClick={() => setDayW(w => Math.max(24, w - 6))}
             className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100" aria-label="Alejar"><ZoomOut size={14} /></button>
@@ -413,18 +500,25 @@ export function GanttPlaneacion({ requerimientos }: { requerimientos: Requerimie
       {/* Gantt */}
       <div className="overflow-auto rounded-xl border border-slate-200 bg-white" style={{ maxHeight: 'calc(100vh - 260px)', minHeight: 200 }}>
         <div style={{ minWidth: LEFT_W + escala.totalWidth + 1 }}>
-          <Cabecera escala={escala} total={requerimientos.length} />
+          <Cabecera escala={escala} total={conPlan.length} />
 
           {requerimientos.length === 0 ? (
             <div className="py-12 text-center text-sm text-slate-400">No hay resultados para los filtros aplicados</div>
           ) : (
             <div className="relative">
               <Cuadricula escala={escala} />
-              {requerimientos.map(req => (
+              {visibles.map(req => (
                 <div key={req.id} className="relative">
-                  <FilaRequerimiento req={req} abierto={abiertos.has(req.id)} onToggle={() => toggle(req.id)} escala={escala} />
-                  {abiertos.has(req.id) && (['plan', 'real'] as const).map(tipo => (
-                    <RenglonCarril key={tipo} tipo={tipo} etapas={req.etapas} escala={escala} />
+                  <FilaRequerimiento
+                    req={req}
+                    abierto={req.tienePlan && abiertos.has(req.id)}
+                    onToggle={() => toggle(req.id)}
+                    subAbierto={!subOcultos.has(req.id)}
+                    onToggleSub={() => toggleSub(req.id)}
+                    escala={escala}
+                  />
+                  {req.tienePlan && abiertos.has(req.id) && (['plan', 'real'] as const).map(tipo => (
+                    <RenglonCarril key={tipo} tipo={tipo} etapas={req.etapas} escala={escala} nivel={req.nivel} />
                   ))}
                 </div>
               ))}
