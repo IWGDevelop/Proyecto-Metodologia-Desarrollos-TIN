@@ -245,6 +245,7 @@ function FormPenalizacion({
 
       if (res.ok) {
         toast.success(esEdicion ? 'Penalización actualizada' : 'Penalización registrada')
+        if (res.aviso) toast.warning(res.aviso, { duration: 10000 })
         onSaved()
       } else {
         toast.error((res as any).error ?? 'Error')

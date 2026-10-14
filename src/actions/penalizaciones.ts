@@ -27,6 +27,14 @@ export interface PenalizacionRequerimiento {
   updated_at: string
 }
 
+const AVISO_SIN_DIAS =
+  'Se guardó sin los días de impacto: falta ejecutar la migración supabase/migration_penalizaciones_dias.sql en Supabase'
+
+/** La columna dias_impacto aún no existe en la base (migración pendiente) */
+function faltaColumnaDias(error: { message?: string } | null): boolean {
+  return !!error?.message?.includes('dias_impacto')
+}
+
 export async function getPenalizaciones(requerimientoId: string): Promise<PenalizacionRequerimiento[]> {
   try {
     const supabase = createAdminClient()
@@ -50,23 +58,27 @@ export async function crearPenalizacion(data: {
   monto_cop: number
   dias_impacto?: number | null
   created_by?: string | null
-}): Promise<{ ok: boolean; error?: string; penalizacion?: PenalizacionRequerimiento }> {
+}): Promise<{ ok: boolean; error?: string; aviso?: string; penalizacion?: PenalizacionRequerimiento }> {
   try {
     const supabase = createAdminClient()
-    const { data: result, error } = await (supabase as any)
-      .from('penalizaciones_requerimiento')
-      .insert({
-        requerimiento_id: data.requerimiento_id,
-        tipo:             data.tipo,
-        descripcion:      data.descripcion?.trim() || null,
-        responsables:     data.responsables,
-        monto_cop:        data.monto_cop,
-        // Solo se envía si se diligenció, para no depender de la migración en registros sin días
-        ...(data.dias_impacto != null ? { dias_impacto: data.dias_impacto } : {}),
-        created_by:       data.created_by ?? null,
-      })
-      .select()
-      .single()
+    const base = {
+      requerimiento_id: data.requerimiento_id,
+      tipo:             data.tipo,
+      descripcion:      data.descripcion?.trim() || null,
+      responsables:     data.responsables,
+      monto_cop:        data.monto_cop,
+      created_by:       data.created_by ?? null,
+    }
+    const insertar = (fila: Record<string, unknown>) =>
+      (supabase as any).from('penalizaciones_requerimiento').insert(fila).select().single()
+
+    const conDias = data.dias_impacto != null
+    let { data: result, error } = await insertar(conDias ? { ...base, dias_impacto: data.dias_impacto } : base)
+    // Migración pendiente: se guarda la penalización sin los días y se avisa
+    if (conDias && faltaColumnaDias(error)) {
+      ({ data: result, error } = await insertar(base))
+      if (!error) return { ok: true, aviso: AVISO_SIN_DIAS, penalizacion: result }
+    }
     if (error) return { ok: false, error: error.message }
     return { ok: true, penalizacion: result }
   } catch (e: any) {
@@ -83,13 +95,19 @@ export async function actualizarPenalizacion(
     monto_cop: number
     dias_impacto: number | null
   }>
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; aviso?: string }> {
   try {
     const supabase = createAdminClient()
-    const { error } = await (supabase as any)
-      .from('penalizaciones_requerimiento')
-      .update(data)
-      .eq('id', id)
+    const actualizar = (cambios: Record<string, unknown>) =>
+      (supabase as any).from('penalizaciones_requerimiento').update(cambios).eq('id', id)
+
+    let { error } = await actualizar(data)
+    // Migración pendiente: se guardan los demás cambios sin los días y se avisa
+    if ('dias_impacto' in data && faltaColumnaDias(error)) {
+      const { dias_impacto: _omitido, ...resto } = data
+      ;({ error } = await actualizar(resto))
+      if (!error) return { ok: true, aviso: AVISO_SIN_DIAS }
+    }
     if (error) return { ok: false, error: error.message }
     return { ok: true }
   } catch (e: any) {
