@@ -46,7 +46,7 @@ export function exportarReporte(
   XLSX.writeFile(wb, `${nombre.replace(/\s+/g, '_')}_${fecha}.xlsx`)
 }
 
-export function exportarReporteCompleto(hojas: HojaExcel[]): void {
+export function exportarReporteCompleto(hojas: HojaExcel[], nombreArchivo = 'Reporte_Completo_TIN'): void {
   const wb = XLSX.utils.book_new()
 
   hojas.forEach(hoja => {
@@ -55,5 +55,5 @@ export function exportarReporteCompleto(hojas: HojaExcel[]): void {
   })
 
   const fecha = new Date().toISOString().split('T')[0]
-  XLSX.writeFile(wb, `Reporte_Completo_TIN_${fecha}.xlsx`)
+  XLSX.writeFile(wb, `${nombreArchivo}_${fecha}.xlsx`)
 }

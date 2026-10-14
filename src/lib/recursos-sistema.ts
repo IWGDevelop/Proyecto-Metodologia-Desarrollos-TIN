@@ -27,6 +27,7 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'menu:reporte-desarrolladores',label: 'Reporte Desarrolladores',  permisos: ['puede_ver'] },
       { id: 'menu:reporte-prioridades',    label: 'Reporte Prioridades',      permisos: ['puede_ver'] },
       { id: 'menu:reporte-planeacion',     label: 'Reporte Planeación',       permisos: ['puede_ver'] },
+      { id: 'menu:reporte-penalizaciones', label: 'Reporte Penalizaciones',   permisos: ['puede_ver'] },
       { id: 'menu:pendientes',             label: 'Pendientes',               permisos: ['puede_ver'] },
       { id: 'menu:cronograma',             label: 'Cronograma',               permisos: ['puede_ver'] },
       { id: 'menu:cronograma-tin',         label: 'Cronograma TIN',           permisos: ['puede_ver'] },

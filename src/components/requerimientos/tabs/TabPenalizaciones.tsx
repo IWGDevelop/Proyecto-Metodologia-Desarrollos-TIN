@@ -5,7 +5,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
   AlertOctagon, Plus, Trash2, Pencil, Save, X,
   DollarSign, MessageSquare, Shield, Users, Search,
-  UserCheck, ChevronDown, ChevronUp,
+  UserCheck, ChevronDown, ChevronUp, CalendarClock,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -221,6 +221,7 @@ function FormPenalizacion({
   const [descripcion, setDescripcion] = useState(penalizacion?.descripcion ?? '')
   const [responsables, setResponsables] = useState<string[]>(penalizacion?.responsables ?? [])
   const [monto, setMonto]             = useState<number>(penalizacion?.monto_cop ?? 0)
+  const [dias, setDias]               = useState<number | null>(penalizacion?.dias_impacto ?? null)
   const [isPending, startT]           = useTransition()
 
   const esEdicion = !!penalizacion
@@ -235,6 +236,8 @@ function FormPenalizacion({
         descripcion: descripcion.trim() || null,
         responsables,
         monto_cop: monto,
+        // En edición solo se envía si cambió, para no exigir la columna a registros antiguos
+        ...(dias !== (penalizacion?.dias_impacto ?? null) ? { dias_impacto: dias } : {}),
       }
       const res = esEdicion
         ? await actualizarPenalizacion(penalizacion.id, payload)
@@ -324,6 +327,27 @@ function FormPenalizacion({
         </div>
       </div>
 
+      {/* Impacto en días */}
+      <div className="space-y-1.5">
+        <label className="text-xs font-semibold text-slate-600">
+          Días de impacto
+          <span className="ml-1 text-xs font-normal text-slate-400">(días de retraso que generó en el requerimiento)</span>
+        </label>
+        <div className="flex w-fit items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2 focus-within:border-orange-400 focus-within:ring-1 focus-within:ring-orange-200">
+          <CalendarClock size={14} className="shrink-0 text-orange-500" />
+          <input
+            type="number"
+            min={0}
+            step={1}
+            value={dias ?? ''}
+            onChange={e => setDias(e.target.value === '' ? null : Math.max(0, parseInt(e.target.value, 10) || 0))}
+            placeholder="0"
+            className="w-24 text-sm font-semibold text-slate-700 outline-none"
+          />
+          <span className="text-xs text-slate-400">días</span>
+        </div>
+      </div>
+
       <div className="flex gap-2">
         <button onClick={handleSubmit} disabled={isPending}
           className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-1.5 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50">
@@ -399,6 +423,11 @@ function CardPenalizacion({
             <span className="flex items-center gap-1 rounded-full bg-orange-50 px-2.5 py-0.5 text-xs font-bold text-orange-600">
               <DollarSign size={10} /> {formatCOP(pen.monto_cop)}
             </span>
+            {!!pen.dias_impacto && (
+              <span className="flex items-center gap-1 rounded-full bg-rose-50 px-2.5 py-0.5 text-xs font-bold text-rose-600">
+                <CalendarClock size={10} /> {pen.dias_impacto} día{pen.dias_impacto !== 1 ? 's' : ''} de impacto
+              </span>
+            )}
             <span className="text-xs text-slate-400">{formatFecha(pen.created_at)}</span>
           </div>
 

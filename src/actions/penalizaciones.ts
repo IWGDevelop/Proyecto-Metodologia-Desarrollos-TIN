@@ -18,6 +18,8 @@ export interface PenalizacionRequerimiento {
   descripcion: string | null
   responsables: string[]        // emails
   monto_cop: number
+  /** Días de retraso que generó en el requerimiento */
+  dias_impacto?: number | null
   comentario_admin: string | null
   comentario_usuario: string | null
   created_by: string | null
@@ -46,6 +48,7 @@ export async function crearPenalizacion(data: {
   descripcion?: string | null
   responsables: string[]
   monto_cop: number
+  dias_impacto?: number | null
   created_by?: string | null
 }): Promise<{ ok: boolean; error?: string; penalizacion?: PenalizacionRequerimiento }> {
   try {
@@ -58,6 +61,8 @@ export async function crearPenalizacion(data: {
         descripcion:      data.descripcion?.trim() || null,
         responsables:     data.responsables,
         monto_cop:        data.monto_cop,
+        // Solo se envía si se diligenció, para no depender de la migración en registros sin días
+        ...(data.dias_impacto != null ? { dias_impacto: data.dias_impacto } : {}),
         created_by:       data.created_by ?? null,
       })
       .select()
@@ -76,6 +81,7 @@ export async function actualizarPenalizacion(
     descripcion: string | null
     responsables: string[]
     monto_cop: number
+    dias_impacto: number | null
   }>
 ): Promise<{ ok: boolean; error?: string }> {
   try {

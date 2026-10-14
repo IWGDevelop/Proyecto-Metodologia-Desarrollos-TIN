@@ -6,7 +6,7 @@ import {
   ShieldCheck, Plus, Pencil, Trash2, Check, X,
   LayoutDashboard, ClipboardList, Kanban, BarChart2,
   Star, Users, Settings2, Lock, Eye, FilePen, FolderPlus,
-  ChevronDown, ChevronUp, Power, Code2, ListOrdered, CalendarRange,
+  ChevronDown, ChevronUp, Power, Code2, ListOrdered, CalendarRange, AlertOctagon,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -26,6 +26,7 @@ const ICONOS_MENU: Record<string, React.ElementType> = {
   'menu:reporte-desarrolladores': Code2,
   'menu:reporte-prioridades':     ListOrdered,
   'menu:reporte-planeacion':      CalendarRange,
+  'menu:reporte-penalizaciones':  AlertOctagon,
   'menu:usuarios':                Users,
   'menu:configuracion':        Settings2,
   'menu:roles':               ShieldCheck,
