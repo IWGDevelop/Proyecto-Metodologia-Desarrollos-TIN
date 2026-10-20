@@ -17,9 +17,10 @@ import type {
   Alcance, FrecuenciaUsoIA, FuenteDatosIA, ImpactoIndirectoIA, Perfil, TipoRegistroCasoIA,
 } from '@/lib/supabase/types'
 import {
-  TIPOS_REGISTRO_CASO_IA, FUENTES_DATOS_IA, FRECUENCIAS_USO_IA, HERRAMIENTAS_IA, PROCESOS_CASO_IA,
+  TIPOS_REGISTRO_CASO_IA, FUENTES_DATOS_IA, FRECUENCIAS_USO_IA, HERRAMIENTAS_IA,
   HORAS_LABORALES_MES, labelFuenteDatosIA, labelProcesoCasoIA, minutosAhorradosMes, ahorroMensualCOP, fmtMinutos,
 } from '@/lib/casos-uso-ia'
+import { useProcesos } from '@/context/ProcesosContext'
 
 type FormValues = {
   tipo_registro: TipoRegistroCasoIA
@@ -70,6 +71,7 @@ interface Props {
 
 export function FormNuevoCasoUsoIA({ basePath = '/admin/casos-uso-ia' }: Props) {
   const router = useRouter()
+  const procesos = useProcesos()
   const [paso, setPaso] = useState(1)
   const [isPending, startTransition] = useTransition()
   const [usuarios, setUsuarios] = useState<Perfil[]>([])
@@ -243,7 +245,7 @@ export function FormNuevoCasoUsoIA({ basePath = '/admin/casos-uso-ia' }: Props) 
                 <Label>Proceso solicitante <span className="text-red-500">*</span></Label>
                 <select {...register('proceso_solicitante', { required: 'Selecciona el proceso' })} className={SELECT_CLS}>
                   <option value="">Selecciona el proceso...</option>
-                  {PROCESOS_CASO_IA.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  {procesos.activos.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
                 </select>
                 {errors.proceso_solicitante && <p className="text-xs text-red-500">{errors.proceso_solicitante.message}</p>}
               </div>
@@ -555,7 +557,7 @@ export function FormNuevoCasoUsoIA({ basePath = '/admin/casos-uso-ia' }: Props) 
                   <span className="text-slate-500">Tipo:</span>
                   <span className="font-medium text-slate-700">{esUso ? 'Uso existente' : 'Solicitud de uso'}</span>
                   <span className="text-slate-500">Proceso:</span>
-                  <span className="font-medium text-slate-700">{labelProcesoCasoIA(getValues('proceso_solicitante'))}</span>
+                  <span className="font-medium text-slate-700">{labelProcesoCasoIA(getValues('proceso_solicitante'), procesos.todos)}</span>
                   <span className="text-slate-500">Alcance:</span>
                   <span className="font-medium text-slate-700">{getValues('alcance')}</span>
                   <span className="text-slate-500">Herramienta:</span>

@@ -10,11 +10,8 @@ export const paso1Schema = z.object({
 export const paso2Schema = z.object({
   alcance: z.enum(['IWF', 'ILT', 'IWG'] as const),
   sucursal: z.string().min(1, 'La sucursal es requerida'),
-  proceso_interno: z.enum([
-    'FINANCIERO', 'OPERACIONES', 'COMERCIAL', 'CARGA',
-    'SISTEMAS_GESTION', 'SERVICIO_CLIENTE', 'COMPRAS',
-    'SEGUROS', 'DATOS', 'TI', 'GENERAL', 'PRICING', 'ESTRATEGIA',
-  ] as const),
+  // Catálogo parametrizable (Configuración → Procesos)
+  proceso_interno: z.string({ message: 'Selecciona el proceso' }).min(1, 'Selecciona el proceso'),
   responsable: z.string().min(1, 'El responsable es requerido'),
   partes_interesadas: z.array(z.string()).default([]),
   nombre_desarrollo: z.string()

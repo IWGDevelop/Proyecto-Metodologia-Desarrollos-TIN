@@ -6,7 +6,8 @@ import type { WizardData } from '@/lib/schemas/requerimiento'
 import { Checkbox } from '@/components/ui/checkbox'
 import { ChevronDown, ChevronUp, CheckCircle2 } from 'lucide-react'
 import { formatFecha, formatCOP, cn } from '@/lib/utils'
-import { PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/constants'
+import { PRIORIDADES, TIPOS_SOLICITUD } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { calcularActividad, calcValorAnual, calcTotalCualitativos } from '@/lib/schemas/requerimiento'
 
 function SeccionColapsable({
@@ -52,6 +53,7 @@ interface Props {
 
 export function Paso6Revision({ form, confirmado, onConfirmadoChange }: Props) {
   const data = form.watch()
+  const procesos = useProcesos()
 
   // Cálculos HH
   const totalHorasMes = (data.actividades ?? []).reduce((sum, act) => {
@@ -67,7 +69,7 @@ export function Paso6Revision({ form, confirmado, onConfirmadoChange }: Props) {
   const impactoTotal = ahorroAnualHH + totalAnualCualitativos
 
   const tipoLabel    = TIPOS_SOLICITUD.find(t => t.value === data.tipo_solicitud)?.label ?? data.tipo_solicitud
-  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === data.proceso_interno)?.label
+  const procesoLabel = procesos.label(data.proceso_interno)
   const prioridadCfg = data.prioridad ? PRIORIDADES[data.prioridad] : null
 
   return (

@@ -8,7 +8,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { cn, formatCOP } from '@/lib/utils'
 import { exportarReporteCompleto } from '@/lib/exportar'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { TIPOS_PENALIZACION } from '@/components/requerimientos/tabs/TabPenalizaciones'
 import type { RegistroIncumplimiento } from '@/actions/reporte-penalizaciones'
 
@@ -22,7 +22,6 @@ type FiltroSituacion = '' | 'CUMPLIDA_TARDE' | 'VENCIDA'
 const COLOR_DIAS_TAREAS = '#e11d48'       // rose-600
 const COLOR_DIAS_PENALIZACION = '#f59e0b' // amber-500
 
-const procesoLabel = (p: string | null) => (p ? PROCESOS_INTERNOS.find(x => x.value === p)?.label ?? p : 'Sin proceso')
 const tipoPenalizacionLabel = (t: string) => TIPOS_PENALIZACION.find(x => x.value === t)?.label ?? t
 
 function formatFecha(d: string | null) {
@@ -152,6 +151,8 @@ function TablaGrupos({ titulo, icono: Icon, grupos, etiqueta }: { titulo: string
 }
 
 export function ReportePenalizaciones({ registros }: Props) {
+  const catalogo = useProcesos()
+  const procesoLabel = (p: string | null) => (p ? catalogo.label(p) : 'Sin proceso')
   const [desde, setDesde] = useState('')
   const [hasta, setHasta] = useState('')
   const [proceso, setProceso] = useState('')
@@ -163,7 +164,7 @@ export function ReportePenalizaciones({ registros }: Props) {
   const hayFiltros = !!(desde || hasta || proceso || usuario || tipo || situacion || busqueda)
   const limpiar = () => { setDesde(''); setHasta(''); setProceso(''); setUsuario(''); setTipo(''); setSituacion(''); setBusqueda('') }
 
-  const procesos = useMemo(() => [...new Set(registros.map(r => r.proceso ?? ''))].sort((a, b) => procesoLabel(a || null).localeCompare(procesoLabel(b || null))), [registros])
+  const procesos = useMemo(() => [...new Set(registros.map(r => r.proceso ?? ''))].sort((a, b) => procesoLabel(a || null).localeCompare(procesoLabel(b || null))), [registros, catalogo]) // eslint-disable-line react-hooks/exhaustive-deps
   const usuarios = useMemo(() => {
     const m = new Map<string, string>()
     for (const r of registros) m.set(r.responsable_email ?? '', r.responsable_nombre)
@@ -196,8 +197,8 @@ export function ReportePenalizaciones({ registros }: Props) {
     r => r.responsable_email ?? 'sin-responsable',
     r => r.responsable_nombre,
     r => [r.responsable_email, procesoLabel(r.proceso)].filter(Boolean).join(' · '),
-  ), [filtrados])
-  const porProceso = useMemo(() => agrupar(filtrados, r => r.proceso ?? 'sin-proceso', r => procesoLabel(r.proceso), () => null), [filtrados])
+  ), [filtrados, catalogo]) // eslint-disable-line react-hooks/exhaustive-deps
+  const porProceso = useMemo(() => agrupar(filtrados, r => r.proceso ?? 'sin-proceso', r => procesoLabel(r.proceso), () => null), [filtrados, catalogo]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const exportar = () => {
     const columnasGrupo = (etiqueta: string) => [

@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { getEstadoCfg, PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
+import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
 import { GanttPlaneacion, ICONO_CUMPLIMIENTO } from './GanttPlaneacion'
 import type { CumplimientoEtapa, RequerimientoPlaneacion } from '@/actions/reporte-planeacion'
@@ -108,6 +109,7 @@ function Kpi({ label, valor, detalle, tono }: { label: string; valor: string | n
 }
 
 export function ReportePlaneacion({ datos }: Props) {
+  const procesos = useProcesos()
   const [busqueda, setBusqueda] = useState('')
   const [proceso, setProceso] = useState('')
   const [soloAlertas, setSoloAlertas] = useState(false)
@@ -252,7 +254,7 @@ export function ReportePlaneacion({ datos }: Props) {
           className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-300"
         >
           <option value="">Todos los procesos</option>
-          {PROCESOS_INTERNOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          {procesos.todos.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
         <select
           value={criticidad}

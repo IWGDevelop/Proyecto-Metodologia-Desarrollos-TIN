@@ -114,11 +114,8 @@ export type Alcance = 'IWF' | 'ILT' | 'IWG'
 export type TipoSolicitud = 'NUEVO_DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'INFORME'
 export type OrigenRequerimiento = 'LISTA_MEJORAS_PENDIENTES' | 'TIN_NOVA' | 'DESARROLLO_EXTERNO'
 export type TipoSolucion = 'DESARROLLO' | 'MEJORA' | 'INTEGRACION' | 'SUPERSET' | 'POR_DEFINIR'
-export type ProcesoInterno =
-  | 'FINANCIERO' | 'OPERACIONES' | 'COMERCIAL' | 'CARGA'
-  | 'SISTEMAS_GESTION' | 'SERVICIO_CLIENTE' | 'COMPRAS'
-  | 'SEGUROS' | 'DATOS' | 'TI' | 'GENERAL' | 'PRICING' | 'ESTRATEGIA'
-  | 'MARKETING' | 'TRAFICO_SEGURIDAD' | 'IA'
+/** Código del proceso interno; el catálogo es parametrizable (tabla procesos_internos) */
+export type ProcesoInterno = string
 export type Impacta = 'FUNCIONARIOS' | 'CLIENTES' | 'AMBOS'
 
 // ─── Tipos JSONB embebidos ───────────────────────────────────────────────────

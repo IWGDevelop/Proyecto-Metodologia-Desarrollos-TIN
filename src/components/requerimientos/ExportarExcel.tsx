@@ -8,7 +8,8 @@ import * as XLSX from 'xlsx'
 import { fetchTodosParaExportar } from '@/hooks/useRequerimientos'
 import { fetchTodosAdminParaExportar } from '@/actions/requerimientos-admin'
 import { formatFecha } from '@/lib/utils'
-import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, ALCANCES, TIPOS_SOLICITUD, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, ALCANCES, TIPOS_SOLICITUD } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import type { FiltrosRequerimientos, SortConfig } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import type { Estado, TipoSolucion, Alcance } from '@/lib/supabase/types'
@@ -22,6 +23,7 @@ interface Props {
 
 export function ExportarExcel({ filtros, sort, isAdmin = false, perfilFiltro }: Props) {
   const [loading, setLoading] = useState(false)
+  const procesos = useProcesos()
 
   const handleExport = async () => {
     setLoading(true)
@@ -38,7 +40,7 @@ export function ExportarExcel({ filtros, sort, isAdmin = false, perfilFiltro }: 
         Alcance:               r.alcance ? ALCANCES[r.alcance as Alcance]?.label ?? r.alcance : '',
         'Tipo solicitud':      r.tipo_solicitud ? (TIPOS_SOLICITUD.find(t => t.value === r.tipo_solicitud)?.label ?? r.tipo_solicitud) : '',
         'Tipo solución':       r.tipo_solucion ? TIPOS_SOLUCION[r.tipo_solucion as TipoSolucion]?.label ?? r.tipo_solucion : '',
-        Proceso:               r.proceso_interno ? (PROCESOS_INTERNOS.find(p => p.value === r.proceso_interno)?.label ?? r.proceso_interno) : '',
+        Proceso:               procesos.label(r.proceso_interno),
         Responsable:           r.responsable ?? '',
         Prioridad:             r.prioridad ? `P${r.prioridad} - ${PRIORIDADES[r.prioridad]?.label ?? ''}` : '',
         Estado:                r.estado ? ESTADOS[r.estado as Estado]?.label ?? r.estado : '',

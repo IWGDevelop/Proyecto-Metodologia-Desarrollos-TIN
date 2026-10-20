@@ -15,7 +15,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, TIPOS_SOLUCION, getEstadoCfg } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, getEstadoCfg } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { cn } from '@/lib/utils'
 
 const ALCANCES = [
@@ -40,6 +41,7 @@ interface Props {
 }
 
 export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles }: Props) {
+  const procesos = useProcesos()
   // Combina estados de la BD con los hardcodeados para no perder ninguno
   const todosLosEstados = estadosDisponibles && estadosDisponibles.length > 0
     ? Array.from(new Set([...Object.keys(ESTADOS), ...estadosDisponibles])).sort()
@@ -225,7 +227,7 @@ export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="_all">Todos los procesos</SelectItem>
-            {PROCESOS_INTERNOS.map(p => (
+            {procesos.todos.map(p => (
               <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
             ))}
           </SelectContent>

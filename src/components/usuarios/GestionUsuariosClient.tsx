@@ -16,7 +16,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Switch } from '@/components/ui/switch'
 import { Plus, Pencil, Shield, User, RefreshCw, Star, Download } from 'lucide-react'
 import { formatFecha } from '@/lib/utils'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { useProcesos, opcionesProceso } from '@/context/ProcesosContext'
 import { sincronizarPerfilesDesdeIGSI } from '@/actions/sync-igsi'
 import type { Perfil } from '@/lib/supabase/types'
 
@@ -71,6 +71,7 @@ interface Props { usuarios: Perfil[]; roles: RolItem[] }
 
 export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
   const router = useRouter()
+  const procesos = useProcesos()
   const [showCreate, setShowCreate] = useState(false)
   const [editUser, setEditUser] = useState<Perfil | null>(null)
   const [sincronizando, setSincronizando] = useState(false)
@@ -273,7 +274,7 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
                 <Select onValueChange={(v: string | null) => createForm.setValue('proceso_interno', v ?? undefined)}>
                   <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                   <SelectContent>
-                    {PROCESOS_INTERNOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                    {procesos.activos.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -347,7 +348,7 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
                   <Select defaultValue={editUser.proceso_interno ?? ''} onValueChange={(v: string | null) => editForm.setValue('proceso_interno', v ?? undefined)}>
                     <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                     <SelectContent>
-                      {PROCESOS_INTERNOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                      {opcionesProceso(procesos, editUser.proceso_interno).map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>

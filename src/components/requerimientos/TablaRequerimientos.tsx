@@ -24,7 +24,8 @@ import {
 } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import { eliminarRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
-import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, PROCESOS_INTERNOS, TIPOS_SOLICITUD } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
@@ -227,7 +228,6 @@ const OPCIONES_PRIORIDAD: OpcionEdit[] = [
   ]),
 ]
 const OPCIONES_ORIGEN: OpcionEdit[] = ORIGENES_REQUERIMIENTO.map(o => ({ value: o.value, label: o.label }))
-const OPCIONES_PROCESO: OpcionEdit[] = PROCESOS_INTERNOS.map(p => ({ value: p.value, label: p.label }))
 const OPCIONES_TIPO_SOLICITUD: OpcionEdit[] = TIPOS_SOLICITUD.map(t => ({ value: t.value, label: t.label }))
 
 const TIPO_SOLICITUD_BADGE: Record<string, string> = {
@@ -254,6 +254,8 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
   const pathname = usePathname()
   const searchParams = useSearchParams()
   const invalidar = useInvalidateRequerimientos()
+  const procesos = useProcesos()
+  const opcionesProceso: OpcionEdit[] = procesos.activos.map(p => ({ value: p.value, label: p.label }))
 
   // Mapa lote_id → lote para lookup O(1)
   const loteMap = Object.fromEntries(lotes.map(l => [l.id, l]))
@@ -442,17 +444,17 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                         <td className="px-3 py-2.5">
                           {readOnly ? (
                             (row as any).proceso_interno
-                              ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{PROCESOS_INTERNOS.find(p => p.value === (row as any).proceso_interno)?.label ?? (row as any).proceso_interno}</span>
+                              ? <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">{procesos.label((row as any).proceso_interno)}</span>
                               : <span className="text-xs text-slate-300">—</span>
                           ) : (
                             <CeldaEditable
                               rowId={row.id}
                               valor={(row as any).proceso_interno}
-                              opciones={OPCIONES_PROCESO}
+                              opciones={opcionesProceso}
                               onGuardar={(id, v) => guardarCampo(id, 'proceso_interno', v)}
                               renderBadge={(v) => v ? (
                                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs font-medium text-slate-600">
-                                  {PROCESOS_INTERNOS.find(p => p.value === v)?.label ?? v}
+                                  {procesos.label(v)}
                                 </span>
                               ) : null}
                             />

@@ -8,6 +8,7 @@ import {
   minutosAhorradosMes, ahorroMensualCOP, fmtMinutos,
 } from '@/lib/casos-uso-ia'
 import { formatCOP } from '@/lib/utils'
+import { getProcesosInternos } from '@/actions/procesos-internos'
 import { BadgeEstadoCasoIA } from '@/components/casos-uso-ia/BadgeEstadoCasoIA'
 import type { CasoUsoIA, CasoUsoIAHistorial, CasoUsoIAAnexo } from '@/lib/supabase/types'
 
@@ -40,14 +41,15 @@ interface Props {
   acciones?: React.ReactNode
 }
 
-export function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel, acciones }: Props) {
+export async function DetalleCasoUsoIA({ caso, historial, anexos, backHref, backLabel, acciones }: Props) {
+  const procesos = await getProcesosInternos()
   const esUso = caso.tipo_registro === 'USO_EXISTENTE'
   const minMes = esUso ? minutosAhorradosMes(caso.minutos_ahorrados, caso.frecuencia_uso) : null
   const fuentes = caso.fuentes_datos ?? []
   const ahorroMes = esUso ? ahorroMensualCOP(minMes, caso.salario_cargo) : null
   const impactosIndirectos = caso.impactos_indirectos ?? []
   const totalIndirectos = impactosIndirectos.reduce((s, i) => s + (i.valor_anual_cop || 0), 0)
-  const proceso = labelProcesoCasoIA(caso.proceso_solicitante)
+  const proceso = labelProcesoCasoIA(caso.proceso_solicitante, procesos)
 
   return (
     <div className="mx-auto max-w-4xl space-y-6 p-6">

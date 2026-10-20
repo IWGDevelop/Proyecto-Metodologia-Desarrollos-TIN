@@ -12,7 +12,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { useProcesos, opcionesProceso } from '@/context/ProcesosContext'
 import { formatFecha } from '@/lib/utils'
 import { Loader2, User } from 'lucide-react'
 
@@ -35,6 +35,7 @@ type PwForm = z.infer<typeof pwSchema>
 
 export default function PerfilPage() {
   const { perfil, refreshPerfil } = useAuth()
+  const procesos = useProcesos()
   const [savingPerfil, setSavingPerfil] = useState(false)
   const [savingPw, setSavingPw] = useState(false)
 
@@ -138,7 +139,7 @@ export default function PerfilPage() {
               <Select defaultValue={perfil.proceso_interno ?? ''} onValueChange={(v: string | null) => perfilForm.setValue('proceso_interno', v ?? undefined)}>
                 <SelectTrigger><SelectValue placeholder="Seleccionar" /></SelectTrigger>
                 <SelectContent>
-                  {PROCESOS_INTERNOS.map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
+                  {opcionesProceso(procesos, perfil.proceso_interno).map(p => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>

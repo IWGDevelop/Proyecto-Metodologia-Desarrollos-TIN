@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { PRIORIDADES, PROCESOS_INTERNOS } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { useRouter } from 'next/navigation'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
@@ -16,6 +17,7 @@ interface Props {
 
 export function ReporteStandBy({ datos, isLoading }: Props) {
   const router = useRouter()
+  const procesos = useProcesos()
   const standBy = datos
     .filter(r => r.estado === 'STAND_BY')
     .sort((a, b) => (b.dias_en_estado_actual ?? 0) - (a.dias_en_estado_actual ?? 0))
@@ -74,7 +76,7 @@ export function ReporteStandBy({ datos, isLoading }: Props) {
               <tbody className="divide-y divide-slate-50">
                 {standBy.map((r, i) => {
                   const sinMotivoItem = !r.motivo_stand_by?.trim()
-                  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === r.proceso_interno)?.label
+                  const procesoLabel = r.proceso_interno ? procesos.label(r.proceso_interno) : null
                   const prioridadCfg = r.prioridad ? PRIORIDADES[r.prioridad] : null
 
                   return (

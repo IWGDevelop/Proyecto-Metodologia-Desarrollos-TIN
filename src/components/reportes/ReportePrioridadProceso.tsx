@@ -11,6 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { ESTADOS, PRIORIDADES } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 interface Props {
@@ -32,24 +33,6 @@ const PROCESO_COLOR: Record<string, string> = {
   GENERAL:          '#94a3b8',
   PRICING:          '#fb7185',
   ESTRATEGIA:       '#34d399',
-}
-
-const PROCESO_LABEL: Record<string, string> = {
-  FINANCIERO:       'Financiero',
-  OPERACIONES:      'Operaciones',
-  COMERCIAL:        'Comercial',
-  CARGA:            'Carga',
-  SISTEMAS_GESTION: 'Sistemas de Gestión',
-  SERVICIO_CLIENTE: 'Servicio al Cliente',
-  COMPRAS:          'Compras',
-  SEGUROS:          'Seguros',
-  DATOS:            'Datos',
-  TI:               'TI',
-  GENERAL:          'General',
-  PRICING:           'Pricing',
-  ESTRATEGIA:        'Estrategia',
-  MARKETING:         'Marketing',
-  TRAFICO_SEGURIDAD: 'Tráfico y Seguridad',
 }
 
 const ESTADO_LABEL: Record<string, string> = {
@@ -75,6 +58,7 @@ interface Seleccion {
 }
 
 export function ReportePrioridadProceso({ datos, isLoading }: Props) {
+  const procesos = useProcesos()
   const [seleccion, setSeleccion] = useState<Seleccion | null>(null)
 
   const activos = useMemo(() => datos.filter(r => !r.es_borrador), [datos])
@@ -149,12 +133,12 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
           <Tooltip
             formatter={(value: any, name: any) => [
               value as number,
-              name === 'SIN_PROCESO' ? 'Sin proceso' : (PROCESO_LABEL[name as string] ?? name),
+              name === 'SIN_PROCESO' ? 'Sin proceso' : procesos.label(name as string),
             ]}
             contentStyle={{ fontSize: 12, borderRadius: 8, border: '1px solid #e2e8f0' }}
           />
           <Legend
-            formatter={(v: string) => v === 'SIN_PROCESO' ? 'Sin proceso' : (PROCESO_LABEL[v] ?? v)}
+            formatter={(v: string) => v === 'SIN_PROCESO' ? 'Sin proceso' : procesos.label(v)}
             wrapperStyle={{ fontSize: 11 }}
           />
           {todosLosProcesos.map(proc => (
@@ -179,7 +163,7 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
                 P{seleccion.prioridad} —{' '}
                 {seleccion.proceso === 'SIN_PROCESO'
                   ? 'Sin proceso'
-                  : (PROCESO_LABEL[seleccion.proceso ?? ''] ?? seleccion.proceso)}
+                  : procesos.label(seleccion.proceso)}
               </span>
               <span className="text-xs text-slate-400">{reqsFiltrados.length} desarrollo{reqsFiltrados.length !== 1 ? 's' : ''}</span>
             </div>

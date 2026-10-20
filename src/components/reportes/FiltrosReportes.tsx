@@ -6,7 +6,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { cn } from '@/lib/utils'
 import { calcularRango, type FiltrosReportes } from '@/hooks/useReportesData'
 
@@ -32,6 +32,7 @@ interface Props {
 }
 
 export function FiltrosReportes({ filtros, onChange, total }: Props) {
+  const procesos = useProcesos()
   const setPreset = (preset: FiltrosReportes['preset']) => {
     if (preset === 'personalizado') {
       onChange({ ...filtros, preset })
@@ -122,7 +123,7 @@ export function FiltrosReportes({ filtros, onChange, total }: Props) {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="_all">Todos los procesos</SelectItem>
-              {PROCESOS_INTERNOS.map(p => (
+              {procesos.todos.map(p => (
                 <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
               ))}
             </SelectContent>

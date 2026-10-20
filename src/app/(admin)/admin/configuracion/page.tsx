@@ -1,8 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { Settings2, Kanban, Clock, Mail } from 'lucide-react'
+import { Settings2, Kanban, Clock, Mail, Building2 } from 'lucide-react'
 import { GestionEstadosKanban } from '@/components/admin/GestionEstadosKanban'
+import { GestionProcesosInternos } from '@/components/admin/GestionProcesosInternos'
 import { GestionSLA } from '@/components/admin/GestionSLA'
 import { GestionNotificacionesEmail } from '@/components/admin/GestionNotificacionesEmail'
 import { cn } from '@/lib/utils'
@@ -10,6 +11,7 @@ import { cn } from '@/lib/utils'
 const TABS = [
   { id: 'sla',            label: 'SLA y Prioridades',   Icon: Clock  },
   { id: 'estados',        label: 'Estados Kanban',       Icon: Kanban },
+  { id: 'procesos',       label: 'Procesos',             Icon: Building2 },
   { id: 'notificaciones', label: 'Notificaciones Email', Icon: Mail   },
 ] as const
 
@@ -51,6 +53,7 @@ export default function ConfiguracionPage() {
       {/* Contenido */}
       {tab === 'sla'            && <GestionSLA />}
       {tab === 'estados'        && <GestionEstadosKanban />}
+      {tab === 'procesos'       && <GestionProcesosInternos />}
       {tab === 'notificaciones' && <GestionNotificacionesEmail />}
     </div>
   )

@@ -4,7 +4,8 @@ import { useDraggable } from '@dnd-kit/core'
 import { CSS } from '@dnd-kit/utilities'
 import { Progress } from '@/components/ui/progress'
 import { DollarSign } from 'lucide-react'
-import { PRIORIDADES, PROCESOS_INTERNOS, formatPrioridad } from '@/lib/constants'
+import { PRIORIDADES, formatPrioridad } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { formatCOP, cn } from '@/lib/utils'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
@@ -41,6 +42,7 @@ interface Props {
 }
 
 export function KanbanCard({ card, onCardClick, isDragOverlay = false }: Props) {
+  const procesos = useProcesos()
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
     id: card.id,
     data: { estado: card.estado, card },
@@ -54,7 +56,7 @@ export function KanbanCard({ card, onCardClick, isDragOverlay = false }: Props) 
 
   const bordePrioridad = card.prioridad ? PRIORIDAD_BORDE[card.prioridad] : 'border-l-slate-200'
   const prioridadCfg = card.prioridad ? PRIORIDADES[card.prioridad] : null
-  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === card.proceso_interno)?.label ?? card.proceso_interno
+  const procesoLabel = procesos.label(card.proceso_interno)
 
   const slaExcedido = card.cumple_sla === false
   const diasColor = slaExcedido ? 'text-red-600' : 'text-emerald-600'

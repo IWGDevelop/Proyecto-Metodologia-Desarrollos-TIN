@@ -1,7 +1,9 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD, PRIORIDADES } from '@/lib/constants'
+import { ESTADOS, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD, PRIORIDADES } from '@/lib/constants'
+import { getProcesosInternos } from '@/actions/procesos-internos'
+import { labelDeProceso } from '@/lib/procesos'
 
 export interface ReporteEstado {
   estado: string
@@ -71,10 +73,6 @@ function estadoLabel(estado: string) {
   return ESTADOS[estado]?.label ?? estado.replace(/_/g, ' ')
 }
 
-function procesoLabel(proceso: string) {
-  return PROCESOS_INTERNOS.find(p => p.value === proceso)?.label ?? proceso
-}
-
 function origenLabel(origen: string) {
   return (ORIGENES_REQUERIMIENTO as readonly { value: string; label: string }[]).find(o => o.value === origen)?.label ?? origen
 }
@@ -118,6 +116,8 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
 
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
   const supabase = createAdminClient()
+  const catalogoProcesos = await getProcesosInternos()
+  const procesoLabel = (proceso: string) => labelDeProceso(catalogoProcesos, proceso)
 
   const { data: rows } = await (supabase as any)
     .from('v_metricas_requerimientos')

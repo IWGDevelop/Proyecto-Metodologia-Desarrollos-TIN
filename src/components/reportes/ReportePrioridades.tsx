@@ -9,6 +9,7 @@ import {
 import { ExternalLink, AlertTriangle, Filter, X, ChevronDown } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
 import { ESTADOS } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
@@ -21,14 +22,6 @@ const PRIORIDAD_BG: Record<number, string> = {
   3: 'bg-amber-100 text-amber-700 border-amber-300',
   4: 'bg-blue-100 text-blue-700 border-blue-300',
   5: 'bg-violet-100 text-violet-700 border-violet-300',
-}
-
-const PROCESO_LABEL: Record<string, string> = {
-  FINANCIERO: 'Financiero', OPERACIONES: 'Operaciones', COMERCIAL: 'Comercial',
-  CARGA: 'Carga', SISTEMAS_GESTION: 'Sistemas Gestión', SERVICIO_CLIENTE: 'Serv. Cliente',
-  COMPRAS: 'Compras', SEGUROS: 'Seguros', DATOS: 'Datos', TI: 'TI',
-  GENERAL: 'General', PRICING: 'Pricing', ESTRATEGIA: 'Estrategia',
-  MARKETING: 'Marketing', TRAFICO_SEGURIDAD: 'Tráfico y Seguridad',
 }
 
 const PROCESO_COLORS = [
@@ -190,6 +183,7 @@ function seccionTitle(title: string) {
 }
 
 export function ReportePrioridades({ datos }: Props) {
+  const procesos = useProcesos()
   const [fEmpresa,   setFEmpresa]   = useState('')
   const [fPrioridad, setFPrioridad] = useState('')
   const [fEstados,   setFEstados]   = useState<string[]>([])
@@ -261,7 +255,7 @@ export function ReportePrioridades({ datos }: Props) {
     })
     return Object.entries(map)
       .filter(([, v]) => v > 0)
-      .map(([proceso, total]) => ({ proceso, label: PROCESO_LABEL[proceso] ?? proceso, total }))
+      .map(([proceso, total]) => ({ proceso, label: procesos.label(proceso), total }))
       .sort((a, b) => b.total - a.total)
   }, [filtrados])
 
@@ -279,7 +273,7 @@ export function ReportePrioridades({ datos }: Props) {
   // ── Opciones de filtros ───────────────────────────────────────────────────
   const procesosDisponibles = useMemo(() => {
     const set = new Set(datos.map(r => r.proceso_interno).filter(Boolean) as string[])
-    return Array.from(set).sort().map(p => ({ value: p, label: PROCESO_LABEL[p] ?? p }))
+    return Array.from(set).sort().map(p => ({ value: p, label: procesos.label(p) }))
   }, [datos])
 
   const estadosDisponibles = ESTADOS_OPCIONES
@@ -321,7 +315,7 @@ export function ReportePrioridades({ datos }: Props) {
           </Link>
         </td>
         <td className="px-3 py-2.5 text-xs text-slate-500">
-          {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+          {r.proceso_interno ? procesos.label(r.proceso_interno) : '—'}
         </td>
         <td className="px-3 py-2.5 text-center">
           <AsignarPrioridadProcesoBtn
@@ -485,7 +479,7 @@ export function ReportePrioridades({ datos }: Props) {
                       </Link>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500">
-                      {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+                      {r.proceso_interno ? procesos.label(r.proceso_interno) : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500">
                       {origen ? (ORIGEN_LABEL[origen] ?? origen) : '—'}
@@ -565,7 +559,7 @@ export function ReportePrioridades({ datos }: Props) {
                       </Link>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500">
-                      {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+                      {r.proceso_interno ? procesos.label(r.proceso_interno) : '—'}
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500">
                       {origen ? (ORIGEN_LABEL[origen] ?? origen) : '—'}
@@ -709,7 +703,7 @@ export function ReportePrioridades({ datos }: Props) {
                       </Link>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500">
-                      {r.proceso_interno ? (PROCESO_LABEL[r.proceso_interno] ?? r.proceso_interno) : '—'}
+                      {r.proceso_interno ? procesos.label(r.proceso_interno) : '—'}
                     </td>
                     <td className="px-3 py-2.5">
                       <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',

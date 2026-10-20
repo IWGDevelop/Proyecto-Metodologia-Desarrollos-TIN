@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { Building2, Calendar, ChevronRight, Timer } from 'lucide-react'
 import { getCasosUsoIA } from '@/actions/casos-uso-ia'
+import { getProcesosInternos } from '@/actions/procesos-internos'
 import { BadgeEstadoCasoIA } from './BadgeEstadoCasoIA'
 import { labelTipoRegistroCasoIA, labelProcesoCasoIA, minutosAhorradosMes, fmtMinutos } from '@/lib/casos-uso-ia'
 
@@ -19,7 +20,7 @@ function fmtDate(iso: string | null) {
 const ALCANCE_LABEL: Record<string, string> = { IWF: 'IWF', ILT: 'ILT', IWG: 'IWG' }
 
 export async function TablaCasosUsoIA({ estado, alcance, tipo, search }: Props) {
-  const casos = await getCasosUsoIA({ estado, alcance, tipo, search })
+  const [casos, procesos] = await Promise.all([getCasosUsoIA({ estado, alcance, tipo, search }), getProcesosInternos()])
 
   if (casos.length === 0) {
     return (
@@ -67,7 +68,7 @@ export async function TablaCasosUsoIA({ estado, alcance, tipo, search }: Props) 
                 )}
               </td>
               <td className="max-w-[180px] px-4 py-3">
-                <p className="truncate font-medium text-slate-800">{labelProcesoCasoIA(caso.proceso_solicitante)}</p>
+                <p className="truncate font-medium text-slate-800">{labelProcesoCasoIA(caso.proceso_solicitante, procesos)}</p>
                 <p className="truncate text-xs text-slate-400">{caso.proposito}</p>
               </td>
               <td className="px-4 py-3">

@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCOP, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -34,9 +35,10 @@ interface Props {
 }
 
 export function ReporteProductividad({ datos, isLoading }: Props) {
-  const procesos = PROCESOS_INTERNOS.filter(p =>
-    datos.some(r => r.proceso_interno === p.value)
-  )
+  const catalogo = useProcesos()
+  // Procesos con requerimientos (incluye inactivos y códigos fuera del catálogo)
+  const procesos = [...new Set(datos.map(r => r.proceso_interno).filter((p): p is string => !!p))]
+    .map(valor => ({ value: valor, label: catalogo.label(valor) }))
 
   const chartData = procesos.map(p => {
     const enProceso = datos.filter(r => r.proceso_interno === p.value)

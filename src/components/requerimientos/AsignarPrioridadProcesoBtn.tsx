@@ -11,15 +11,8 @@ import {
   type PrioridadProcesoOcupada,
 } from '@/actions/requerimientos-admin'
 import { cn } from '@/lib/utils'
+import { useProcesos } from '@/context/ProcesosContext'
 import { toast } from 'sonner'
-
-const PROCESO_LABEL: Record<string, string> = {
-  FINANCIERO: 'Financiero', OPERACIONES: 'Operaciones', COMERCIAL: 'Comercial',
-  CARGA: 'Carga', SISTEMAS_GESTION: 'Sistemas Gestión', SERVICIO_CLIENTE: 'Serv. Cliente',
-  COMPRAS: 'Compras', SEGUROS: 'Seguros', DATOS: 'Datos', TI: 'TI',
-  GENERAL: 'General', PRICING: 'Pricing', ESTRATEGIA: 'Estrategia',
-  MARKETING: 'Marketing', TRAFICO_SEGURIDAD: 'Tráfico y Seguridad',
-}
 
 const MAX_POSICION = 30
 
@@ -39,10 +32,11 @@ export function AsignarPrioridadProcesoBtn({
   const [selPos, setSelPos]         = useState<number | null>(prioridadProcesoActual)
   const [ocupadas, setOcupadas]     = useState<PrioridadProcesoOcupada[]>([])
   const [isPending, startT]         = useTransition()
+  const procesos = useProcesos()
 
   if (!proceso_interno) return null
 
-  const labelProceso = PROCESO_LABEL[proceso_interno] ?? proceso_interno
+  const labelProceso = procesos.label(proceso_interno)
   const sinCambios   = selPos === prioridadProcesoActual
   const ocupadaPor   = (pos: number) => ocupadas.find(o => o.prioridad_proceso === pos)
   const conflicto    = selPos !== null && !!ocupadaPor(selPos)

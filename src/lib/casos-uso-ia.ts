@@ -1,5 +1,5 @@
 import type { FrecuenciaUsoIA, FuenteDatosIA, TipoRegistroCasoIA } from '@/lib/supabase/types'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import type { ProcesoInternoCfg } from '@/lib/procesos'
 
 export const TIPOS_REGISTRO_CASO_IA: { value: TipoRegistroCasoIA; label: string; descripcion: string }[] = [
   {
@@ -28,12 +28,12 @@ export const HERRAMIENTAS_IA: { value: string; label: string; proveedor: string 
   { value: 'OTRO',       label: 'Otra',       proveedor: 'Otro' },
 ]
 
-/** Procesos para el selector (sin el valor legacy GENERAL) */
-export const PROCESOS_CASO_IA = PROCESOS_INTERNOS.filter(p => p.value !== 'GENERAL')
-
-/** Muestra la etiqueta del proceso; los registros antiguos guardaban texto libre. */
-export function labelProcesoCasoIA(proceso: string) {
-  return PROCESOS_INTERNOS.find(p => p.value === proceso)?.label ?? proceso
+/**
+ * Muestra la etiqueta del proceso según el catálogo parametrizable (useProcesos().todos);
+ * los registros antiguos guardaban texto libre, que se muestra tal cual.
+ */
+export function labelProcesoCasoIA(proceso: string, catalogo: ProcesoInternoCfg[]) {
+  return catalogo.find(p => p.value === proceso)?.label ?? proceso
 }
 
 export const HORAS_LABORALES_MES = 160

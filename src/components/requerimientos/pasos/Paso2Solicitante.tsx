@@ -10,7 +10,8 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { PRIORIDADES, PROCESOS_INTERNOS, SLA_DIAS, SUCURSALES } from '@/lib/constants'
+import { PRIORIDADES, SLA_DIAS, SUCURSALES } from '@/lib/constants'
+import { useProcesos, opcionesProceso } from '@/context/ProcesosContext'
 import { cn } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
 import { SelectorCriticidadProceso } from '../SelectorCriticidadProceso'
@@ -281,6 +282,7 @@ interface Props {
 export function Paso2Solicitante({ form, usuarios = [], isAdmin = false, esNuevo = false }: Props) {
   const { register, watch, setValue, formState: { errors } } = form
   const procesoActual = watch('proceso_interno')
+  const procesos = useProcesos()
 
   const alcanceActual    = watch('alcance')
   const prioridadActual  = watch('prioridad')
@@ -348,7 +350,7 @@ export function Paso2Solicitante({ form, usuarios = [], isAdmin = false, esNuevo
             <SelectValue placeholder="Selecciona el proceso..." />
           </SelectTrigger>
           <SelectContent>
-            {PROCESOS_INTERNOS.map(p => (
+            {opcionesProceso(procesos, procesoActual).map(p => (
               <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>
             ))}
           </SelectContent>

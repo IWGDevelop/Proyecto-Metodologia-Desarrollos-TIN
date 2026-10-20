@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS, PROCESOS_INTERNOS } from '@/lib/constants'
+import { ESTADOS } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 interface Props {
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export function ReportePruebas({ datos, isLoading }: Props) {
+  const procesos = useProcesos()
   const enPruebas = datos.filter(r => r.inicio_pruebas_usuario)
 
   const calcDiasPruebas = (r: MetricaRequerimiento): number => {
@@ -84,7 +86,7 @@ export function ReportePruebas({ datos, isLoading }: Props) {
                     const dias = calcDiasPruebas(r)
                     const enCurso = !r.fin_pruebas_usuario
                     const alerta = enCurso && dias > 15
-                    const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === r.proceso_interno)?.label
+                    const procesoLabel = r.proceso_interno ? procesos.label(r.proceso_interno) : null
 
                     return (
                       <tr key={r.id} className={cn(i % 2 === 0 ? 'bg-white' : 'bg-slate-50/50', alerta && 'bg-red-50/50')}>

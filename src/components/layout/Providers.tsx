@@ -4,8 +4,10 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { useState } from 'react'
 import { AuthProvider } from '@/context/AuthContext'
+import { ProcesosProvider } from '@/context/ProcesosContext'
+import type { ProcesoInternoCfg } from '@/lib/procesos'
 
-export function Providers({ children }: { children: React.ReactNode }) {
+export function Providers({ children, procesos }: { children: React.ReactNode; procesos: ProcesoInternoCfg[] }) {
   const [queryClient] = useState(
     () =>
       new QueryClient({
@@ -22,7 +24,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClient}>
-        {children}
+        <ProcesosProvider procesos={procesos}>
+          {children}
+        </ProcesosProvider>
         <ReactQueryDevtools initialIsOpen={false} />
       </QueryClientProvider>
     </AuthProvider>

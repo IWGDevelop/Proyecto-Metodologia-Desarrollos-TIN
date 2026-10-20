@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraficaProcesosChart } from './GraficaProcesosChart'
-import { PROCESOS_INTERNOS } from '@/lib/constants'
+import { getProcesosInternos } from '@/actions/procesos-internos'
+import { labelDeProceso } from '@/lib/procesos'
 
 async function getProcesosData() {
   const supabase = await createClient()
@@ -19,11 +20,14 @@ async function getProcesosData() {
   }
   const total = Object.values(conteo).reduce((a, b) => a + b, 0)
 
-  return PROCESOS_INTERNOS.map(p => ({
-    proceso: p.value,
-    label: p.label,
-    count: conteo[p.value] ?? 0,
-    pct: total > 0 ? Math.round(((conteo[p.value] ?? 0) / total) * 100) : 0,
+  // Procesos activos del catálogo más cualquier proceso inactivo que aún tenga requerimientos
+  const catalogo = await getProcesosInternos()
+  const valores = [...new Set([...catalogo.filter(p => p.activo).map(p => p.value), ...Object.keys(conteo)])]
+  return valores.map(valor => ({
+    proceso: valor,
+    label: labelDeProceso(catalogo, valor),
+    count: conteo[valor] ?? 0,
+    pct: total > 0 ? Math.round(((conteo[valor] ?? 0) / total) * 100) : 0,
   })).sort((a, b) => b.count - a.count)
 }
 

@@ -13,7 +13,8 @@ import { Paso2Solicitante } from '../pasos/Paso2Solicitante'
 import { Paso3Descripcion } from '../pasos/Paso3Descripcion'
 import { Paso4Alcance } from '../pasos/Paso4Alcance'
 import { defaultWizardValues, type WizardData } from '@/lib/schemas/requerimiento'
-import { TIPOS_SOLICITUD, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
+import { TIPOS_SOLICITUD, ORIGENES_REQUERIMIENTO } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { formatFecha } from '@/lib/utils'
 import type { Perfil } from '@/lib/supabase/types'
 
@@ -57,7 +58,7 @@ export function TabInformacion({ req, canEdit, isAdmin }: Props) {
 
   const tipoLabel    = TIPOS_SOLICITUD.find(t => t.value === req.tipo_solicitud)?.label
   const origenLabel  = ORIGENES_REQUERIMIENTO.find(o => o.value === req.origen_requerimiento)?.label
-  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === req.proceso_interno)?.label
+  const procesoLabel = useProcesos().label(req.proceso_interno)
 
   const form = useForm<WizardData>({ defaultValues: buildDefaultValues(req) as WizardData })
 

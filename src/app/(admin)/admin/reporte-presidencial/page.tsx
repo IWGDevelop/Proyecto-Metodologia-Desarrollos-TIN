@@ -11,10 +11,11 @@ import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
 import { registrarFechaEntrega } from '@/actions/requerimientos'
 import {
-  ESTADOS, PROCESOS_INTERNOS, ORIGENES_REQUERIMIENTO,
+  ESTADOS, ORIGENES_REQUERIMIENTO,
   TIPOS_SOLICITUD, PRIORIDADES, getEstadoCfg,
 } from '@/lib/constants'
 import type { RowPresidencial } from '@/actions/reporte-presidencial'
+import { useProcesos } from '@/context/ProcesosContext'
 
 /* ── Formateadores ────────────────────────────────────────────────────────── */
 function cop(v: number) {
@@ -22,9 +23,6 @@ function cop(v: number) {
 }
 
 /* ── Computar agregaciones ────────────────────────────────────────────────── */
-function procesoLabel(p: string) {
-  return PROCESOS_INTERNOS.find(x => x.value === p)?.label ?? p
-}
 function origenLabel(o: string) {
   return (ORIGENES_REQUERIMIENTO as unknown as { value: string; label: string }[]).find(x => x.value === o)?.label ?? o
 }
@@ -59,7 +57,7 @@ const LABEL_ESTADO_FLUJO: Record<string, string> = {
   PRUEBAS_DE_TESTING_Y_QA: 'Pruebas de Testing y QA',
 }
 
-function computar(activos: RowPresidencial[]) {
+function computar(activos: RowPresidencial[], procesoLabel: (p: string) => string) {
   const total = activos.length
 
   const totalHoras = activos.reduce((s, r) => s + (r.horas_estimadas_desarrollo ?? 0), 0)
@@ -277,6 +275,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
   totalBase: number
   estadosDisponibles: string[]
 }) {
+  const procesos = useProcesos()
   const activos = Object.values(filtros).filter(Boolean).length
   const limpiar = () => onChange(FILTROS_VACIOS)
 
@@ -328,7 +327,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
           )}
         >
           <option value="">Todos los procesos</option>
-          {PROCESOS_INTERNOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+          {procesos.todos.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
         </select>
 
         {/* Tipo solicitud */}
@@ -397,6 +396,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
 
 /* ── Página principal ────────────────────────────────────────────────────── */
 export default function ReportePresidencialPage() {
+  const procesos = useProcesos()
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)
   const [expandedMeses, setExpandedMeses] = useState<Set<string>>(new Set())
   const toggleMes = (mes: string) => setExpandedMeses(prev => {
@@ -459,7 +459,7 @@ export default function ReportePresidencialPage() {
     })
   }, [base, filtros])
 
-  const r = useMemo(() => computar(activos), [activos])
+  const r = useMemo(() => computar(activos, procesos.label), [activos, procesos])
 
   const maxEstado         = Math.max(...r.porEstado.map(e => e.cantidad),       1)
   const maxProceso        = Math.max(...r.porProceso.map(p => p.cantidad),      1)
@@ -888,7 +888,7 @@ export default function ReportePresidencialPage() {
                                         </a>
                                       </td>
                                       <td className="px-2 py-2.5 text-slate-500">
-                                        {row.proceso_interno ? procesoLabel(row.proceso_interno) : '—'}
+                                        {row.proceso_interno ? procesos.label(row.proceso_interno) : '—'}
                                       </td>
                                       <td className="px-2 py-2.5 text-center">
                                         {row.alcance ? (

@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExternalLink, Pencil, ArrowRight, DollarSign } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, PROCESOS_INTERNOS, getEstadoCfg } from '@/lib/constants'
+import { ESTADOS, PRIORIDADES, getEstadoCfg } from '@/lib/constants'
+import { useProcesos } from '@/context/ProcesosContext'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import type { MetricaRequerimiento, HistorialEstado, Estado } from '@/lib/supabase/types'
 
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function KanbanCardDetail({ card, open, onOpenChange }: Props) {
+  const procesos = useProcesos()
   const { data: historial, isLoading: loadingHistorial } = useQuery<HistorialEstado[]>({
     queryKey: ['kanban-historial', card?.id],
     queryFn: async () => {
@@ -42,7 +44,7 @@ export function KanbanCardDetail({ card, open, onOpenChange }: Props) {
 
   const estadoCfg = getEstadoCfg(card.estado)
   const prioridadCfg = card.prioridad ? PRIORIDADES[card.prioridad] : null
-  const procesoLabel = PROCESOS_INTERNOS.find(p => p.value === card.proceso_interno)?.label
+  const procesoLabel = procesos.label(card.proceso_interno)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>

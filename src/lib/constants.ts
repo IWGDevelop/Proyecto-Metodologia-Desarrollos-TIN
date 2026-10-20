@@ -330,6 +330,8 @@ export const ALCANCES: Record<Alcance, { label: string; descripcion: string }> =
 }
 
 // ─── Procesos internos ────────────────────────────────────────────────────────
+// Catálogo inicial y de respaldo. El catálogo vigente es parametrizable (tabla procesos_internos,
+// Configuración → Procesos): en la interfaz se usa useProcesos() y en el servidor getProcesosInternos().
 export const PROCESOS_INTERNOS: Array<{ value: ProcesoInterno; label: string }> = [
   { value: 'FINANCIERO',       label: 'Financiero' },
   { value: 'OPERACIONES',      label: 'Operaciones' },
