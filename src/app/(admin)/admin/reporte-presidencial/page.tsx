@@ -51,7 +51,7 @@ const estadoReporte = (estado: string | null | undefined) =>
   !estado ? 'SIN_GESTION' : estado === 'ENTREGADO' ? 'CERRADO' : estado
 
 const LABEL_ESTADO_FLUJO: Record<string, string> = {
-  SIN_GESTION:             'Recibido',
+  SIN_GESTION:             'Recibido TIN-FLOW',
   ANALISIS:                'Estudio y evaluación técnica',
   PENDIENTE_DE_EJECUCION:  'Pendiente de ejecución',
   PRUEBAS_DE_TESTING_Y_QA: 'Pruebas de Testing y QA',
