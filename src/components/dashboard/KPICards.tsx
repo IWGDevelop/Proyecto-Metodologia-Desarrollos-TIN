@@ -6,7 +6,9 @@ import {
   PauseCircle, CheckCircle2, Timer,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { ESTADOS, getEstadoCfg } from '@/lib/constants'
+import { ESTADOS } from '@/lib/constants'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { cfgDeEstado } from '@/lib/estados'
 
 // ─── Data fetching ────────────────────────────────────────────────────────────
 async function getKPIData() {
@@ -142,7 +144,8 @@ function KPICard({
 
 // ─── Server component principal ───────────────────────────────────────────────
 export async function KPICards() {
-  const d = await getKPIData()
+  const [d, catalogo] = await Promise.all([getKPIData(), getCatalogoEstados()])
+  const getEstadoCfg = (estado: string) => cfgDeEstado(catalogo, estado)
 
   const sinGestionStyle =
     d.sinGestion > 10
@@ -232,7 +235,8 @@ export async function KPICards() {
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-400">Requerimientos por estado</p>
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-8">
-        {Object.entries(ESTADOS).map(([key, cfg]) => {
+        {Object.keys(ESTADOS).map(key => {
+          const cfg = getEstadoCfg(key)
           const count = d.conteoEstados[key] ?? 0
           return (
             <div

@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatCOP, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
@@ -36,6 +36,7 @@ interface Props {
 
 export function ReporteProductividad({ datos, isLoading }: Props) {
   const catalogo = useProcesos()
+  const labelEstado = useEstados().label
   // Procesos con requerimientos (incluye inactivos y códigos fuera del catálogo)
   const procesos = [...new Set(datos.map(r => r.proceso_interno).filter((p): p is string => !!p))]
     .map(valor => ({ value: valor, label: catalogo.label(valor) }))
@@ -103,11 +104,11 @@ export function ReporteProductividad({ datos, isLoading }: Props) {
               <XAxis type="number" tick={{ fontSize: 10, fill: '#94a3b8' }} axisLine={false} tickLine={false} />
               <YAxis dataKey="proceso" type="category" tick={{ fontSize: 10, fill: '#64748b' }} axisLine={false} tickLine={false} width={110} />
               <Tooltip
-                formatter={(value: unknown, name: unknown) => [String(value), ESTADOS[name as Estado]?.label ?? String(name)]}
+                formatter={(value: unknown, name: unknown) => [String(value), labelEstado(String(name))]}
                 contentStyle={{ fontSize: 11 }}
               />
               <Legend
-                formatter={name => ESTADOS[name as Estado]?.label ?? name}
+                formatter={name => labelEstado(String(name))}
                 iconType="circle"
                 iconSize={8}
                 wrapperStyle={{ fontSize: 10 }}

@@ -12,7 +12,7 @@ import {
   Select, SelectContent, SelectItem,
   SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ESTADOS, getEstadoCfg } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
@@ -38,6 +38,10 @@ interface Props {
 export function CambiarEstadoDialog({
   open, onOpenChange, requerimientoId, estadoActual, onSuccess,
 }: Props) {
+  const estados = useEstados()
+  const getEstadoCfg = estados.cfg
+  // Estados activos del catálogo, más el actual aunque esté inactivo
+  const opciones = estados.codigos().filter(e => e === estadoActual || estados.todos.find(c => c.nombre === e)?.activo !== false)
   const [nuevoEstado, setNuevoEstado] = useState<Estado>(estadoActual)
   const [observacion, setObservacion] = useState('')
   const [fechaTransicion, setFechaTransicion] = useState(hoyISO)
@@ -93,7 +97,7 @@ export function CambiarEstadoDialog({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {(Object.entries(ESTADOS) as [Estado, typeof ESTADOS[Estado]][]).map(([key, cfg]) => (
+                {opciones.map(key => [key as Estado, getEstadoCfg(key)] as const).map(([key, cfg]) => (
                   <SelectItem key={key} value={key}>
                     <span className={cn('rounded-full px-2 py-0.5 text-xs', cfg.bgColor, cfg.textColor)}>
                       {cfg.label}

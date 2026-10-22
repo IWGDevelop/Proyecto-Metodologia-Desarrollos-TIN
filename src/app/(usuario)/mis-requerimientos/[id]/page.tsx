@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { ArrowLeft, DollarSign, Clock, TrendingUp } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
-import { ESTADOS, PRIORIDADES, getEstadoCfg } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { cfgDeEstado } from '@/lib/estados'
 import { getProcesosInternos } from '@/actions/procesos-internos'
 import { labelDeProceso } from '@/lib/procesos'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
@@ -35,6 +37,8 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
 
   if (error || !req) notFound()
 
+  const catalogoEstados = await getCatalogoEstados()
+  const getEstadoCfg = (estado: string) => cfgDeEstado(catalogoEstados, estado)
   const estadoCfg = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const procesoLabel = labelDeProceso(await getProcesosInternos(), req.proceso_interno)
@@ -82,7 +86,7 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
           <p className="mb-4 text-xs font-semibold uppercase tracking-wide text-slate-400">Estado actual</p>
           <div className="flex items-center gap-0">
             {ORDEN_ESTADOS.map((estado, idx) => {
-              const cfg = ESTADOS[estado]
+              const cfg = getEstadoCfg(estado)
               const pasado = idx <= estadoActualIdx
               const actual = idx === estadoActualIdx
               const fechaHistorial = historial?.find(h => h.estado_nuevo === estado)

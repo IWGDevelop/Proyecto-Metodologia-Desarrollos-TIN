@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
@@ -16,6 +16,7 @@ interface Props {
 
 export function ReportePruebas({ datos, isLoading }: Props) {
   const procesos = useProcesos()
+  const estados = useEstados()
   const enPruebas = datos.filter(r => r.inicio_pruebas_usuario)
 
   const calcDiasPruebas = (r: MetricaRequerimiento): number => {
@@ -38,7 +39,7 @@ export function ReportePruebas({ datos, isLoading }: Props) {
       { titulo: 'Inicio pruebas',ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.inicio_pruebas_usuario) },
       { titulo: 'Fin pruebas',   ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fin_pruebas_usuario) },
       { titulo: 'Días pruebas',  ancho: 12, render: (r: MetricaRequerimiento) => calcDiasPruebas(r) },
-      { titulo: 'Estado actual', ancho: 18, render: (r: MetricaRequerimiento) => ESTADOS[r.estado as Estado]?.label },
+      { titulo: 'Estado actual', ancho: 18, render: (r: MetricaRequerimiento) => estados.label(r.estado) },
     ])
   }
 
@@ -98,8 +99,8 @@ export function ReportePruebas({ datos, isLoading }: Props) {
                         <td className="px-3 py-2 text-slate-500">{r.fin_pruebas_usuario ? formatFecha(r.fin_pruebas_usuario) : <span className="text-slate-300">En curso</span>}</td>
                         <td className="px-3 py-2 font-bold">{dias} días</td>
                         <td className="px-3 py-2">
-                          <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', ESTADOS[r.estado as Estado]?.bgColor, ESTADOS[r.estado as Estado]?.textColor)}>
-                            {ESTADOS[r.estado as Estado]?.label}
+                          <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', estados.cfg(r.estado).bgColor, estados.cfg(r.estado).textColor)}>
+                            {estados.label(r.estado)}
                           </span>
                         </td>
                         <td className="px-3 py-2">

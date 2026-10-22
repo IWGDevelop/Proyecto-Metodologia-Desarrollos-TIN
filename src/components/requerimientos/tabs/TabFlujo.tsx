@@ -7,6 +7,7 @@ import { toast } from 'sonner'
 import { getFlujoProcesoReq, toggleFlujoPaso, guardarNotasPaso, type PasoFlujo } from '@/actions/flujo-proceso'
 import { cn } from '@/lib/utils'
 import { Skeleton } from '@/components/ui/skeleton'
+import { useEstados } from '@/context/EstadosContext'
 
 interface Props { requerimientoId: string }
 
@@ -20,6 +21,7 @@ interface PasoConfig {
 interface FaseConfig {
   key: string
   titulo: string
+  /** Código del estado; se muestra con el nombre configurado */
   estadoSistema: string
   color: { header: string; badge: string; progress: string; dot: string; dotOk: string }
   pasos: PasoConfig[]
@@ -29,7 +31,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'recepcion',
     titulo: 'Recepción y evaluación',
-    estadoSistema: 'Recibido',
+    estadoSistema: 'SIN_GESTION',
     color: { header: 'bg-slate-50 border-slate-200', badge: 'bg-slate-200 text-slate-600', progress: 'bg-slate-400', dot: 'bg-slate-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'cargue_tinflow', label: 'Cargue de requerimiento en TIN-FLOW', responsables: ['Usuario / Cliente'] },
@@ -39,7 +41,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'analisis',
     titulo: 'Estudio y evaluación técnica',
-    estadoSistema: 'En estudio y evaluación técnica',
+    estadoSistema: 'ANALISIS',
     color: { header: 'bg-blue-50 border-blue-200', badge: 'bg-blue-100 text-blue-700', progress: 'bg-blue-500', dot: 'bg-blue-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'estudio_evaluacion', label: 'Estudio y evaluación técnica', responsables: ['TIN'] },
@@ -49,7 +51,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'definicion',
     titulo: 'Definición de usuario',
-    estadoSistema: 'Definición de usuario',
+    estadoSistema: 'EN_DEFINICION_USUARIO',
     color: { header: 'bg-violet-50 border-violet-200', badge: 'bg-violet-100 text-violet-700', progress: 'bg-violet-500', dot: 'bg-violet-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'reunion_confirmacion', label: 'Reunión de confirmación con desarrolladores y usuarios solicitantes', responsables: ['Director Corporativo TIN', 'Desarrollador', 'Coordinador TIN', 'Partes Interesadas'] },
@@ -61,7 +63,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'desarrollo',
     titulo: 'Desarrollo',
-    estadoSistema: 'Desarrollo',
+    estadoSistema: 'EN_DESARROLLO',
     color: { header: 'bg-indigo-50 border-indigo-200', badge: 'bg-indigo-100 text-indigo-700', progress: 'bg-indigo-500', dot: 'bg-indigo-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'inicio_desarrollo', label: 'Inicio del desarrollo', responsables: ['Desarrollador'] },
@@ -75,7 +77,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'entrega',
     titulo: 'Entrega y pruebas de usuario',
-    estadoSistema: 'Pruebas de usuario',
+    estadoSistema: 'PRUEBAS_USUARIO',
     color: { header: 'bg-amber-50 border-amber-200', badge: 'bg-amber-100 text-amber-700', progress: 'bg-amber-500', dot: 'bg-amber-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'entrega_usuario_paso', label: 'Entrega al usuario', responsables: ['Desarrollador', 'Coordinador TIN', 'Partes Interesadas'] },
@@ -87,7 +89,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'salida_vivo',
     titulo: 'Salida en vivo',
-    estadoSistema: 'Programado para salida en vivo',
+    estadoSistema: 'PROGRAMADO_PARA_SALIDA_EN_VIVO',
     color: { header: 'bg-emerald-50 border-emerald-200', badge: 'bg-emerald-100 text-emerald-700', progress: 'bg-emerald-500', dot: 'bg-emerald-400', dotOk: 'bg-emerald-500' },
     pasos: [
       { key: 'vistos_buenos', label: 'Generación de vistos buenos de todas las partes interesadas', responsables: ['Partes Interesadas'] },
@@ -101,7 +103,7 @@ const FASES: FaseConfig[] = [
   {
     key: 'produccion',
     titulo: 'Producción',
-    estadoSistema: 'Entregado y en funcionamiento',
+    estadoSistema: 'ENTREGADO',
     color: { header: 'bg-green-50 border-green-200', badge: 'bg-green-100 text-green-700', progress: 'bg-green-500', dot: 'bg-green-400', dotOk: 'bg-green-600' },
     pasos: [
       { key: 'salida_produccion', label: 'Salida a producción', responsables: ['TIN'] },
@@ -257,6 +259,7 @@ function TarjetaFase({
   onRefresh: () => void
 }) {
   const [expanded, setExpanded] = useState(true)
+  const labelEstado = useEstados().label
 
   const total       = fase.pasos.length
   const completados = fase.pasos.filter(p => estadosPasos.get(p.key)?.completado).length
@@ -272,7 +275,7 @@ function TarjetaFase({
             <div className={cn('h-2 w-2 rounded-full shrink-0', todoOk ? fase.color.dotOk : fase.color.dot)} />
             <h3 className="text-sm font-semibold text-slate-700 truncate">{fase.titulo}</h3>
             <span className={cn('rounded-full px-2 py-0.5 text-[10px] font-medium shrink-0', fase.color.badge)}>
-              {fase.estadoSistema}
+              {labelEstado(fase.estadoSistema)}
             </span>
           </div>
           <div className="flex items-center gap-2 shrink-0">

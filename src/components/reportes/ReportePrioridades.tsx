@@ -8,8 +8,8 @@ import {
 } from 'recharts'
 import { ExternalLink, AlertTriangle, Filter, X, ChevronDown } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
-import { ESTADOS } from '@/lib/constants'
 import { useProcesos } from '@/context/ProcesosContext'
+import { useEstados } from '@/context/EstadosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 import { AsignarPrioridadBtn } from '@/components/requerimientos/AsignarPrioridadBtn'
 import { AsignarPrioridadProcesoBtn } from '@/components/requerimientos/AsignarPrioridadProcesoBtn'
@@ -28,26 +28,6 @@ const PROCESO_COLORS = [
   '#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4',
   '#ec4899','#f97316','#84cc16','#a78bfa','#0ea5e9','#94a3b8','#fb7185','#34d399',
 ]
-
-const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION:                        'Recibido',
-  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'En espera de comité de prioridades',
-  ANALISIS:                           'En estudio y evaluación técnica',
-  EN_DEFINICION_USUARIO:              'Definición de usuario',
-  EN_DESARROLLO:                      'Desarrollo',
-  PRUEBAS_USUARIO:                    'Pruebas usuario',
-  STAND_BY:                           'Stand By',
-  EN_ESPERA_POR_TERCEROS:             'En espera por terceros',
-  AJUSTES_TECNICOS:                   'Ajustes técnicos',
-  PROGRAMADO_PARA_SALIDA_EN_VIVO:     'Programado para salida en vivo',
-  ENTREGADO:                          'Entregado y en funcionamiento',
-  CERRADO:                            'Cerrado',
-  DESISTIDO:                          'Desistido',
-  NO_VIABLE:                          'No viable',
-}
-
-// Lista fija con todos los estados en orden de flujo, con sus labels
-const ESTADOS_OPCIONES = Object.entries(ESTADO_LABEL).map(([value, label]) => ({ value, label }))
 
 const ORIGEN_LABEL: Record<string, string> = {
   LISTA_MEJORAS_PENDIENTES: 'Lista mejoras',
@@ -184,6 +164,7 @@ function seccionTitle(title: string) {
 
 export function ReportePrioridades({ datos }: Props) {
   const procesos = useProcesos()
+  const estados = useEstados()
   const [fEmpresa,   setFEmpresa]   = useState('')
   const [fPrioridad, setFPrioridad] = useState('')
   const [fEstados,   setFEstados]   = useState<string[]>([])
@@ -239,9 +220,9 @@ export function ReportePrioridades({ datos }: Props) {
     const map: Record<string, number> = {}
     filtrados.forEach(r => { const k = r.estado ?? 'SIN_GESTION'; map[k] = (map[k] ?? 0) + 1 })
     return Object.entries(map)
-      .map(([estado, cantidad]) => ({ estado, label: ESTADO_LABEL[estado] ?? estado, cantidad }))
+      .map(([estado, cantidad]) => ({ estado, label: estados.label(estado), cantidad }))
       .sort((a, b) => b.cantidad - a.cantidad)
-  }, [filtrados])
+  }, [filtrados, estados])
 
   const ESTADO_COLORS = ['#3b82f6','#10b981','#f59e0b','#8b5cf6','#06b6d4','#ec4899','#94a3b8','#ef4444','#f97316']
 
@@ -276,7 +257,8 @@ export function ReportePrioridades({ datos }: Props) {
     return Array.from(set).sort().map(p => ({ value: p, label: procesos.label(p) }))
   }, [datos])
 
-  const estadosDisponibles = ESTADOS_OPCIONES
+  // Todos los estados en el orden configurado, con sus nombres
+  const estadosDisponibles = useMemo(() => estados.codigos().map(value => ({ value, label: estados.label(value) })), [estados])
 
   const origenesDisponibles = useMemo(() => {
     const set = new Set(datos.map(r => (r as any).origen_requerimiento).filter(Boolean) as string[])
@@ -286,7 +268,7 @@ export function ReportePrioridades({ datos }: Props) {
   // ── Fila de tabla reutilizable ────────────────────────────────────────────
   function FilaReq({ r, esPrimero }: { r: MetricaRequerimiento; esPrimero: boolean }) {
     const impacto = (r as any).impacto_economico_total_anual ?? r.ahorro_anual_cop ?? 0
-    const estadoCfg = ESTADOS[r.estado as Estado]
+    const estadoCfg = estados.cfg(r.estado)
     const origen = (r as any).origen_requerimiento as string | null
     const esHijo = !!(r as any).parent_id
     const etiqueta = labelJerarquico(r.id, datos)
@@ -335,7 +317,7 @@ export function ReportePrioridades({ datos }: Props) {
         <td className="px-3 py-2.5">
           <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
             estadoCfg?.bgColor ?? 'bg-slate-100', estadoCfg?.textColor ?? 'text-slate-600', estadoCfg?.borderColor ?? 'border-slate-200')}>
-            {ESTADO_LABEL[r.estado] ?? r.estado}
+            {estados.label(r.estado)}
           </span>
         </td>
         <td className="px-2 py-2.5">
@@ -689,7 +671,7 @@ export function ReportePrioridades({ datos }: Props) {
             <tbody className="divide-y divide-slate-100">
               {sinImpacto.map(r => {
                 const p = r.prioridad
-                const estadoCfg = ESTADOS[r.estado as Estado]
+                const estadoCfg = estados.cfg(r.estado)
                 return (
                   <tr key={r.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-3 py-2.5">
@@ -708,7 +690,7 @@ export function ReportePrioridades({ datos }: Props) {
                     <td className="px-3 py-2.5">
                       <span className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border',
                         estadoCfg?.bgColor ?? 'bg-slate-100', estadoCfg?.textColor ?? 'text-slate-600', estadoCfg?.borderColor ?? 'border-slate-200')}>
-                        {ESTADO_LABEL[r.estado] ?? r.estado}
+                        {estados.label(r.estado)}
                       </span>
                     </td>
                     <td className="px-3 py-2.5 text-xs text-slate-500 truncate max-w-[140px]">{r.responsable ?? '—'}</td>

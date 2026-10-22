@@ -11,11 +11,12 @@ import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
 import { registrarFechaEntrega } from '@/actions/requerimientos'
 import {
-  ESTADOS, ORIGENES_REQUERIMIENTO,
-  TIPOS_SOLICITUD, PRIORIDADES, getEstadoCfg,
+  ORIGENES_REQUERIMIENTO,
+  TIPOS_SOLICITUD, PRIORIDADES,
 } from '@/lib/constants'
 import type { RowPresidencial } from '@/actions/reporte-presidencial'
 import { useProcesos } from '@/context/ProcesosContext'
+import { useEstados } from '@/context/EstadosContext'
 
 /* ── Formateadores ────────────────────────────────────────────────────────── */
 function cop(v: number) {
@@ -50,14 +51,7 @@ const ESTADOS_FUERA_DEL_FLUJO = [
 const estadoReporte = (estado: string | null | undefined) =>
   !estado ? 'SIN_GESTION' : estado === 'ENTREGADO' ? 'CERRADO' : estado
 
-const LABEL_ESTADO_FLUJO: Record<string, string> = {
-  SIN_GESTION:             'Recibido TIN-FLOW',
-  ANALISIS:                'Estudio y evaluación técnica',
-  PENDIENTE_DE_EJECUCION:  'Pendiente de ejecución',
-  PRUEBAS_DE_TESTING_Y_QA: 'Pruebas de Testing y QA',
-}
-
-function computar(activos: RowPresidencial[], procesoLabel: (p: string) => string) {
+function computar(activos: RowPresidencial[], procesoLabel: (p: string) => string, estadoLabel: (e: string) => string) {
   const total = activos.length
 
   const totalHoras = activos.reduce((s, r) => s + (r.horas_estimadas_desarrollo ?? 0), 0)
@@ -78,7 +72,7 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
       const cantidad = estadoMap.get(estado) ?? 0
       return {
         estado, cantidad,
-        label: LABEL_ESTADO_FLUJO[estado] ?? ESTADOS[estado]?.label ?? estado.replace(/_/g, ' '),
+        label: estadoLabel(estado),
         porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
       }
     })
@@ -276,6 +270,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
   estadosDisponibles: string[]
 }) {
   const procesos = useProcesos()
+  const estados = useEstados()
   const activos = Object.values(filtros).filter(Boolean).length
   const limpiar = () => onChange(FILTROS_VACIOS)
 
@@ -313,7 +308,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
         >
           <option value="">Todos los estados</option>
           {estadosDisponibles.map(k => {
-            return <option key={k} value={k}>{LABEL_ESTADO_FLUJO[k] ?? getEstadoCfg(k).label}</option>
+            return <option key={k} value={k}>{estados.label(k)}</option>
           })}
         </select>
 
@@ -397,6 +392,7 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
 /* ── Página principal ────────────────────────────────────────────────────── */
 export default function ReportePresidencialPage() {
   const procesos = useProcesos()
+  const estados = useEstados()
   const [filtros, setFiltros] = useState<Filtros>(FILTROS_VACIOS)
   const [expandedMeses, setExpandedMeses] = useState<Set<string>>(new Set())
   const toggleMes = (mes: string) => setExpandedMeses(prev => {
@@ -440,12 +436,12 @@ export default function ReportePresidencialPage() {
   // Entregado se presenta como Cerrado; se ordenan según las etapas del flujo
   const estadosDisponibles = useMemo(() => {
     const set = new Set<string>([
-      ...Object.keys(ESTADOS),
+      ...estados.codigos(),
       ...todos.map(r => r.estado).filter(Boolean) as string[],
     ].map(estadoReporte))
     const orden = [...ETAPAS_FLUJO, ...ESTADOS_FUERA_DEL_FLUJO, 'DESISTIDO']
     return Array.from(set).sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99) || a.localeCompare(b))
-  }, [todos])
+  }, [todos, estados])
 
   const activos = useMemo(() => {
     return base.filter(r => {
@@ -459,7 +455,7 @@ export default function ReportePresidencialPage() {
     })
   }, [base, filtros])
 
-  const r = useMemo(() => computar(activos, procesos.label), [activos, procesos])
+  const r = useMemo(() => computar(activos, procesos.label, estados.label), [activos, procesos, estados])
 
   const maxEstado         = Math.max(...r.porEstado.map(e => e.cantidad),       1)
   const maxProceso        = Math.max(...r.porProceso.map(p => p.cantidad),      1)

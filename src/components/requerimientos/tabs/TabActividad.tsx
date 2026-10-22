@@ -9,7 +9,7 @@ import {
   AlertOctagon, ClipboardList, AlertTriangle, Clock, FileText,
 } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
-import { getEstadoCfg } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import type {
   CumplimientoTarea, EventoHistorial, EventoTipo, SoporteTarea,
 } from '@/actions/historial-detallado'
@@ -71,6 +71,7 @@ function grupoPorFecha(iso: string): string {
 const plural = (n: number, s: string) => `${n} ${s}${n === 1 ? '' : 's'}`
 
 function EstadoBadge({ estado }: { estado: string }) {
+  const getEstadoCfg = useEstados().cfg
   const cfg = getEstadoCfg(estado)
   return (
     <span className={cn('rounded-full px-2 py-0.5 text-xs font-semibold', cfg.bgColor, cfg.textColor)}>

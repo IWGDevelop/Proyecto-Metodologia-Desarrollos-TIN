@@ -1,7 +1,9 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { revalidatePath } from 'next/cache'
 import type { EstadoKanban } from '@/lib/supabase/types'
+import { ESTADOS_POR_DEFECTO, type EstadoCatalogo } from '@/lib/estados'
 
 export async function getEstadosKanban(): Promise<EstadoKanban[]> {
   try {
@@ -15,6 +17,18 @@ export async function getEstadosKanban(): Promise<EstadoKanban[]> {
   } catch {
     return []
   }
+}
+
+/** Nombres configurados de los estados; si la tabla no responde, los nombres fijos del código */
+export async function getCatalogoEstados(): Promise<EstadoCatalogo[]> {
+  const estados = await getEstadosKanban()
+  if (!estados.length) return ESTADOS_POR_DEFECTO
+  return estados.map(({ nombre, label, activo, es_final, orden }) => ({ nombre, label, activo, es_final, orden }))
+}
+
+function refrescar() {
+  // El catálogo se carga en el layout raíz: se invalidan todas las páginas
+  revalidatePath('/', 'layout')
 }
 
 export async function crearEstadoKanban(payload: {
@@ -38,6 +52,7 @@ export async function crearEstadoKanban(payload: {
       .from('estados_kanban')
       .insert({ ...payload, orden, activo: true })
     if (error) return { ok: false, error: error.message }
+    refrescar()
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }
@@ -55,6 +70,7 @@ export async function actualizarEstadoKanban(
       .update(payload)
       .eq('id', id)
     if (error) return { ok: false, error: error.message }
+    refrescar()
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }
@@ -85,6 +101,7 @@ export async function reordenarEstadoKanban(
       (supabase as any).from('estados_kanban').update({ orden: b.orden }).eq('id', a.id),
       (supabase as any).from('estados_kanban').update({ orden: a.orden }).eq('id', b.id),
     ])
+    refrescar()
     return { ok: true }
   } catch {
     return { ok: false }
@@ -99,6 +116,7 @@ export async function eliminarEstadoKanban(id: string): Promise<{ ok: boolean; e
       .delete()
       .eq('id', id)
     if (error) return { ok: false, error: error.message }
+    refrescar()
     return { ok: true }
   } catch (e: any) {
     return { ok: false, error: e.message }

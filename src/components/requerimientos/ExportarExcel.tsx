@@ -8,7 +8,8 @@ import * as XLSX from 'xlsx'
 import { fetchTodosParaExportar } from '@/hooks/useRequerimientos'
 import { fetchTodosAdminParaExportar } from '@/actions/requerimientos-admin'
 import { formatFecha } from '@/lib/utils'
-import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, ALCANCES, TIPOS_SOLICITUD } from '@/lib/constants'
+import { PRIORIDADES, TIPOS_SOLUCION, ALCANCES, TIPOS_SOLICITUD } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import type { FiltrosRequerimientos, SortConfig } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
@@ -24,6 +25,7 @@ interface Props {
 export function ExportarExcel({ filtros, sort, isAdmin = false, perfilFiltro }: Props) {
   const [loading, setLoading] = useState(false)
   const procesos = useProcesos()
+  const estados = useEstados()
 
   const handleExport = async () => {
     setLoading(true)
@@ -43,7 +45,7 @@ export function ExportarExcel({ filtros, sort, isAdmin = false, perfilFiltro }: 
         Proceso:               procesos.label(r.proceso_interno),
         Responsable:           r.responsable ?? '',
         Prioridad:             r.prioridad ? `P${r.prioridad} - ${PRIORIDADES[r.prioridad]?.label ?? ''}` : '',
-        Estado:                r.estado ? ESTADOS[r.estado as Estado]?.label ?? r.estado : '',
+        Estado:                estados.label(r.estado),
         'Días en estado':      r.dias_en_estado_actual ?? '',
         '% Avance':            r.porcentaje_avance ?? 0,
         'Horas est. desarrollo': (r as any).horas_estimadas_desarrollo ?? '',

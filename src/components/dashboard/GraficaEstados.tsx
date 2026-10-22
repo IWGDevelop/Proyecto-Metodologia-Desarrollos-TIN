@@ -2,6 +2,8 @@ import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
 import { GraficaEstadosChart } from './GraficaEstadosChart'
 import { ESTADOS } from '@/lib/constants'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { labelDeEstado } from '@/lib/estados'
 import type { Estado } from '@/lib/supabase/types'
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -18,10 +20,10 @@ const ESTADO_COLORS: Record<string, string> = {
 async function getEstadosData() {
   try {
   const supabase = await createClient()
-  const { data } = await supabase
-    .from('requerimientos')
-    .select('estado')
-    .eq('es_borrador', false)
+  const [{ data }, catalogo] = await Promise.all([
+    supabase.from('requerimientos').select('estado').eq('es_borrador', false),
+    getCatalogoEstados(),
+  ])
 
   const conteo: Record<string, number> = {}
   for (const r of data ?? []) {
@@ -29,9 +31,9 @@ async function getEstadosData() {
   }
   const total = Object.values(conteo).reduce((a, b) => a + b, 0)
 
-  return Object.entries(ESTADOS).map(([estado, cfg]) => ({
+  return Object.keys(ESTADOS).map(estado => ({
     estado,
-    label: cfg.label,
+    label: labelDeEstado(catalogo, estado),
     count: conteo[estado] ?? 0,
     pct: total > 0 ? Math.round(((conteo[estado] ?? 0) / total) * 100) : 0,
     color: ESTADO_COLORS[estado as Estado],

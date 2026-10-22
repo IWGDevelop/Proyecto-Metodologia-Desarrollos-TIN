@@ -24,7 +24,8 @@ import {
 } from '@/hooks/useRequerimientos'
 import type { PerfilFiltro } from '@/actions/requerimientos-admin'
 import { eliminarRequerimiento, actualizarRequerimiento } from '@/actions/requerimientos'
-import { ESTADOS, PRIORIDADES, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD } from '@/lib/constants'
+import { PRIORIDADES, ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import { formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
@@ -255,6 +256,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
   const searchParams = useSearchParams()
   const invalidar = useInvalidateRequerimientos()
   const procesos = useProcesos()
+  const getEstadoCfg = useEstados().cfg
   const opcionesProceso: OpcionEdit[] = procesos.activos.map(p => ({ value: p.value, label: p.label }))
 
   // Mapa lote_id → lote para lookup O(1)
@@ -355,7 +357,7 @@ export function TablaRequerimientos({ filtros, page, sort, basePath = '/admin/re
                 </thead>
                 <tbody className="divide-y divide-slate-50">
                   {rows.map((row, rowIdx) => {
-                    const estadoCfg = ESTADOS[row.estado as Estado] ?? { label: row.estado, bgColor: 'bg-slate-100', textColor: 'text-slate-600' }
+                    const estadoCfg = getEstadoCfg(row.estado)
                     const rankNum = (page - 1) * PAGE_SIZE + rowIdx + 1
                     const tieneImpacto = (row.impacto_economico_total_anual ?? 0) > 0 ||
                                         (row.ahorro_anual_cop ?? 0) > 0 ||

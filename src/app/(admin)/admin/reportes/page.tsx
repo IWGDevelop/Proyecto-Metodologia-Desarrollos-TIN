@@ -19,11 +19,12 @@ import { ReporteTareasAbiertas } from '@/components/reportes/ReporteTareasAbiert
 import { ReportePrioridadProceso } from '@/components/reportes/ReportePrioridadProceso'
 import { useReportesData, FILTROS_INIT, type FiltrosReportes as TFiltros } from '@/hooks/useReportesData'
 import { exportarReporteCompleto } from '@/lib/exportar'
-import { ESTADOS, PRIORIDADES, SLA_DIAS } from '@/lib/constants'
+import { PRIORIDADES, SLA_DIAS } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { formatFecha, formatCOP } from '@/lib/utils'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
-function exportarCompleto(datos: MetricaRequerimiento[]) {
+function exportarCompleto(datos: MetricaRequerimiento[], labelEstado: (estado: string) => string) {
   const conImpacto = datos.filter(r => r.ahorro_anual_cop && r.ahorro_anual_cop > 0)
   const conTIN     = datos.filter(r => r.fecha_envio_tin && r.fecha_inicio_desarrollo)
   const conDev     = datos.filter(r => r.fecha_inicio_desarrollo && r.fecha_estimada_entrega)
@@ -63,7 +64,7 @@ function exportarCompleto(datos: MetricaRequerimiento[]) {
         { titulo: 'Inicio',   ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fecha_inicio_desarrollo) },
         { titulo: 'Estimada', ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fecha_estimada_entrega) },
         { titulo: 'Real',     ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fecha_real_entrega) },
-        { titulo: 'Estado',   ancho: 18, render: (r: MetricaRequerimiento) => ESTADOS[r.estado as Estado]?.label },
+        { titulo: 'Estado',   ancho: 18, render: (r: MetricaRequerimiento) => labelEstado(r.estado) },
       ],
     },
     {
@@ -74,7 +75,7 @@ function exportarCompleto(datos: MetricaRequerimiento[]) {
         { titulo: 'Responsable',   ancho: 22, render: (r: MetricaRequerimiento) => r.responsable },
         { titulo: 'Inicio pruebas',ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.inicio_pruebas_usuario) },
         { titulo: 'Fin pruebas',   ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fin_pruebas_usuario) },
-        { titulo: 'Estado',        ancho: 18, render: (r: MetricaRequerimiento) => ESTADOS[r.estado as Estado]?.label },
+        { titulo: 'Estado',        ancho: 18, render: (r: MetricaRequerimiento) => labelEstado(r.estado) },
       ],
     },
     {
@@ -93,11 +94,12 @@ function exportarCompleto(datos: MetricaRequerimiento[]) {
 export default function AdminReportesPage() {
   const [filtros, setFiltros] = useState<TFiltros>(FILTROS_INIT)
   const { datos, todos, isLoading } = useReportesData(filtros, true)
+  const labelEstado = useEstados().label
 
   const handleExportarCompleto = () => {
     if (!datos.length) { toast.error('Sin datos en el período seleccionado'); return }
     try {
-      exportarCompleto(datos)
+      exportarCompleto(datos, labelEstado)
       toast.success(`Reporte completo exportado (${datos.length} requerimientos)`)
     } catch {
       toast.error('Error al exportar el reporte completo')

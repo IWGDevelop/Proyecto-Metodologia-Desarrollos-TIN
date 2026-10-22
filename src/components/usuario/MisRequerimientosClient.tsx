@@ -8,7 +8,8 @@ import { PublicarRequerimientoBtn } from '@/components/requerimientos/PublicarRe
 import { Progress } from '@/components/ui/progress'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ESTADOS, PRIORIDADES, getEstadoCfg } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { formatFecha, formatCOP, cn } from '@/lib/utils'
 import type { Requerimiento, Perfil, Estado } from '@/lib/supabase/types'
 
@@ -28,6 +29,7 @@ const FILTROS_ESTADO = [
 type TipoRelacion = 'propietario' | 'participo' | 'proceso'
 
 function CardRequerimiento({ req, tipo }: { req: Requerimiento; tipo: TipoRelacion }) {
+  const getEstadoCfg = useEstados().cfg
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const impacto      = (req as any).impacto_economico_total_anual ?? req.ahorro_anual_cop

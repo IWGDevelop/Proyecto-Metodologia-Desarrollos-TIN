@@ -4,7 +4,7 @@ import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { ZoomIn, ZoomOut, Calendar, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getEstadoCfg } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 
 // ── Types ───────────────────────────────────────────────────────────────────
 export interface ReqGantt {
@@ -182,6 +182,7 @@ function GanttRow({
   months: { x: number }[]; weeks: { x: number }[]
   totalWidth: number; isEven: boolean; todayX: number
 }) {
+  const getEstadoCfg = useEstados().cfg
   const estadoCfg = getEstadoCfg(req.estado)
   const etiqueta  = req.prioridad != null
     ? `P${req.prioridad}.${req.sub_prioridad ?? 1}`
@@ -290,6 +291,7 @@ function GanttRow({
 
 // ── Componente principal ─────────────────────────────────────────────────────
 export function GanttCronograma({ requerimientos }: Props) {
+  const getEstadoCfg = useEstados().cfg
   const [pxDay,        setPxDay]        = useState(4)
   const [search,       setSearch]       = useState('')
   const [estadosFiltro, setEstadosFiltro] = useState<Set<string>>(new Set())

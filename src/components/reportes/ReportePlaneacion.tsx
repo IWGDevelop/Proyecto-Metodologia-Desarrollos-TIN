@@ -7,7 +7,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
 import { GanttPlaneacion, ICONO_CUMPLIMIENTO } from './GanttPlaneacion'
@@ -110,6 +111,7 @@ function Kpi({ label, valor, detalle, tono }: { label: string; valor: string | n
 
 export function ReportePlaneacion({ datos }: Props) {
   const procesos = useProcesos()
+  const getEstadoCfg = useEstados().cfg
   const [busqueda, setBusqueda] = useState('')
   const [proceso, setProceso] = useState('')
   const [soloAlertas, setSoloAlertas] = useState(false)

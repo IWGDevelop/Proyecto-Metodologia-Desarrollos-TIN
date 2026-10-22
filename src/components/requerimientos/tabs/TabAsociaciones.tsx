@@ -11,7 +11,8 @@ import {
   getHijosRequerimiento,
   type ReqBasico,
 } from '@/actions/asociaciones'
-import { getEstadoCfg, formatPrioridad } from '@/lib/constants'
+import { formatPrioridad } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { cn } from '@/lib/utils'
 
 interface Props {
@@ -32,6 +33,7 @@ function BuscadorReq({
   excludeId: string
   placeholder: string
 }) {
+  const getEstadoCfg = useEstados().cfg
   const [query, setQuery] = useState('')
   const [lista, setLista] = useState<ReqBasico[]>([])
   const [loading, setLoading] = useState(true)
@@ -120,6 +122,7 @@ function HijoExpandible({
   onDesvincular: (id: string) => void
   isPending: boolean
 }) {
+  const getEstadoCfg = useEstados().cfg
   const [expandido, setExpandido]     = useState(false)
   const [subHijos, setSubHijos]       = useState<ReqBasico[] | null>(null)
   const [cargando, setCargando]       = useState(false)

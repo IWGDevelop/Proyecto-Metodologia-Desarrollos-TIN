@@ -6,7 +6,8 @@ import {
   ChevronDown, ChevronRight, ZoomIn, ZoomOut, ChevronsDownUp, ChevronsUpDown, Rows2, ListTree, CornerDownRight, UserCog,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
 import type { CumplimientoEtapa, EtapaReporte, RequerimientoPlaneacion } from '@/actions/reporte-planeacion'
 
@@ -321,6 +322,7 @@ function FilaRequerimiento({
   req: RequerimientoPlaneacion; abierto: boolean; onToggle: () => void
   subAbierto: boolean; onToggleSub: () => void; escala: Escala
 }) {
+  const getEstadoCfg = useEstados().cfg
   const estadoCfg = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
   const alertas = req.etapas.filter(e => ALERTAS.includes(e.cumplimiento)).length

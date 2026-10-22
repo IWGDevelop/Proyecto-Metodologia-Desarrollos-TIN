@@ -10,8 +10,9 @@ import { ExternalLink, X } from 'lucide-react'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
-import { ESTADOS, PRIORIDADES } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
 import { useProcesos } from '@/context/ProcesosContext'
+import { useEstados } from '@/context/EstadosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 interface Props {
@@ -35,23 +36,6 @@ const PROCESO_COLOR: Record<string, string> = {
   ESTRATEGIA:       '#34d399',
 }
 
-const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION:                        'Recibido',
-  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'En espera de comité de prioridades',
-  ANALISIS:                           'En estudio y evaluación técnica',
-  EN_DEFINICION_USUARIO:              'Definición de usuario',
-  EN_DESARROLLO:                      'Desarrollo',
-  PRUEBAS_USUARIO:                    'Pruebas usuario',
-  STAND_BY:                           'Stand By',
-  EN_ESPERA_POR_TERCEROS:             'En espera por terceros',
-  AJUSTES_TECNICOS:                   'Ajustes técnicos',
-  PROGRAMADO_PARA_SALIDA_EN_VIVO:     'Programado para salida en vivo',
-  ENTREGADO:                          'Entregado y en funcionamiento',
-  CERRADO:                            'Cerrado',
-  DESISTIDO:                          'Desistido',
-  NO_VIABLE:                          'No viable',
-}
-
 interface Seleccion {
   prioridad: number
   proceso: string | null
@@ -59,6 +43,7 @@ interface Seleccion {
 
 export function ReportePrioridadProceso({ datos, isLoading }: Props) {
   const procesos = useProcesos()
+  const estados = useEstados()
   const [seleccion, setSeleccion] = useState<Seleccion | null>(null)
 
   const activos = useMemo(() => datos.filter(r => !r.es_borrador), [datos])
@@ -177,7 +162,7 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
           ) : (
             <ol className="divide-y divide-slate-100">
               {reqsFiltrados.map(r => {
-                const estadoCfg = ESTADOS[r.estado as Estado]
+                const estadoCfg = estados.cfg(r.estado)
                 return (
                   <li key={r.id}>
                     <Link
@@ -198,7 +183,7 @@ export function ReportePrioridadProceso({ datos, isLoading }: Props) {
                         <span
                           className={cn('inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border', estadoCfg?.bgColor ?? 'bg-slate-100', estadoCfg?.textColor ?? 'text-slate-600', estadoCfg?.borderColor ?? 'border-slate-200')}
                         >
-                          {ESTADO_LABEL[r.estado] ?? r.estado}
+                          {estados.label(r.estado)}
                         </span>
                         <ExternalLink size={13} className="text-slate-300 group-hover:text-blue-400 transition-colors" />
                       </div>

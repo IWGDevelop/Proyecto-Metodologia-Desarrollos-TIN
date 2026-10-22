@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, ArrowDown, Layers, Plus } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { getEstadoCfg, PRIORIDADES } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import { getCriticidadesProceso, type CriticidadProcesoItem } from '@/actions/criticidad-proceso'
 
@@ -32,6 +33,7 @@ function BadgeGeneral({ r }: { r: Pick<CriticidadProcesoItem, 'prioridad' | 'sub
 export function SelectorCriticidadProceso({ proceso, value, onChange, error }: Props) {
   const [items, setItems] = useState<CriticidadProcesoItem[] | null>(null)
   const procesoLabel = useProcesos().label(proceso)
+  const getEstadoCfg = useEstados().cfg
 
   useEffect(() => {
     let vigente = true

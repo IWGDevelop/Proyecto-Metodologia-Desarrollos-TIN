@@ -10,7 +10,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ExternalLink, Pencil, ArrowRight, DollarSign } from 'lucide-react'
-import { ESTADOS, PRIORIDADES, getEstadoCfg } from '@/lib/constants'
+import { PRIORIDADES } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import { formatFecha, formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import type { MetricaRequerimiento, HistorialEstado, Estado } from '@/lib/supabase/types'
@@ -23,6 +24,7 @@ interface Props {
 
 export function KanbanCardDetail({ card, open, onOpenChange }: Props) {
   const procesos = useProcesos()
+  const getEstadoCfg = useEstados().cfg
   const { data: historial, isLoading: loadingHistorial } = useQuery<HistorialEstado[]>({
     queryKey: ['kanban-historial', card?.id],
     queryFn: async () => {

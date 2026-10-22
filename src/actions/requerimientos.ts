@@ -9,28 +9,13 @@ import { sendEmail } from '@/lib/email'
 import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
 import { aplicarCriticidadProcesoNuevo } from '@/actions/criticidad-proceso'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { labelDeEstado } from '@/lib/estados'
 
 function getAppUrl(): string {
   if (process.env.APP_URL) return process.env.APP_URL
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`
   return ''
-}
-
-const ESTADO_LABEL: Record<string, string> = {
-  SIN_GESTION:                        'Recibido',
-  EN_ESPERA_DE_COMITE_DE_PRIORIDADES: 'En espera de comité de prioridades',
-  ANALISIS:                           'En estudio y evaluación técnica',
-  EN_DEFINICION_USUARIO:              'Definición de usuario',
-  EN_DESARROLLO:                      'Desarrollo',
-  PRUEBAS_USUARIO:                    'Pruebas usuario',
-  STAND_BY:                           'Stand By',
-  EN_ESPERA_POR_TERCEROS:             'En espera por terceros',
-  AJUSTES_TECNICOS:                   'Ajustes técnicos',
-  PROGRAMADO_PARA_SALIDA_EN_VIVO:     'Programado para salida en vivo',
-  ENTREGADO:                          'Entregado y en funcionamiento',
-  CERRADO:                            'Cerrado',
-  DESISTIDO:                          'Desistido',
-  NO_VIABLE:                          'No viable',
 }
 
 // Campos que pueden no existir si la migración no se ha ejecutado aún
@@ -204,7 +189,8 @@ export async function cambiarEstado(
     Promise.all([
       getEmailsActivos(),
       getConfigParam('notif_partes_interesadas'),
-    ]).then(([globales, notifPI]) => {
+      getCatalogoEstados(),
+    ]).then(([globales, notifPI, catalogoEstados]) => {
       const partesInteresadas: string[] = notifPI === 'true'
         ? (req.partes_interesadas ?? [])
         : []
@@ -220,8 +206,8 @@ export async function cambiarEstado(
         html: templateCambioEstado({
           nombreDesarrollo: req.nombre_desarrollo ?? req.identificacion ?? '—',
           identificacion:   req.identificacion ?? '',
-          estadoAnterior:   ESTADO_LABEL[req.estado] ?? req.estado ?? '—',
-          estadoNuevo:      ESTADO_LABEL[estado] ?? estado,
+          estadoAnterior:   labelDeEstado(catalogoEstados, req.estado) || '—',
+          estadoNuevo:      labelDeEstado(catalogoEstados, estado),
           observacion:      observacion?.trim(),
           enlace:           appUrl ? `${appUrl}/admin/requerimientos/${id}` : undefined,
         }),

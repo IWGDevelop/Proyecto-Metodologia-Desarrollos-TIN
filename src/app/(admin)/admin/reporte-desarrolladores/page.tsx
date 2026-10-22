@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import { ChevronDown, RefreshCw, Clock, Code2, Calendar, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchReporteDesarrolladores } from '@/actions/reporte-desarrolladores'
-import { getEstadoCfg } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import type { DesarrolladorRow, ReqRow } from '@/actions/reporte-desarrolladores'
 
 /* ── Helpers ─────────────────────────────────────────────────────────────── */
@@ -96,6 +96,7 @@ function TablaHorasDia({ requerimiento }: { requerimiento: ReqRow }) {
 
 /* ── Card de requerimiento ───────────────────────────────────────────────── */
 function ReqCard({ req, isOpen, onToggle }: { req: ReqRow; isOpen: boolean; onToggle: () => void }) {
+  const getEstadoCfg = useEstados().cfg
   const cfg = getEstadoCfg(req.estado)
   return (
     <div className="overflow-hidden rounded-xl border border-slate-200">

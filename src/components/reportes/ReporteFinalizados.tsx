@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 interface Props {
@@ -25,6 +25,7 @@ function getAñoActual() {
 }
 
 export function ReporteFinalizados({ datos, isLoading }: Props) {
+  const getEstadoCfg = useEstados().cfg
   const añosDisponibles = useMemo(() => {
     const set = new Set<number>()
     datos.forEach(r => {
@@ -218,7 +219,7 @@ export function ReporteFinalizados({ datos, isLoading }: Props) {
               <tbody className="divide-y divide-slate-50">
                 {finalizados.map((r, i) => {
                   const fechaEntrega = getFechaFin(r)
-                  const cfg = ESTADOS[r.estado as Estado]
+                  const cfg = getEstadoCfg(r.estado)
                   return (
                     <tr key={r.id} className={i % 2 === 0 ? 'bg-white' : 'bg-slate-50/40'}>
                       <td className="px-3 py-2.5 text-slate-400">{i + 1}</td>

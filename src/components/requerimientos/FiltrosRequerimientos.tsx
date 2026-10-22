@@ -15,7 +15,8 @@ import {
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
-import { ESTADOS, PRIORIDADES, TIPOS_SOLUCION, getEstadoCfg } from '@/lib/constants'
+import { PRIORIDADES, TIPOS_SOLUCION } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import { useProcesos } from '@/context/ProcesosContext'
 import { cn } from '@/lib/utils'
 
@@ -42,10 +43,10 @@ interface Props {
 
 export function FiltrosRequerimientos({ totalFiltrado, total, estadosDisponibles }: Props) {
   const procesos = useProcesos()
-  // Combina estados de la BD con los hardcodeados para no perder ninguno
-  const todosLosEstados = estadosDisponibles && estadosDisponibles.length > 0
-    ? Array.from(new Set([...Object.keys(ESTADOS), ...estadosDisponibles])).sort()
-    : Object.keys(ESTADOS)
+  const estados = useEstados()
+  const getEstadoCfg = estados.cfg
+  // Estados en el orden configurado, más los presentes en los datos para no perder ninguno
+  const todosLosEstados = estados.codigos(estadosDisponibles ?? [])
   const router = useRouter()
   const pathname = usePathname()
   const searchParams = useSearchParams()

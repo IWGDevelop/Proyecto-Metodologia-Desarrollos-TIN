@@ -7,7 +7,9 @@ import {
   ArrowLeft, Lock, Info, CalendarDays, Link2, Calculator, TrendingUp, Code2, FileCode, Workflow,
   History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, FileDiff, type LucideIcon,
 } from 'lucide-react'
-import { PRIORIDADES, getEstadoCfg, formatPrioridad } from '@/lib/constants'
+import { PRIORIDADES, formatPrioridad } from '@/lib/constants'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { cfgDeEstado } from '@/lib/estados'
 import { formatFechaRelativa, cn } from '@/lib/utils'
 import { TabComentarios } from '@/components/requerimientos/tabs/TabComentarios'
 import { TabAnexos } from '@/components/requerimientos/tabs/TabAnexos'
@@ -176,6 +178,8 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     .map(g => ({ ...g, items: g.items.filter(i => i.visible) }))
     .filter(g => g.items.length > 0)
 
+  const catalogoEstados = await getCatalogoEstados()
+  const getEstadoCfg = (estado: string) => cfgDeEstado(catalogoEstados, estado)
   const estadoCfg    = getEstadoCfg(req.estado)
   const prioridadCfg = req.prioridad ? PRIORIDADES[req.prioridad] : null
 

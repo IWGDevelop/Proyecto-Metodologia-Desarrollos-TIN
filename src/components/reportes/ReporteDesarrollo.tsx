@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFecha, cn } from '@/lib/utils'
 import { exportarReporte } from '@/lib/exportar'
-import { ESTADOS } from '@/lib/constants'
+import { useEstados } from '@/context/EstadosContext'
 import type { MetricaRequerimiento, Estado } from '@/lib/supabase/types'
 
 interface Props {
@@ -18,6 +18,7 @@ interface Props {
 }
 
 export function ReporteDesarrollo({ datos, isLoading }: Props) {
+  const estados = useEstados()
   const conDesarrollo = datos.filter(
     r => r.fecha_inicio_desarrollo && r.fecha_estimada_entrega
   )
@@ -61,7 +62,7 @@ export function ReporteDesarrollo({ datos, isLoading }: Props) {
       { titulo: 'Fecha real',          ancho: 16, render: (r: MetricaRequerimiento) => formatFecha(r.fecha_real_entrega) },
       { titulo: 'Días planificados',   ancho: 16, render: (r: MetricaRequerimiento) => r.dias_desarrollo },
       { titulo: 'Desvío (días)',        ancho: 14, render: (r: MetricaRequerimiento) => calcDesvio(r) },
-      { titulo: 'Estado',              ancho: 16, render: (r: MetricaRequerimiento) => ESTADOS[r.estado as Estado]?.label },
+      { titulo: 'Estado',              ancho: 16, render: (r: MetricaRequerimiento) => estados.label(r.estado) },
     ])
   }
 
@@ -147,8 +148,8 @@ export function ReporteDesarrollo({ datos, isLoading }: Props) {
                           : <span className="text-slate-300">—</span>}
                       </td>
                       <td className="px-3 py-2">
-                        <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', ESTADOS[r.estado as Estado]?.bgColor, ESTADOS[r.estado as Estado]?.textColor)}>
-                          {ESTADOS[r.estado as Estado]?.label}
+                        <span className={cn('rounded-full px-1.5 py-0.5 text-[10px]', estados.cfg(r.estado).bgColor, estados.cfg(r.estado).textColor)}>
+                          {estados.label(r.estado)}
                         </span>
                       </td>
                     </tr>

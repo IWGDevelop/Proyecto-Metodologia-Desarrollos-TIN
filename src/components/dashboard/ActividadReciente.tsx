@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { Skeleton } from '@/components/ui/skeleton'
 import { formatFechaRelativa } from '@/lib/utils'
-import { getEstadoCfg } from '@/lib/constants'
+import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { cfgDeEstado, type EstadoCatalogo } from '@/lib/estados'
 import { ArrowRight, Activity } from 'lucide-react'
 import Link from 'next/link'
 import type { Estado } from '@/lib/supabase/types'
@@ -30,9 +31,9 @@ async function getActividad() {
   return data ?? []
 }
 
-function BadgeEstado({ estado }: { estado: Estado | null }) {
+function BadgeEstado({ estado, catalogo }: { estado: Estado | null; catalogo: EstadoCatalogo[] }) {
   if (!estado) return <span className="text-xs text-slate-400">—</span>
-  const cfg = getEstadoCfg(estado)
+  const cfg = cfgDeEstado(catalogo, estado)
   return (
     <span className={`inline-flex items-center rounded-full px-1.5 py-0.5 text-xs font-medium ${cfg.bgColor} ${cfg.textColor}`}>
       {cfg.label}
@@ -41,7 +42,7 @@ function BadgeEstado({ estado }: { estado: Estado | null }) {
 }
 
 export async function ActividadReciente() {
-  const actividad = await getActividad()
+  const [actividad, catalogo] = await Promise.all([getActividad(), getCatalogoEstados()])
 
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
@@ -81,9 +82,9 @@ export async function ActividadReciente() {
 
                   {/* Transición de estado */}
                   <div className="mt-0.5 flex flex-wrap items-center gap-1 text-xs">
-                    <BadgeEstado estado={item.estado_anterior as Estado | null} />
+                    <BadgeEstado estado={item.estado_anterior as Estado | null} catalogo={catalogo} />
                     <ArrowRight size={10} className="text-slate-400" />
-                    <BadgeEstado estado={item.estado_nuevo as Estado} />
+                    <BadgeEstado estado={item.estado_nuevo as Estado} catalogo={catalogo} />
                   </div>
 
                   {/* Observación */}
