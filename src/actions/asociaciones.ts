@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
@@ -18,6 +19,7 @@ export async function asociarRequerimiento(
   childId: string,
   parentId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   if (childId === parentId) return { ok: false, error: 'Un requerimiento no puede ser su propio padre' }
 
   try {
@@ -75,6 +77,7 @@ export async function asociarRequerimiento(
 export async function desasociarRequerimiento(
   childId: string
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -103,6 +106,7 @@ export async function desasociarRequerimiento(
 }
 
 export async function getHijosRequerimiento(parentId: string): Promise<ReqBasico[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('requerimientos')
@@ -114,6 +118,7 @@ export async function getHijosRequerimiento(parentId: string): Promise<ReqBasico
 
 // Recorre la cadena de ancestros y devuelve la etiqueta completa: "P1.2.1", "P1.0", etc.
 export async function getEtiquetaJerarquica(reqId: string): Promise<string> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const chain: { prioridad: number | null; sub_prioridad: number | null; parent_id: string | null }[] = []
   let currentId: string | null = reqId
@@ -151,6 +156,7 @@ export async function getEtiquetaJerarquica(reqId: string): Promise<string> {
 }
 
 export async function getRequerimientosDisponibles(excludeId: string): Promise<ReqBasico[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('requerimientos')

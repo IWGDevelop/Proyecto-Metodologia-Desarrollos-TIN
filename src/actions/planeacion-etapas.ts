@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -12,6 +13,7 @@ export interface PlaneacionEtapa {
 }
 
 export async function getPlaneacionEtapas(reqId: string): Promise<PlaneacionEtapa[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('planeacion_etapas')
@@ -24,6 +26,7 @@ export async function guardarPlaneacionEtapas(
   reqId: string,
   planeacion: PlaneacionEtapa[],
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const etapasValidas = new Set(ETAPAS_PLANEACION.map(e => e.estado))
     const filas = planeacion.filter(p => etapasValidas.has(p.estado))

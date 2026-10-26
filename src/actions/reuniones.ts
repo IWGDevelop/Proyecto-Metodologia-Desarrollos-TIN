@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { sendEmail } from '@/lib/email'
@@ -14,6 +15,7 @@ function getAppUrl(): string {
 }
 
 export async function getReuniones(requerimientoId: string): Promise<Reunion[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
@@ -44,6 +46,7 @@ export async function crearReunion(
   datos: { titulo: string; fecha_reunion: string; url_video?: string; notas?: string },
   tareas: { descripcion: string; responsable_email?: string; fecha_inicio?: string; fecha_compromiso?: string }[]
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getPerfil()
     const supabase = createAdminClient()
@@ -116,6 +119,7 @@ export async function actualizarReunion(
   reunionId: string,
   datos: { titulo?: string; fecha_reunion?: string; url_video?: string | null; notas?: string | null }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -138,6 +142,7 @@ export async function agregarTareaReunion(
   reunionId: string,
   tarea: { descripcion: string; responsable_email?: string; fecha_inicio?: string; fecha_compromiso?: string }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -160,6 +165,7 @@ export async function guardarRespuestaTarea(
   id: string,
   respuesta: string
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     // Auto-set fecha_cumplimiento on first evidence (only if not already set)
@@ -186,6 +192,7 @@ export async function registrarAnexoTarea(
   tareaId: string,
   payload: { nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -213,6 +220,7 @@ export async function actualizarMotivoYPenalizacion(
     fecha_cumplimiento?: string | null
   }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -227,6 +235,7 @@ export async function actualizarMotivoYPenalizacion(
 }
 
 export async function eliminarAnexoTarea(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -243,6 +252,7 @@ export async function toggleTareaReunion(
   id: string,
   completada: boolean
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -270,6 +280,7 @@ export async function toggleTareaReunion(
 }
 
 export async function eliminarTareaReunion(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -283,6 +294,7 @@ export async function eliminarTareaReunion(id: string): Promise<{ ok: boolean }>
 }
 
 export async function eliminarReunion(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -299,6 +311,7 @@ export async function registrarAnexoReunion(
   reunionId: string,
   datos: { titulo: string; nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -319,6 +332,7 @@ export async function registrarAnexoReunion(
 }
 
 export async function eliminarAnexoReunion(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -334,6 +348,7 @@ export async function eliminarAnexoReunion(id: string): Promise<{ ok: boolean }>
 export async function enviarRecordatorioTarea(
   tareaId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

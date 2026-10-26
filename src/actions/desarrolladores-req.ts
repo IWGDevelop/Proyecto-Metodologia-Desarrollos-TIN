@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { sendEmail } from '@/lib/email'
 import { subjectReq, templateAsignacionDesarrollador } from '@/lib/email-templates'
@@ -25,6 +26,7 @@ export async function getDesarrolladoresReq(requerimientoId: string): Promise<Re
 }
 
 export async function getDesarrolladoresDisponibles(): Promise<Perfil[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('perfiles')
@@ -135,6 +137,7 @@ export interface AsignacionCronograma {
 }
 
 export async function getAsignacionesCronogramaTIN(): Promise<AsignacionCronograma[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   // Fetch ALL assignments (no date filter) to support date inheritance from parent reqs
   const { data, error } = await (supabase as any)

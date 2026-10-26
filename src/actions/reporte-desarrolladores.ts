@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface RegistroHorasRow {
@@ -42,6 +43,7 @@ export async function fetchReporteDesarrolladores(
   desde?: string,
   hasta?: string
 ): Promise<DesarrolladorRow[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

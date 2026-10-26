@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
@@ -34,6 +35,7 @@ function refrescar() {
 }
 
 export async function crearProcesoInterno(nombre: string): Promise<Resultado & { valor?: string }> {
+  await exigirAccesoAdmin()
   try {
     const noAdmin = await soloAdmin()
     if (noAdmin) return { ok: false, error: noAdmin }
@@ -62,6 +64,7 @@ export async function actualizarProcesoInterno(
   valor: string,
   cambios: { label?: string; activo?: boolean },
 ): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const noAdmin = await soloAdmin()
     if (noAdmin) return { ok: false, error: noAdmin }
@@ -86,6 +89,7 @@ export async function actualizarProcesoInterno(
 
 /** Intercambia el orden con el proceso vecino */
 export async function moverProcesoInterno(valor: string, direccion: 'arriba' | 'abajo'): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const noAdmin = await soloAdmin()
     if (noAdmin) return { ok: false, error: noAdmin }
@@ -114,6 +118,7 @@ export async function moverProcesoInterno(valor: string, direccion: 'arriba' | '
 
 /** Cantidad de requerimientos y usuarios que usan cada proceso (para advertir antes de desactivar) */
 export async function getUsoProcesos(): Promise<Record<string, { requerimientos: number; usuarios: number }>> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const [{ data: reqs }, { data: perfiles }] = await Promise.all([
     (supabase as any).from('requerimientos').select('proceso_interno'),

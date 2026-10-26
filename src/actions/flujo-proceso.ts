@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -13,6 +14,7 @@ export interface PasoFlujo {
 }
 
 export async function getFlujoProcesoReq(reqId: string): Promise<PasoFlujo[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('flujo_proceso')
@@ -26,6 +28,7 @@ export async function toggleFlujoPaso(
   pasoKey: string,
   completado: boolean,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -59,6 +62,7 @@ export async function guardarNotasPaso(
   pasoKey: string,
   notas: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

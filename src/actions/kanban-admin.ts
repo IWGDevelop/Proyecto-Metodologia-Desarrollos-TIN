@@ -1,11 +1,13 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export type KanbanData = Record<string, MetricaRequerimiento[]>
 
 export async function fetchKanbanAdmin(): Promise<KanbanData> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)

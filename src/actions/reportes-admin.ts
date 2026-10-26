@@ -1,9 +1,11 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
 
 export async function fetchReportesAdmin(): Promise<MetricaRequerimiento[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)

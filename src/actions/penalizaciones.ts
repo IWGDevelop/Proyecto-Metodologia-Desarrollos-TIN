@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type TipoPenalizacion =
@@ -36,6 +37,7 @@ function faltaColumnaDias(error: { message?: string } | null): boolean {
 }
 
 export async function getPenalizaciones(requerimientoId: string): Promise<PenalizacionRequerimiento[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
@@ -59,6 +61,7 @@ export async function crearPenalizacion(data: {
   dias_impacto?: number | null
   created_by?: string | null
 }): Promise<{ ok: boolean; error?: string; aviso?: string; penalizacion?: PenalizacionRequerimiento }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const base = {
@@ -96,6 +99,7 @@ export async function actualizarPenalizacion(
     dias_impacto: number | null
   }>
 ): Promise<{ ok: boolean; error?: string; aviso?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const actualizar = (cambios: Record<string, unknown>) =>
@@ -119,6 +123,7 @@ export async function actualizarComentarios(
   id: string,
   data: { comentario_admin?: string | null; comentario_usuario?: string | null }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -133,6 +138,7 @@ export async function actualizarComentarios(
 }
 
 export async function eliminarPenalizacion(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

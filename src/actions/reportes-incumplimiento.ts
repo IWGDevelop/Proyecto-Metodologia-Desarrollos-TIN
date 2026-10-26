@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface TareaIncumplida {
@@ -27,6 +28,7 @@ export interface IncumplimientoUsuario {
 }
 
 export async function getTareasIncumplidas(): Promise<IncumplimientoUsuario[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

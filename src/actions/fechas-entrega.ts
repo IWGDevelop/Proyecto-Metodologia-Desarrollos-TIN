@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -70,6 +71,7 @@ function formatFecha(d: string | null): string {
 
 /** Responsables actuales de las tareas generadas desde el tab Fechas */
 export async function getResponsablesFechas(reqId: string): Promise<ResponsablesFechas> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('tareas_solicitud')
@@ -156,6 +158,7 @@ export async function actualizarFechasEntrega(
   nuevasFechas: FechasEntrega,
   responsables: ResponsablesFechas = {},
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     // Toda fecha estimada se convierte en tarea, por lo que exige un responsable
     const sinResponsable = ETAPAS_FECHA.filter(e =>
@@ -301,6 +304,7 @@ export async function actualizarFechasEntrega(
 }
 
 export async function getHistorialFechas(reqId: string): Promise<HistorialFecha[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('historial_fechas')

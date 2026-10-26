@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { labelTipoFechaPlaneacion } from '@/lib/etapas-planeacion'
 
@@ -133,6 +134,7 @@ function fmt(d: string | null): string {
 }
 
 export async function getHistorialCompleto(reqId: string): Promise<EventoHistorial[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   const [

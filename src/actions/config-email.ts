@@ -2,7 +2,7 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
-import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+import { exigirAccesoAdmin, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 
 async function exigirConfiguracion() {
   if (!(await puedeGestionar('menu:configuracion'))) throw new Error(NO_AUTORIZADO)
@@ -17,6 +17,7 @@ export interface DestinatarioEmail {
 }
 
 export async function getDestinatariosEmail(): Promise<DestinatarioEmail[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('config_notificaciones_email')

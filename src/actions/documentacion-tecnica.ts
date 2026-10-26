@@ -1,10 +1,12 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { DocumentacionTecnica, TipoDocumentoTecnico } from '@/lib/supabase/types'
 
 export async function getDocumentacionTecnica(requerimientoId: string): Promise<DocumentacionTecnica[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('documentacion_tecnica')
@@ -28,6 +30,7 @@ export async function registrarDocumentoTecnico(
     subido_por?: string | null
   }
 ): Promise<void> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('documentacion_tecnica')
@@ -37,6 +40,7 @@ export async function registrarDocumentoTecnico(
 }
 
 export async function eliminarDocumentoTecnico(id: string, requerimientoId: string): Promise<void> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('documentacion_tecnica')

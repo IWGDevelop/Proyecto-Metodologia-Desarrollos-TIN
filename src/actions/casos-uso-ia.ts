@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import type {
@@ -14,6 +15,7 @@ export async function getCasosUsoIA(params?: {
   tipo?: string
   search?: string
 }): Promise<CasoUsoIA[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   let query = (supabase as any)
     .from('casos_uso_ia')
@@ -222,6 +224,7 @@ export async function cambiarEstadoCasoUsoIA(
     fecha_vencimiento?: string
   }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getPerfil()
     const supabase = createAdminClient()
@@ -274,6 +277,7 @@ export async function registrarAnexoCasoUsoIA(
   url: string,
   tipo?: string
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getPerfil()
     const supabase = createAdminClient()

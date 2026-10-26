@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+import { exigirAccesoAdmin, getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import { buscarInfoIgsiPorEmail } from './sync-igsi'
 
 export async function crearUsuario(data: {
@@ -92,5 +92,6 @@ export async function actualizarPerfil(id: string, data: Partial<{
 }
 
 export async function toggleUsuarioActivo(id: string, activo: boolean) {
+  await exigirAccesoAdmin()
   return actualizarPerfil(id, { activo })
 }

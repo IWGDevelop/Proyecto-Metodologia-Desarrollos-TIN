@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { MetricaRequerimiento } from '@/lib/supabase/types'
@@ -48,6 +49,7 @@ export async function fetchTodosAdminParaExportar(
   sort: SortAdmin,
   perfilFiltro?: PerfilFiltro | null
 ): Promise<MetricaRequerimiento[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -88,6 +90,7 @@ export async function fetchRequerimientosAdmin(
   sort: SortAdmin,
   perfilFiltro?: PerfilFiltro | null
 ): Promise<RequerimientosAdminResult> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -144,6 +147,7 @@ export async function fetchRequerimientosAdmin(
 }
 
 export async function getEstadosDistintos(): Promise<string[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data } = await (supabase as any)
@@ -166,6 +170,7 @@ export async function getPrioridadesProceso(
   proceso_interno: string,
   excludeId: string
 ): Promise<PrioridadOcupada[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('requerimientos')
@@ -190,6 +195,7 @@ export async function getPrioridadesPorProceso(
   proceso_interno: string,
   excludeId: string
 ): Promise<PrioridadProcesoOcupada[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('requerimientos')
@@ -208,6 +214,7 @@ export async function asignarPrioridadProcesoConDesplazamiento(
   proceso_interno: string,
   prioridadProceso: number | null
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 
@@ -251,6 +258,7 @@ export async function asignarPrioridadConDesplazamiento(
   prioridad: number | null,
   subPrioridad: number | null
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

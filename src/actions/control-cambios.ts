@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { revalidatePath } from 'next/cache'
@@ -103,6 +104,7 @@ function validar(datos: DatosCambio): string | null {
 }
 
 export async function getControlCambios(requerimientoId: string): Promise<ControlCambio[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('control_cambios')
@@ -119,6 +121,7 @@ export async function getControlCambios(requerimientoId: string): Promise<Contro
 }
 
 export async function crearControlCambio(requerimientoId: string, datos: DatosCambio): Promise<Resultado & { codigo?: string }> {
+  await exigirAccesoAdmin()
   try {
     const error = validar(datos)
     if (error) return { ok: false, error }
@@ -159,6 +162,7 @@ export async function crearControlCambio(requerimientoId: string, datos: DatosCa
 }
 
 export async function actualizarControlCambio(id: string, requerimientoId: string, datos: DatosCambio): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const error = validar(datos)
     if (error) return { ok: false, error }
@@ -187,6 +191,7 @@ export async function cambiarEstadoControlCambio(
   nuevoEstado: EstadoCambio,
   comentario: string,
 ): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data: actual } = await (supabase as any)
@@ -230,6 +235,7 @@ export async function cambiarEstadoControlCambio(
 }
 
 export async function eliminarControlCambio(id: string, requerimientoId: string): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getPerfil()
     if (perfil?.rol !== 'ADMIN_TIN') return { ok: false, error: 'Solo un administrador puede eliminar cambios' }
@@ -247,6 +253,7 @@ export async function registrarAnexoControlCambio(
   controlCambioId: string,
   payload: { nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number },
 ): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -260,6 +267,7 @@ export async function registrarAnexoControlCambio(
 }
 
 export async function eliminarAnexoControlCambio(id: string): Promise<Resultado> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any).from('control_cambios_anexos').delete().eq('id', id)

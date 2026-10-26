@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ETAPAS_PLANEACION, calcularEjecucionEtapas } from '@/lib/etapas-planeacion'
 import { computeEtiquetaJerarquica } from '@/lib/constants'
@@ -62,6 +63,7 @@ function diasEntre(desde: string | null, hasta: string | null): number | null {
 }
 
 export async function getReportePlaneacion(): Promise<RequerimientoPlaneacion[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   const { data: planes } = await (supabase as any)

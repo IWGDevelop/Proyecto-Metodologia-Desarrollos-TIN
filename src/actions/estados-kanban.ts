@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { EstadoKanban } from '@/lib/supabase/types'
@@ -38,6 +39,7 @@ export async function crearEstadoKanban(payload: {
   icono: string
   es_final: boolean
 }): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data: ultimo } = await (supabase as any)
@@ -63,6 +65,7 @@ export async function actualizarEstadoKanban(
   id: string,
   payload: Partial<Pick<EstadoKanban, 'label' | 'color_key' | 'icono' | 'activo' | 'es_final'>>
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -81,6 +84,7 @@ export async function reordenarEstadoKanban(
   id: string,
   direccion: 'up' | 'down'
 ): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data: todos } = await (supabase as any)
@@ -109,6 +113,7 @@ export async function reordenarEstadoKanban(
 }
 
 export async function eliminarEstadoKanban(id: string): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

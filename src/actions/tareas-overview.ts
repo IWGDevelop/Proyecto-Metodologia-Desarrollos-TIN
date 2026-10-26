@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface TareaOverview {
@@ -65,6 +66,7 @@ async function enrichTareas(tareas: any[]): Promise<TareaOverview[]> {
 }
 
 export async function getTareasOverview(): Promise<TareasOverviewResult> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

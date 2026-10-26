@@ -1,11 +1,13 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createClient } from '@/lib/supabase/server'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 import type { Comentario, Anexo } from '@/lib/supabase/types'
 
 export async function getAnexos(requerimientoId: string): Promise<Anexo[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
@@ -25,6 +27,7 @@ export async function agregarComentario(
   comentario: string,
   usuario: string
 ) {
+  await exigirAccesoAdmin()
   const supabase = await createClient()
 
   const { data, error } = await supabase
@@ -39,6 +42,7 @@ export async function agregarComentario(
 }
 
 export async function eliminarComentario(id: string, requerimientoId: string) {
+  await exigirAccesoAdmin()
   const supabase = await createClient()
 
   const { error } = await supabase.from('comentarios').delete().eq('id', id)
@@ -69,6 +73,7 @@ export async function registrarAnexo(
 }
 
 export async function eliminarAnexo(id: string, requerimientoId: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   const { error } = await (supabase as any).from('anexos').delete().eq('id', id)

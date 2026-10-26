@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 
@@ -72,6 +73,7 @@ function diasDesdeHoy(fecha: string): number {
 }
 
 export async function getTareasPendientesReunion(): Promise<TareaPendienteReunion[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const perfil = await getPerfil()
   const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
@@ -132,6 +134,7 @@ export async function getTareasPendientesReunion(): Promise<TareaPendienteReunio
 }
 
 export async function getTareasSolicitudPendientes(): Promise<TareaSolicitudPendiente[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const perfil = await getPerfil()
   const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
@@ -202,6 +205,7 @@ const TIPOS_FECHA: {
 ]
 
 export async function getCompromisosFechasPendientes(): Promise<CompromisoPendiente[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const perfil = await getPerfil()
   const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
@@ -276,6 +280,7 @@ export async function getCompromisosFechasPendientes(): Promise<CompromisoPendie
 }
 
 export async function getFirmasPendientesVistoBueno(): Promise<FirmaPendienteVistoBueno[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const perfil = await getPerfil()
   const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'
@@ -330,6 +335,7 @@ export async function getFirmasPendientesVistoBueno(): Promise<FirmaPendienteVis
 }
 
 export async function getContadorPendientes(): Promise<number> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const perfil = await getPerfil()
   const isAdmin = !perfil || perfil.rol === 'ADMIN_TIN'

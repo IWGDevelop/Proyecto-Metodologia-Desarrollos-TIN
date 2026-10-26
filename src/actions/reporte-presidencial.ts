@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { ORIGENES_REQUERIMIENTO, TIPOS_SOLICITUD, PRIORIDADES } from '@/lib/constants'
 import { getProcesosInternos } from '@/actions/procesos-internos'
@@ -96,6 +97,7 @@ export interface RowPresidencial {
 }
 
 export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('v_metricas_requerimientos')
@@ -113,6 +115,7 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
 }
 
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const [catalogoProcesos, catalogoEstados] = await Promise.all([getProcesosInternos(), getCatalogoEstados()])
   const procesoLabel = (proceso: string) => labelDeProceso(catalogoProcesos, proceso)

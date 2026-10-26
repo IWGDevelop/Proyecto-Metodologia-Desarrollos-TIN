@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
 
@@ -19,6 +20,7 @@ export interface LoteConStats extends Lote {
 }
 
 export async function getLotesConStats(): Promise<LoteConStats[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const [{ data: lotes }, { data: reqs }] = await Promise.all([
@@ -38,6 +40,7 @@ export async function getLotesConStats(): Promise<LoteConStats[]> {
 }
 
 export async function getConfigBloqueo(): Promise<boolean> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data } = await (supabase as any)
@@ -52,6 +55,7 @@ export async function getConfigBloqueo(): Promise<boolean> {
 }
 
 export async function setConfigBloqueo(valor: boolean) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   await (supabase as any)
     .from('configuracion_global')
@@ -65,6 +69,7 @@ export async function setConfigBloqueo(valor: boolean) {
 }
 
 export async function crearLote(nombre: string, descripcion?: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   const { data: existing } = await (supabase as any)
@@ -88,6 +93,7 @@ export async function crearLote(nombre: string, descripcion?: string) {
 }
 
 export async function cerrarLote(id: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any).from('lotes').update({
     cerrado: true,
@@ -101,6 +107,7 @@ export async function cerrarLote(id: string) {
 }
 
 export async function reabrirLote(id: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any).from('lotes').update({
     cerrado: false,
@@ -113,6 +120,7 @@ export async function reabrirLote(id: string) {
 }
 
 export async function activarLote(id: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   // Desactivar cualquier lote activo
@@ -130,6 +138,7 @@ export async function activarLote(id: string) {
 }
 
 export async function getLoteActivo(): Promise<Lote | null> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data } = await (supabase as any)

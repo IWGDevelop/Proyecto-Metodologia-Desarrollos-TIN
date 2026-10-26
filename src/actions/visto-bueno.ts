@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -63,6 +64,7 @@ function getAppUrl(): string {
 export async function getSolicitudesVistoBueno(
   reqId: string,
 ): Promise<SolicitudVistoBueno[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data, error } = await (supabase as any)
     .from('solicitudes_visto_bueno')
@@ -83,6 +85,7 @@ export async function getMisFirmasPendientesEnReq(
   reqId: string,
   userEmail: string,
 ): Promise<FirmaVistoBueno[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { data } = await (supabase as any)
     .from('firmas_visto_bueno')
@@ -101,6 +104,7 @@ export async function crearSolicitudVistoBueno(
   mensaje: string | null,
   fechaPropuestaSalida?: string | null,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getCurrentPerfil()
     const supabase = createAdminClient()
@@ -191,6 +195,7 @@ export async function firmarVistoBueno(
   firmaId: string,
   reqId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getCurrentPerfil()
     if (!perfil) return { ok: false, error: 'Debes iniciar sesión para firmar' }
@@ -265,6 +270,7 @@ export async function cancelarSolicitudVistoBueno(
   solicitudId: string,
   reqId: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

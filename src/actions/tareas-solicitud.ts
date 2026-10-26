@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -124,6 +125,7 @@ export async function guardarRespuestaTareaSolicitud(
   requerimientoId: string,
   respuesta: string,
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -142,6 +144,7 @@ export async function registrarAnexoTareaSolicitud(
   tareaId: string,
   payload: { nombre_archivo: string; url_storage: string; tipo_archivo?: string; tamanio_bytes?: number }
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
@@ -155,6 +158,7 @@ export async function registrarAnexoTareaSolicitud(
 }
 
 export async function eliminarAnexoTareaSolicitud(id: string): Promise<{ ok: boolean }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

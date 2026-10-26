@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
@@ -122,6 +123,7 @@ export async function guardarBorrador(
   id: string | null,
   data: Partial<Omit<Requerimiento, 'id' | 'created_at' | 'updated_at'>> & Record<string, unknown>
 ) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const payload = { identificacion: data.nombre_desarrollo ?? '', ...data, es_borrador: true }
 
@@ -144,6 +146,7 @@ export async function cambiarEstado(
   observacion?: string,
   fechaTransicion?: string  // YYYY-MM-DD; reemplaza la fecha auto-asignada del estado destino
 ) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   // Obtener datos del requerimiento antes del cambio
@@ -218,6 +221,7 @@ export async function cambiarEstado(
 }
 
 export async function registrarFechaEntrega(id: string, fecha: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('requerimientos')
@@ -230,6 +234,7 @@ export async function registrarFechaEntrega(id: string, fecha: string) {
 }
 
 export async function eliminarRequerimiento(id: string) {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('requerimientos')

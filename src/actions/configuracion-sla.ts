@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+import { exigirAccesoAdmin, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 
 export interface ConfigSLA {
   prioridad:   number
@@ -21,6 +21,7 @@ export interface EstadisticaSLA {
 }
 
 export async function getConfigSLA(): Promise<ConfigSLA[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
@@ -67,6 +68,7 @@ export async function actualizarConfigSLA(
 }
 
 export async function getEstadisticasSLA(): Promise<EstadisticaSLA[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)

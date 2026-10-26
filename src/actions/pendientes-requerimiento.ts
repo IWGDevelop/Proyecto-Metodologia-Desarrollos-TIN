@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getPerfil } from '@/lib/supabase/auth'
 import { sendEmail } from '@/lib/email'
@@ -38,6 +39,7 @@ export interface TareaConsolidadaReq {
 }
 
 export async function getTareasConsolidadasRequerimiento(requerimientoId: string): Promise<TareaConsolidadaReq[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
 
   const [{ data: reuniones }, { data: solicitudes }] = await Promise.all([
@@ -151,6 +153,7 @@ export async function enviarResumenTareasPendientes(
   requerimientoId: string,
   input: EnviarResumenInput,
 ): Promise<{ ok: boolean; error?: string; enviadoA?: string[]; tareas?: number }> {
+  await exigirAccesoAdmin()
   try {
     const perfil = await getPerfil()
     if (!perfil) return { ok: false, error: 'Sesión no válida' }

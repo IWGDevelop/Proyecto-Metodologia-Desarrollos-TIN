@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+import { exigirAccesoAdmin, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import type { TipoPermiso } from '@/lib/recursos-sistema'
 
 export interface RolPersonalizado {
@@ -32,6 +32,7 @@ const ROLES_SISTEMA = [
 ]
 
 export async function getRoles(): Promise<RolPersonalizado[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
 

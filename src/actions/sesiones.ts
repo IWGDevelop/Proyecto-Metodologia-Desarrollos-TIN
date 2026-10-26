@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export interface SesionLog {
@@ -38,6 +39,7 @@ export async function registrarSesion(payload: {
 }
 
 export async function getSesionesLog(limite = 200): Promise<SesionLog[]> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { data } = await (supabase as any)
@@ -52,6 +54,7 @@ export async function getSesionesLog(limite = 200): Promise<SesionLog[]> {
 }
 
 export async function getEstadisticasSesiones(): Promise<EstadisticasSesiones> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const ahora = new Date()

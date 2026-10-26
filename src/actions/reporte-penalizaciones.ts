@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 export type TipoRegistro = 'PENALIZACION' | 'TAREA'
@@ -44,6 +45,7 @@ function diasEntre(desde: string, hasta: string): number {
 }
 
 export async function getReportePenalizaciones(): Promise<RegistroIncumplimiento[]> {
+  await exigirAccesoAdmin()
   const supabase = createAdminClient()
   const hoy = new Date().toISOString().slice(0, 10)
 

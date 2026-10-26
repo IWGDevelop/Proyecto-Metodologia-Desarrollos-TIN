@@ -1,7 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
-import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+import { exigirAccesoAdmin, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import type { ProcesoInterno } from '@/lib/supabase/types'
 
 interface IgsiInfo {
@@ -129,6 +129,7 @@ export async function buscarInfoIgsiPorEmail(email: string): Promise<{
   empresa: 'IWF' | 'ILT' | 'IWG' | null
   cargo: string | null
 }> {
+  await exigirAccesoAdmin()
   try {
     const igsiData = await fetchIgsiData()
     const igsi = igsiData.find(

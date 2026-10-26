@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 
 /* ── Tipos del payload JSON ─────────────────────────────────────────────── */
@@ -146,6 +147,7 @@ function validar(payload: ImportarPayload): string[] {
 /* ── Acción principal ───────────────────────────────────────────────────── */
 
 export async function importarRequerimiento(payload: ImportarPayload): Promise<ImportarResult> {
+  await exigirAccesoAdmin()
   try {
     const errores = validar(payload)
     if (errores.length > 0) return { ok: false, error: errores.join(' | ') }
@@ -289,6 +291,7 @@ export async function importarRequerimiento(payload: ImportarPayload): Promise<I
 /* ── Importación en lote ─────────────────────────────────────────────────── */
 
 export async function importarLote(payloads: ImportarPayload[]): Promise<ImportarLoteResult> {
+  await exigirAccesoAdmin()
   const importados: ImportarLoteResult['importados'] = []
   const errores:    ImportarLoteResult['errores']    = []
 

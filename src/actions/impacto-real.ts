@@ -1,5 +1,6 @@
 'use server'
 
+import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { BeneficioCualitativoReal } from '@/lib/supabase/types'
 
@@ -16,6 +17,7 @@ export async function guardarImpactoReal(
   id: string,
   datos: ImpactoRealPayload
 ): Promise<{ ok: boolean; error?: string }> {
+  await exigirAccesoAdmin()
   try {
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
