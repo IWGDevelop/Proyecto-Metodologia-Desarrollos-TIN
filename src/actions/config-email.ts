@@ -2,6 +2,11 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { revalidatePath } from 'next/cache'
+import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
+
+async function exigirConfiguracion() {
+  if (!(await puedeGestionar('menu:configuracion'))) throw new Error(NO_AUTORIZADO)
+}
 
 export interface DestinatarioEmail {
   id: string
@@ -31,6 +36,7 @@ export async function getEmailsActivos(): Promise<string[]> {
 }
 
 export async function agregarDestinatario(email: string, nombre: string) {
+  await exigirConfiguracion()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('config_notificaciones_email')
@@ -40,6 +46,7 @@ export async function agregarDestinatario(email: string, nombre: string) {
 }
 
 export async function toggleDestinatario(id: string, activo: boolean) {
+  await exigirConfiguracion()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('config_notificaciones_email')
@@ -50,6 +57,7 @@ export async function toggleDestinatario(id: string, activo: boolean) {
 }
 
 export async function eliminarDestinatario(id: string) {
+  await exigirConfiguracion()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('config_notificaciones_email')
@@ -70,6 +78,7 @@ export async function getConfigParam(clave: string): Promise<string | null> {
 }
 
 export async function setConfigParam(clave: string, valor: string) {
+  await exigirConfiguracion()
   const supabase = createAdminClient()
   const { error } = await (supabase as any)
     .from('configuracion_sistema')

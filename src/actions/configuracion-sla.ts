@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 
 export interface ConfigSLA {
   prioridad:   number
@@ -47,6 +48,7 @@ export async function actualizarConfigSLA(
   datos: { dias_limite: number; label?: string; descripcion?: string | null }
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    if (!(await puedeGestionar('menu:configuracion'))) return { ok: false, error: NO_AUTORIZADO }
     if (datos.dias_limite < 1) return { ok: false, error: 'Los días deben ser mayor a 0' }
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

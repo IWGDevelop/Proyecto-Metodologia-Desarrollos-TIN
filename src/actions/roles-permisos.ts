@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import type { TipoPermiso } from '@/lib/recursos-sistema'
 
 export interface RolPersonalizado {
@@ -57,6 +58,7 @@ export async function getRoles(): Promise<RolPersonalizado[]> {
 
 export async function crearRol(datos: { nombre: string; descripcion?: string }): Promise<{ ok: boolean; error?: string; id?: string }> {
   try {
+    if (!(await puedeGestionar('menu:roles'))) return { ok: false, error: NO_AUTORIZADO }
     if (!datos.nombre.trim()) return { ok: false, error: 'El nombre es obligatorio' }
     const supabase = createAdminClient()
     const { data, error } = await (supabase as any)
@@ -71,6 +73,7 @@ export async function crearRol(datos: { nombre: string; descripcion?: string }):
 
 export async function actualizarRol(id: string, datos: { nombre?: string; descripcion?: string | null; activo?: boolean }): Promise<{ ok: boolean; error?: string }> {
   try {
+    if (!(await puedeGestionar('menu:roles'))) return { ok: false, error: NO_AUTORIZADO }
     const supabase = createAdminClient()
     const update: Record<string, unknown> = { updated_at: new Date().toISOString() }
     if (datos.nombre !== undefined)      update.nombre      = datos.nombre.trim().toUpperCase().replace(/\s+/g, '_')
@@ -84,6 +87,7 @@ export async function actualizarRol(id: string, datos: { nombre?: string; descri
 
 export async function eliminarRol(id: string): Promise<{ ok: boolean; error?: string }> {
   try {
+    if (!(await puedeGestionar('menu:roles'))) return { ok: false, error: NO_AUTORIZADO }
     const supabase = createAdminClient()
     const { data: rol } = await (supabase as any).from('roles_personalizados').select('es_sistema').eq('id', id).single()
     if (rol?.es_sistema) return { ok: false, error: 'No se pueden eliminar roles del sistema' }
@@ -115,6 +119,7 @@ export async function guardarPermisosRol(
   permisos: PermisosMap
 ): Promise<{ ok: boolean; error?: string }> {
   try {
+    if (!(await puedeGestionar('menu:roles'))) return { ok: false, error: NO_AUTORIZADO }
     const supabase = createAdminClient()
 
     const rows = Object.entries(permisos).map(([recurso, p]) => ({

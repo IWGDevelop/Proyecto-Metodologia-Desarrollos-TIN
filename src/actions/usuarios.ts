@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import { buscarInfoIgsiPorEmail } from './sync-igsi'
 
 export async function crearUsuario(data: {
@@ -13,6 +14,8 @@ export async function crearUsuario(data: {
   password: string
 }): Promise<{ ok: boolean; error?: string }> {
   try {
+    if (!(await puedeGestionar('menu:usuarios'))) return { ok: false, error: NO_AUTORIZADO }
+
     const supabase = createAdminClient()
 
     const { data: authData, error: authError } = await supabase.auth.admin.createUser({
@@ -66,6 +69,15 @@ export async function actualizarPerfil(id: string, data: Partial<{
   activo: boolean
 }>): Promise<{ ok: boolean; error?: string }> {
   try {
+    // Gestores de usuarios editan cualquier perfil; el resto solo el propio y sin tocar rol/activo
+    if (!(await puedeGestionar('menu:usuarios'))) {
+      const actual = await getUsuarioActual()
+      if (!actual || actual.user.id !== id) return { ok: false, error: NO_AUTORIZADO }
+      data = { ...data }
+      delete data.rol
+      delete data.activo
+    }
+
     const supabase = createAdminClient()
     const { error } = await (supabase as any)
       .from('perfiles')

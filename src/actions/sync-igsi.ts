@@ -1,6 +1,7 @@
 'use server'
 
 import { createAdminClient } from '@/lib/supabase/admin'
+import { puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import type { ProcesoInterno } from '@/lib/supabase/types'
 
 interface IgsiInfo {
@@ -79,6 +80,7 @@ export async function sincronizarPerfilesDesdeIGSI(): Promise<{
   errores: number
   sinCoincidencia: number
 }> {
+  if (!(await puedeGestionar('menu:usuarios'))) throw new Error(NO_AUTORIZADO)
   const igsiData = await fetchIgsiData()
 
   const mapa: Record<string, IgsiInfo> = {}
