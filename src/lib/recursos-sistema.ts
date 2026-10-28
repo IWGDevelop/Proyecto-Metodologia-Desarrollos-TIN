@@ -32,6 +32,10 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'menu:cronograma',             label: 'Cronograma',               permisos: ['puede_ver'] },
       { id: 'menu:cronograma-tin',         label: 'Cronograma TIN',           permisos: ['puede_ver'] },
       { id: 'menu:casos-uso-ia',           label: 'Casos de Uso IA',          permisos: ['puede_ver'] },
+      { id: 'menu:tickets',                label: 'Tickets — bandeja',        permisos: ['puede_ver'] },
+      { id: 'menu:tickets-dashboard',      label: 'Tickets — dashboard',      permisos: ['puede_ver'] },
+      { id: 'menu:tickets-bugs',           label: 'Tickets — bugs IGSI',      permisos: ['puede_ver'] },
+      { id: 'menu:tickets-config',         label: 'Tickets — configuración',  permisos: ['puede_ver'] },
       { id: 'menu:usuarios',               label: 'Usuarios',                 permisos: ['puede_ver'] },
       { id: 'menu:sesiones',               label: 'Sesiones',                 permisos: ['puede_ver'] },
       { id: 'menu:lotes',                  label: 'Lotes',                    permisos: ['puede_ver'] },
@@ -67,6 +71,16 @@ export const CATEGORIAS_RECURSOS: CategoriaRecursos[] = [
       { id: 'req:penalizaciones', label: 'Penalizaciones', permisos: ['puede_ver', 'puede_editar'] },
       { id: 'req:comentarios',    label: 'Comentarios',    permisos: ['puede_ver', 'puede_crear'] },
       { id: 'req:anexos',         label: 'Anexos',         permisos: ['puede_ver', 'puede_crear'] },
+    ],
+  },
+  {
+    id: 'tickets',
+    label: 'Tickets — acciones',
+    icono: 'ticket',
+    recursos: [
+      { id: 'tickets:atender',      label: 'Atender tickets (responsable TIN)',          permisos: ['puede_ver'] },
+      { id: 'tickets:coordinar',    label: 'Coordinar: ver todos, asignar y reasignar',  permisos: ['puede_ver'] },
+      { id: 'tickets:restringidas', label: 'Ver tipologías restringidas (Auditoría)',     permisos: ['puede_ver'] },
     ],
   },
 ]

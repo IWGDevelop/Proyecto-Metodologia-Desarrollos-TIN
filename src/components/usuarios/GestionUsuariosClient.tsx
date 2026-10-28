@@ -28,6 +28,8 @@ const createSchema = z.object({
   empresa: z.string().optional(),
   rol: z.string().min(1),
   password: z.string().min(8, 'Mínimo 8 caracteres'),
+  jefe_id: z.string().optional(),
+  sede: z.string().optional(),
 })
 type CreateForm = z.infer<typeof createSchema>
 
@@ -38,6 +40,8 @@ const editSchema = z.object({
   empresa: z.string().optional(),
   rol: z.string().min(1),
   activo: z.boolean(),
+  jefe_id: z.string().optional(),
+  sede: z.string().optional(),
 })
 type EditForm = z.infer<typeof editSchema>
 
@@ -67,9 +71,43 @@ function rolLabel(nombre: string) {
   return ROL_LABEL[nombre] ?? nombre.replace(/_/g, ' ')
 }
 
-interface Props { usuarios: Perfil[]; roles: RolItem[] }
+const claseSelectNativo =
+  'h-8 w-full rounded-lg border border-input bg-transparent px-2.5 text-sm outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50'
 
-export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
+/** Jefe inmediato (aprueba los tickets que lo requieren): perfiles activos, sin el propio usuario */
+function SelectJefe({ usuarios, excluirId, value, onChange }: {
+  usuarios: Perfil[]; excluirId?: string; value: string; onChange: (v: string) => void
+}) {
+  const opciones = usuarios
+    .filter(u => u.id !== excluirId && (u.activo || u.id === value))
+    .sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo))
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} className={claseSelectNativo}>
+      <option value="">Sin jefe asignado</option>
+      {opciones.map(u => (
+        <option key={u.id} value={u.id}>{u.nombre_completo}{!u.activo ? ' (inactivo)' : ''}</option>
+      ))}
+    </select>
+  )
+}
+
+/** Sede: lista configurada en Tickets → Parámetros; texto libre si aún no hay sedes */
+function CampoSede({ sedes, value, onChange }: { sedes: string[]; value: string; onChange: (v: string) => void }) {
+  if (!sedes.length) {
+    return <Input value={value} onChange={e => onChange(e.target.value)} placeholder="Ej. Bogotá" />
+  }
+  const opciones = value && !sedes.includes(value) ? [...sedes, value] : sedes
+  return (
+    <select value={value} onChange={e => onChange(e.target.value)} className={claseSelectNativo}>
+      <option value="">Sin sede</option>
+      {opciones.map(s => <option key={s} value={s}>{s}</option>)}
+    </select>
+  )
+}
+
+interface Props { usuarios: Perfil[]; roles: RolItem[]; sedes: string[] }
+
+export function GestionUsuariosClient({ usuarios: initial, roles, sedes }: Props) {
   const router = useRouter()
   const procesos = useProcesos()
   const [showCreate, setShowCreate] = useState(false)
@@ -101,8 +139,10 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
 
   const editForm = useForm<EditForm>({ resolver: zodResolver(editSchema) })
 
+  const nombrePorId = new Map(initial.map(u => [u.id, u.nombre_completo]))
+
   const onCrear = async (data: CreateForm) => {
-    const result = await crearUsuario(data)
+    const result = await crearUsuario({ ...data, jefe_id: data.jefe_id || null, sede: data.sede || null })
     if (!result.ok) {
       toast.error(result.error ?? 'Error al crear usuario')
       return
@@ -120,6 +160,8 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
       empresa: data.empresa || null,
       proceso_interno: data.proceso_interno || null,
       cargo: data.cargo || null,
+      jefe_id: data.jefe_id || null,
+      sede: data.sede || null,
     })
     if (!result.ok) {
       toast.error(result.error ?? 'Error al actualizar usuario')
@@ -138,6 +180,8 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
       empresa: u.empresa ?? '',
       rol: u.rol,
       activo: u.activo,
+      jefe_id: u.jefe_id ?? '',
+      sede: u.sede ?? '',
     })
     setEditUser(u)
   }
@@ -170,7 +214,7 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
           <table className="w-full text-sm">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {['Usuario', 'Email', 'Cargo', 'Proceso', 'Empresa', 'Rol', 'Estado', 'Registro', ''].map(h => (
+                {['Usuario', 'Email', 'Cargo', 'Proceso', 'Empresa', 'Jefe · Sede', 'Rol', 'Estado', 'Registro', ''].map(h => (
                   <th key={h} className="px-4 py-3 text-left text-xs font-medium text-slate-400">{h}</th>
                 ))}
               </tr>
@@ -188,6 +232,10 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
                   <td className="px-4 py-3 text-slate-500">{u.cargo ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{u.proceso_interno ?? '—'}</td>
                   <td className="px-4 py-3 text-slate-500">{u.empresa ?? '—'}</td>
+                  <td className="px-4 py-3 text-xs text-slate-500">
+                    <p>{u.jefe_id ? (nombrePorId.get(u.jefe_id) ?? '—') : '—'}</p>
+                    <p className="text-slate-400">{u.sede ?? '—'}</p>
+                  </td>
                   <td className="px-4 py-3">
                     {u.rol === 'ADMIN_TIN' ? (
                       <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100 gap-1">
@@ -224,7 +272,7 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
               ))}
               {initial.length === 0 && (
                 <tr>
-                  <td colSpan={9} className="py-12 text-center text-sm text-slate-400">
+                  <td colSpan={10} className="py-12 text-center text-sm text-slate-400">
                     Sin usuarios registrados
                   </td>
                 </tr>
@@ -288,6 +336,18 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
                     ))}
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="space-y-1">
+                <Label>Jefe inmediato</Label>
+                <SelectJefe
+                  usuarios={initial}
+                  value={createForm.watch('jefe_id') ?? ''}
+                  onChange={v => createForm.setValue('jefe_id', v)}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label>Sede</Label>
+                <CampoSede sedes={sedes} value={createForm.watch('sede') ?? ''} onChange={v => createForm.setValue('sede', v)} />
               </div>
               <div className="col-span-2 space-y-1">
                 <Label>Contraseña temporal *</Label>
@@ -362,6 +422,20 @@ export function GestionUsuariosClient({ usuarios: initial, roles }: Props) {
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-1">
+                  <Label>Jefe inmediato</Label>
+                  <SelectJefe
+                    usuarios={initial}
+                    excluirId={editUser.id}
+                    value={editForm.watch('jefe_id') ?? ''}
+                    onChange={v => editForm.setValue('jefe_id', v)}
+                  />
+                  <p className="text-[11px] text-slate-400">Aprueba los tickets que requieren aprobación.</p>
+                </div>
+                <div className="space-y-1">
+                  <Label>Sede</Label>
+                  <CampoSede sedes={sedes} value={editForm.watch('sede') ?? ''} onChange={v => editForm.setValue('sede', v)} />
                 </div>
                 <div className="col-span-2 flex items-center gap-3">
                   <Switch

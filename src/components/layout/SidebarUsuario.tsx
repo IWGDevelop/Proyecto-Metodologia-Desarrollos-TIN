@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { ClipboardList, Plus, Bell, User, X, Brain } from 'lucide-react'
+import { ClipboardList, Plus, Bell, User, X, Brain, Ticket, CheckSquare } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo } from '@/components/layout/InterflowLogo'
 
@@ -10,6 +10,8 @@ const NAV_ITEMS = [
   { href: '/mis-requerimientos',               label: 'Mis solicitudes',   Icon: ClipboardList },
   { href: '/mis-requerimientos/nuevo',          label: 'Nueva solicitud',   Icon: Plus },
   { href: '/mis-requerimientos/notificaciones', label: 'Notificaciones',    Icon: Bell },
+  { href: '/mis-tickets',                      label: 'Mis tickets de TI', Icon: Ticket },
+  { href: '/mis-tickets/aprobaciones',         label: 'Aprobar tickets',   Icon: CheckSquare },
   { href: '/casos-uso-ia',                      label: 'Mis casos de uso IA', Icon: Brain },
   { href: '/perfil',                           label: 'Mi perfil',         Icon: User },
 ]
@@ -35,7 +37,9 @@ export function SidebarUsuario({ mobileOpen, onMobileClose }: Props) {
           const isActive =
             href === '/mis-requerimientos'
               ? pathname === href || (pathname.startsWith(href + '/') && !pathname.includes('/notificaciones') && !pathname.includes('/nuevo'))
-              : pathname === href || pathname.startsWith(href + '/')
+              : href === '/mis-tickets'
+                ? pathname === href || (pathname.startsWith(href + '/') && !pathname.includes('/aprobaciones'))
+                : pathname === href || pathname.startsWith(href + '/')
           return (
             <Link
               key={href}

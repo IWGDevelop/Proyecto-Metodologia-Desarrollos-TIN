@@ -25,6 +25,10 @@ import {
   AlarmClock,
   CalendarRange,
   AlertOctagon,
+  Ticket,
+  Gauge,
+  Bug,
+  SlidersHorizontal,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -48,6 +52,10 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/reporte-prioridades',   label: 'Rep. Prioridades',    Icon: ListOrdered,      menuResource: 'menu:reporte-prioridades' },
   { href: '/admin/reporte-planeacion',    label: 'Rep. Planeación',     Icon: CalendarRange,    menuResource: 'menu:reporte-planeacion' },
   { href: '/admin/reporte-penalizaciones', label: 'Rep. Penalizaciones', Icon: AlertOctagon,    menuResource: 'menu:reporte-penalizaciones' },
+  { href: '/admin/tickets',               label: 'Tickets',               Icon: Ticket,           menuResource: 'menu:tickets' },
+  { href: '/admin/tickets-dashboard',     label: 'Dashboard Tickets',     Icon: Gauge,            menuResource: 'menu:tickets-dashboard' },
+  { href: '/admin/tickets-bugs',          label: 'Bugs IGSI',             Icon: Bug,              menuResource: 'menu:tickets-bugs' },
+  { href: '/admin/tickets-configuracion', label: 'Config. Tickets',       Icon: SlidersHorizontal, menuResource: 'menu:tickets-config' },
   { href: '/admin/pendientes',            label: 'Pendientes',            Icon: AlarmClock,       menuResource: 'menu:pendientes' },
   { href: '/admin/cronograma',            label: 'Cronograma',           Icon: GanttChartSquare, menuResource: 'menu:cronograma' },
   { href: '/admin/cronograma-tin',       label: 'Cronograma TIN',       Icon: CalendarClock,    menuResource: 'menu:cronograma-tin' },

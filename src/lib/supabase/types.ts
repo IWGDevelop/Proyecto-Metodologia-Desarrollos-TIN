@@ -24,6 +24,8 @@ export interface Perfil {
   rol: RolUsuario
   activo: boolean
   avatar_url: string | null
+  jefe_id?: string | null
+  sede?: string | null
   created_at: string
   updated_at: string
 }

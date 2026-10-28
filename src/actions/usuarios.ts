@@ -12,6 +12,8 @@ export async function crearUsuario(data: {
   empresa?: string
   rol: string
   password: string
+  jefe_id?: string | null
+  sede?: string | null
 }): Promise<{ ok: boolean; error?: string }> {
   try {
     if (!(await puedeGestionar('menu:usuarios'))) return { ok: false, error: NO_AUTORIZADO }
@@ -47,6 +49,8 @@ export async function crearUsuario(data: {
         empresa:         igsi.empresa         ?? data.empresa         ?? null,
         rol: data.rol,
         activo: true,
+        jefe_id: data.jefe_id || null,
+        sede: data.sede?.trim() || null,
       }, { onConflict: 'id' })
 
     if (upsertError) {
@@ -67,16 +71,25 @@ export async function actualizarPerfil(id: string, data: Partial<{
   empresa: string | null
   rol: string
   activo: boolean
+  jefe_id: string | null
+  sede: string | null
 }>): Promise<{ ok: boolean; error?: string }> {
   try {
-    // Gestores de usuarios editan cualquier perfil; el resto solo el propio y sin tocar rol/activo
+    // Gestores de usuarios editan cualquier perfil; el resto solo el propio y sin tocar rol/activo/jefe
+    // (el jefe inmediato es quien aprueba los tickets del usuario)
     if (!(await puedeGestionar('menu:usuarios'))) {
       const actual = await getUsuarioActual()
       if (!actual || actual.user.id !== id) return { ok: false, error: NO_AUTORIZADO }
       data = { ...data }
       delete data.rol
       delete data.activo
+      delete data.jefe_id
     }
+    if (data.jefe_id !== undefined) {
+      data = { ...data, jefe_id: data.jefe_id || null }
+      if (data.jefe_id === id) return { ok: false, error: 'Un usuario no puede ser su propio jefe inmediato' }
+    }
+    if (data.sede !== undefined) data = { ...data, sede: data.sede?.trim() || null }
 
     const supabase = createAdminClient()
     const { error } = await (supabase as any)

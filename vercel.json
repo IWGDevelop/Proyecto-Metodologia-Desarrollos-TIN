@@ -3,6 +3,10 @@
     {
       "path": "/api/cron/tareas-vencimiento",
       "schedule": "0 15 * * *"
+    },
+    {
+      "path": "/api/cron/tickets-recordatorios",
+      "schedule": "0 13 * * *"
     }
   ]
 }
