@@ -100,3 +100,12 @@ export function calcularAhorroCOP(
   const mensual = horasMes * valorHoraHombre
   return { mensual, anual: mensual * 12 }
 }
+
+/** Variación porcentual de las HH reales frente a las estimadas (null si no hay estimado). */
+export function calcularVariacionHH(
+  estimadas: number | null | undefined,
+  reales: number | null | undefined
+): number | null {
+  if (!estimadas || estimadas <= 0) return null
+  return (((reales ?? 0) - estimadas) / estimadas) * 100
+}

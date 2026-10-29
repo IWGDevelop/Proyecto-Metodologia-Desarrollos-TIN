@@ -22,7 +22,7 @@ import { ESTADOS, COLOR_PALETTE } from '@/lib/constants'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { guardarImpactoReal } from '@/actions/impacto-real'
 import { useKanban, useInvalidateKanban, useEstadosKanban, type KanbanData } from '@/hooks/useKanban'
-import { cn, formatCOP } from '@/lib/utils'
+import { cn, formatCOP, calcularVariacionHH } from '@/lib/utils'
 import type { MetricaRequerimiento, EstadoKanban } from '@/lib/supabase/types'
 
 const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
@@ -87,6 +87,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [showImpactoReal, setShowImpactoReal] = useState(false)
   const [horasMesReal, setHorasMesReal] = useState<number>(0)
   const [valorHoraReal, setValorHoraReal] = useState<number>(0)
+  const [justificacionHH, setJustificacionHH] = useState('')
   const [detailCard, setDetailCard] = useState<MetricaRequerimiento | null>(null)
   const [filtros, setFiltros] = useState<FiltrosKanban>(FILTROS_INIT)
 
@@ -138,12 +139,20 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     setValorHoraReal((card as any).valor_hora_hombre ?? 0)
   }, [data])
 
+  const registraImpacto = !!pendingMove && ESTADOS_FINALIZADOS.includes(pendingMove.toEstado) && showImpactoReal && horasMesReal > 0
+  const variacionHH     = calcularVariacionHH((pendingMove?.card as any)?.horas_ahorradas_mes, horasMesReal)
+  const faltaJustificacionHH = registraImpacto && variacionHH !== null && variacionHH < 0 && !justificacionHH.trim()
+
   const confirmarCambio = async () => {
     if (!pendingMove) return
     const { card, fromEstado, toEstado } = pendingMove
 
     if (toEstado === 'STAND_BY' && !observacion.trim()) {
       toast.error('El motivo del stand by es requerido')
+      return
+    }
+    if (faltaJustificacionHH) {
+      toast.error('Justifica por qué las HH reales fueron inferiores a las estimadas')
       return
     }
 
@@ -163,17 +172,19 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     try {
       await cambiarEstado(card.id, toEstado, observacion || undefined)
       // Guardar impacto real si se ingresaron datos y es estado finalizado
-      if (ESTADOS_FINALIZADOS.includes(toEstado) && showImpactoReal && horasMesReal > 0) {
+      if (registraImpacto) {
         const ahorroMensual = Math.round(horasMesReal * valorHoraReal)
         const ahorroAnual   = ahorroMensual * 12
-        await guardarImpactoReal(card.id, {
+        const resImpacto = await guardarImpactoReal(card.id, {
           horas_ahorradas_mes_real: horasMesReal,
           ahorro_mensual_cop_real:  ahorroMensual,
           ahorro_anual_cop_real:    ahorroAnual,
           beneficios_cualitativos_real: [],
           total_beneficios_cualitativos_anual_real: null,
           impacto_economico_total_anual_real: ahorroAnual,
+          justificacion_variacion_hh: justificacionHH,
         })
+        if (!resImpacto.ok) toast.error(resImpacto.error ?? 'Error al guardar el impacto real')
       }
       toast.success('Estado actualizado correctamente')
       invalidar()
@@ -185,6 +196,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
       setConfirmando(false)
       setObservacion('')
       setShowImpactoReal(false)
+      setJustificacionHH('')
     }
   }
 
@@ -192,6 +204,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     setPendingMove(null)
     setObservacion('')
     setShowImpactoReal(false)
+    setJustificacionHH('')
   }
 
   const isLoading = loadingData || loadingColumnas
@@ -323,6 +336,34 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
                             <span className="text-emerald-600">Podrás agregar beneficios cualitativos desde el detalle</span>
                           </div>
                         )}
+                        <div className="col-span-2">
+                      {(() => {
+                        const variacion = calcularVariacionHH((pendingMove.card as any).horas_ahorradas_mes, horasMesReal)
+                        if (variacion === null) return null
+                        const negativa = variacion < 0
+                        return (
+                          <div className="space-y-2">
+                            <p className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold', negativa ? 'bg-red-50 text-red-600' : 'bg-emerald-100 text-emerald-800')}>
+                              Variación HH real vs estimado: {variacion > 0 ? '+' : ''}{variacion.toFixed(1)}%
+                            </p>
+                            {negativa && (
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-red-700">
+                                  Justificación de la variación negativa <span className="text-red-500">*</span>
+                                </label>
+                                <Textarea
+                                  rows={2}
+                                  value={justificacionHH}
+                                  onChange={e => setJustificacionHH(e.target.value)}
+                                  placeholder="Explica por qué las HH reales fueron inferiores a las estimadas..."
+                                  className="bg-white text-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
+                        </div>
                       </div>
                     )}
                   </div>
@@ -334,7 +375,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
             <Button variant="outline" onClick={cancelarCambio} disabled={confirmando}>Cancelar</Button>
             <Button
               onClick={confirmarCambio}
-              disabled={confirmando || (pendingMove?.toEstado === 'STAND_BY' && !observacion.trim())}
+              disabled={confirmando || (pendingMove?.toEstado === 'STAND_BY' && !observacion.trim()) || faltaJustificacionHH}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {confirmando ? 'Guardando...' : 'Confirmar cambio'}

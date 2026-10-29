@@ -2,9 +2,9 @@
 
 import { useState, useTransition } from 'react'
 import { guardarImpactoReal } from '@/actions/impacto-real'
-import { Plus, X, TrendingUp, AlertCircle, CheckCircle2, Save } from 'lucide-react'
+import { Plus, X, TrendingUp, TrendingDown, AlertCircle, CheckCircle2, Save } from 'lucide-react'
 import { toast } from 'sonner'
-import { formatCOP, cn } from '@/lib/utils'
+import { formatCOP, cn, calcularVariacionHH } from '@/lib/utils'
 import type { Requerimiento, BeneficioCualitativoReal } from '@/lib/supabase/types'
 
 const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
@@ -29,6 +29,7 @@ export function TabImpactoReal({ req, onSaved }: Props) {
       ? req.beneficios_cualitativos_real
       : (req.beneficios_cualitativos ?? []).map(b => ({ descripcion: b.descripcion, valor_anual_cop: 0 }))
   )
+  const [justificacion, setJustificacion] = useState(req.justificacion_variacion_hh ?? '')
   const [isPending, startT] = useTransition()
 
   // Cálculos automáticos
@@ -38,6 +39,11 @@ export function TabImpactoReal({ req, onSaved }: Props) {
   const ahorroAnual       = ahorroMensual * 12
   const totalCualitativos = beneficiosReal.reduce((s, b) => s + (b.valor_anual_cop || 0), 0)
   const totalReal         = ahorroAnual + totalCualitativos
+
+  // Variación % de HH reales vs estimadas; si es negativa se exige justificación
+  const variacionHH       = calcularVariacionHH(req.horas_ahorradas_mes, horasMes)
+  const variacionNegativa = variacionHH !== null && variacionHH < 0
+  const faltaJustificacion = variacionNegativa && !justificacion.trim()
 
   const yaRegistrado = req.horas_ahorradas_mes_real !== null || req.impacto_economico_total_anual_real !== null
 
@@ -51,6 +57,10 @@ export function TabImpactoReal({ req, onSaved }: Props) {
     setBeneficiosReal(prev => prev.filter((_, j) => j !== i))
 
   const handleGuardar = () => {
+    if (faltaJustificacion) {
+      toast.error('Justifica por qué las HH reales fueron inferiores a las estimadas')
+      return
+    }
     startT(async () => {
       const res = await guardarImpactoReal(req.id, {
         horas_ahorradas_mes_real:            horasMes || null,
@@ -59,6 +69,7 @@ export function TabImpactoReal({ req, onSaved }: Props) {
         beneficios_cualitativos_real:        beneficiosReal.filter(b => b.descripcion.trim()),
         total_beneficios_cualitativos_anual_real: totalCualitativos || null,
         impacto_economico_total_anual_real:  totalReal || null,
+        justificacion_variacion_hh:          variacionNegativa ? justificacion.trim() : null,
       })
       if (res.ok) {
         toast.success('Impacto real guardado')
@@ -174,6 +185,43 @@ export function TabImpactoReal({ req, onSaved }: Props) {
           <span className="text-xs text-slate-500">Ahorro HH anual real (× 12)</span>
           <span className="text-sm font-bold text-emerald-700">{formatCOP(ahorroAnual)}</span>
         </div>
+
+        {/* Variación porcentual HH real vs estimado */}
+        {variacionHH !== null && (
+          <div className={cn(
+            'flex items-center justify-between rounded-lg px-3 py-2',
+            variacionNegativa ? 'bg-red-50' : 'bg-emerald-50'
+          )}>
+            <span className="text-xs text-slate-500">Variación HH real vs estimado</span>
+            <span className={cn(
+              'flex items-center gap-1 text-sm font-bold',
+              variacionNegativa ? 'text-red-600' : 'text-emerald-700'
+            )}>
+              {variacionNegativa ? <TrendingDown size={13} /> : <TrendingUp size={13} />}
+              {variacionHH > 0 ? '+' : ''}{variacionHH.toFixed(1)}%
+            </span>
+          </div>
+        )}
+
+        {variacionNegativa && (
+          <div className="space-y-1">
+            <label className="text-xs font-medium text-red-700">
+              Justificación de la variación negativa <span className="text-red-500">*</span>
+            </label>
+            <textarea
+              rows={3}
+              value={justificacion}
+              onChange={e => setJustificacion(e.target.value)}
+              placeholder="Explica por qué las horas hombre ahorradas reales fueron inferiores a las estimadas..."
+              className={cn(
+                'w-full resize-none rounded-md border bg-white px-3 py-1.5 text-sm outline-none focus:ring-1',
+                faltaJustificacion
+                  ? 'border-red-300 focus:border-red-400 focus:ring-red-400'
+                  : 'border-slate-200 focus:border-emerald-400 focus:ring-emerald-400'
+              )}
+            />
+          </div>
+        )}
       </div>
 
       {/* Beneficios cualitativos reales */}
@@ -251,7 +299,7 @@ export function TabImpactoReal({ req, onSaved }: Props) {
       <div className="flex justify-end">
         <button
           onClick={handleGuardar}
-          disabled={isPending}
+          disabled={isPending || faltaJustificacion}
           className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           <Save size={14} />

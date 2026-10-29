@@ -217,6 +217,7 @@ export interface Requerimiento {
   beneficios_cualitativos_real: BeneficioCualitativoReal[]
   total_beneficios_cualitativos_anual_real: number | null
   impacto_economico_total_anual_real: number | null
+  justificacion_variacion_hh: string | null
   created_at: string
   updated_at: string
 }

@@ -15,7 +15,7 @@ import { cambiarEstado } from '@/actions/requerimientos'
 import { guardarImpactoReal } from '@/actions/impacto-real'
 import { COLOR_PALETTE } from '@/lib/constants'
 import { toast } from 'sonner'
-import { cn, formatCOP } from '@/lib/utils'
+import { cn, formatCOP, calcularVariacionHH } from '@/lib/utils'
 import type { EstadoKanban } from '@/lib/supabase/types'
 
 const ESTADOS_FINALIZADOS = ['ENTREGADO', 'CERRADO']
@@ -50,6 +50,7 @@ export function CambiarEstadoBtn({
   const [showImpacto, setShowImpacto] = useState(false)
   const [horasMes, setHorasMes]       = useState<number>(horasEstimadas ?? 0)
   const [valorHora, setValorHora]     = useState<number>(valorHoraEstimado ?? 0)
+  const [justificacionHH, setJustificacionHH] = useState('')
 
   const { data: estados = [] } = useQuery<EstadoKanban[]>({
     queryKey: ['estados-kanban'],
@@ -67,14 +68,23 @@ export function CambiarEstadoBtn({
     setShowImpacto(false)
     setHorasMes(horasEstimadas ?? 0)
     setValorHora(valorHoraEstimado ?? 0)
+    setJustificacionHH('')
     setFechaTransicion(hoyISO())
     setOpen(true)
   }
+
+  const registraImpacto = !!estadoDestino && ESTADOS_FINALIZADOS.includes(estadoDestino.nombre) && showImpacto && horasMes > 0
+  const variacionHH     = calcularVariacionHH(horasEstimadas, horasMes)
+  const faltaJustificacionHH = registraImpacto && variacionHH !== null && variacionHH < 0 && !justificacionHH.trim()
 
   const handleConfirmar = () => {
     if (!estadoDestino) return
     if (estadoDestino.nombre === 'STAND_BY' && !observacion.trim()) {
       toast.error('El motivo del stand by es obligatorio')
+      return
+    }
+    if (faltaJustificacionHH) {
+      toast.error('Justifica por qué las HH reales fueron inferiores a las estimadas')
       return
     }
 
@@ -85,17 +95,19 @@ export function CambiarEstadoBtn({
           estadoDestino.nombre in FECHA_LABEL ? fechaTransicion : undefined
         )
 
-        if (ESTADOS_FINALIZADOS.includes(estadoDestino.nombre) && showImpacto && horasMes > 0) {
+        if (registraImpacto) {
           const ahorroMensual = Math.round(horasMes * valorHora)
           const ahorroAnual   = ahorroMensual * 12
-          await guardarImpactoReal(requerimientoId, {
+          const resImpacto = await guardarImpactoReal(requerimientoId, {
             horas_ahorradas_mes_real: horasMes,
             ahorro_mensual_cop_real:  ahorroMensual,
             ahorro_anual_cop_real:    ahorroAnual,
             beneficios_cualitativos_real: [],
             total_beneficios_cualitativos_anual_real: null,
             impacto_economico_total_anual_real: ahorroAnual,
+            justificacion_variacion_hh: justificacionHH,
           })
+          if (!resImpacto.ok) toast.error(resImpacto.error ?? 'Error al guardar el impacto real')
         }
 
         toast.success(`Estado cambiado a ${estadoDestino.label}`)
@@ -258,6 +270,32 @@ export function CambiarEstadoBtn({
                           <span className="text-emerald-600">Los beneficios cualitativos se completan desde el detalle</span>
                         </p>
                       )}
+                      {(() => {
+                        const variacion = calcularVariacionHH(horasEstimadas, horasMes)
+                        if (variacion === null) return null
+                        const negativa = variacion < 0
+                        return (
+                          <div className="space-y-2">
+                            <p className={cn('rounded-lg px-3 py-1.5 text-xs font-semibold', negativa ? 'bg-red-50 text-red-600' : 'bg-emerald-100 text-emerald-800')}>
+                              Variación HH real vs estimado: {variacion > 0 ? '+' : ''}{variacion.toFixed(1)}%
+                            </p>
+                            {negativa && (
+                              <div className="space-y-1">
+                                <label className="text-xs font-medium text-red-700">
+                                  Justificación de la variación negativa <span className="text-red-500">*</span>
+                                </label>
+                                <Textarea
+                                  rows={2}
+                                  value={justificacionHH}
+                                  onChange={e => setJustificacionHH(e.target.value)}
+                                  placeholder="Explica por qué las HH reales fueron inferiores a las estimadas..."
+                                  className="bg-white text-sm"
+                                />
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })()}
                     </div>
                   )}
                 </div>
@@ -281,7 +319,8 @@ export function CambiarEstadoBtn({
               onClick={handleConfirmar}
               disabled={
                 isPending ||
-                (estadoDestino?.nombre === 'STAND_BY' && !observacion.trim())
+                (estadoDestino?.nombre === 'STAND_BY' && !observacion.trim()) ||
+                faltaJustificacionHH
               }
               className="bg-blue-600 hover:bg-blue-700"
             >
