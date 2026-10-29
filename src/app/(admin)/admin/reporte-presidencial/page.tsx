@@ -51,22 +51,46 @@ const ESTADOS_FUERA_DEL_FLUJO = [
 const estadoReporte = (estado: string | null | undefined) =>
   !estado ? 'SIN_GESTION' : estado === 'ENTREGADO' ? 'CERRADO' : estado
 
+/** Impacto anual desglosado: horas hombre (ahorro HH) + indirectos (beneficios cualitativos) */
+interface Impacto { hh: number; indirecto: number; total: number }
+const IMPACTO_CERO: Impacto = { hh: 0, indirecto: 0, total: 0 }
+
+function impactoEstimado(r: RowPresidencial): Impacto {
+  const hh        = r.ahorro_anual_cop ?? 0
+  const indirecto = r.total_beneficios_cualitativos_anual ?? 0
+  return { hh, indirecto, total: r.impacto_economico_total_anual ?? hh + indirecto }
+}
+
+/** Impacto de una entrega: el real si ya se registró, si no el estimado */
+function impactoEntrega(r: RowPresidencial): Impacto & { esReal: boolean } {
+  if (r.impacto_economico_total_anual_real == null) return { ...impactoEstimado(r), esReal: false }
+  const hh        = r.ahorro_anual_cop_real ?? 0
+  const indirecto = r.total_beneficios_cualitativos_anual_real ?? 0
+  return { hh, indirecto, total: r.impacto_economico_total_anual_real, esReal: true }
+}
+
+const sumarImpacto = (a: Impacto, b: Impacto): Impacto =>
+  ({ hh: a.hh + b.hh, indirecto: a.indirecto + b.indirecto, total: a.total + b.total })
+
 function computar(activos: RowPresidencial[], procesoLabel: (p: string) => string, estadoLabel: (e: string) => string) {
   const total = activos.length
 
   const totalHoras = activos.reduce((s, r) => s + (r.horas_estimadas_desarrollo ?? 0), 0)
-  const impactoTotal = activos.reduce((s, r) => s + (r.impacto_economico_total_anual ?? 0), 0)
+  const impacto = activos.reduce((s, r) => sumarImpacto(s, impactoEstimado(r)), IMPACTO_CERO)
+  const impactoTotal = impacto.total
   const impactoTotalReal = activos.reduce((s, r) => s + (r.impacto_economico_total_anual_real ?? 0), 0)
   const sinCuantificar = activos.filter(r => !r.impacto_economico_total_anual || r.impacto_economico_total_anual === 0).length
+  const conImpactoHH        = activos.filter(r => (r.ahorro_anual_cop ?? 0) > 0).length
+  const conImpactoIndirecto = activos.filter(r => (r.total_beneficios_cualitativos_anual ?? 0) > 0).length
 
   // Por estado — etapas del flujo en orden (siempre visibles, aunque estén en 0);
-  // los demás estados solo si tienen requerimientos, y Desistido al final
+  // los demás estados solo si tienen requerimientos (Desistido no llega al reporte)
   const estadoMap = new Map<string, number>()
   activos.forEach(r => { const k = estadoReporte(r.estado); estadoMap.set(k, (estadoMap.get(k) ?? 0) + 1) })
   const otrosEstados = [...estadoMap.keys()]
-    .filter(e => !ETAPAS_FLUJO.includes(e) && e !== 'DESISTIDO')
+    .filter(e => !ETAPAS_FLUJO.includes(e))
     .sort((a, b) => (ESTADOS_FUERA_DEL_FLUJO.indexOf(a) + 1 || 99) - (ESTADOS_FUERA_DEL_FLUJO.indexOf(b) + 1 || 99) || a.localeCompare(b))
-  const porEstado = [...ETAPAS_FLUJO, ...otrosEstados, 'DESISTIDO']
+  const porEstado = [...ETAPAS_FLUJO, ...otrosEstados]
     .filter(estado => ETAPAS_FLUJO.includes(estado) || estadoMap.has(estado))
     .map(estado => {
       const cantidad = estadoMap.get(estado) ?? 0
@@ -78,29 +102,29 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
     })
 
   // Por proceso
-  const procesoMap = new Map<string, { cantidad: number; horas: number; impacto: number; sin: number }>()
+  const procesoMap = new Map<string, { cantidad: number; horas: number; impacto: Impacto; sin: number }>()
   activos.forEach(r => {
     const k = r.proceso_interno ?? 'SIN_PROCESO'
-    const prev = procesoMap.get(k) ?? { cantidad: 0, horas: 0, impacto: 0, sin: 0 }
+    const prev = procesoMap.get(k) ?? { cantidad: 0, horas: 0, impacto: IMPACTO_CERO, sin: 0 }
     procesoMap.set(k, {
       cantidad: prev.cantidad + 1,
       horas:    prev.horas + (r.horas_estimadas_desarrollo ?? 0),
-      impacto:  prev.impacto + (r.impacto_economico_total_anual ?? 0),
+      impacto:  sumarImpacto(prev.impacto, impactoEstimado(r)),
       sin:      prev.sin + (!r.impacto_economico_total_anual ? 1 : 0),
     })
   })
   const porProceso = Array.from(procesoMap.entries()).sort((a, b) => b[1].cantidad - a[1].cantidad)
-    .map(([proceso, d]) => ({ proceso, label: procesoLabel(proceso), cantidad: d.cantidad, horasEstimadas: d.horas, impactoAnual: d.impacto, sinCuantificar: d.sin }))
+    .map(([proceso, d]) => ({ proceso, label: procesoLabel(proceso), cantidad: d.cantidad, horasEstimadas: d.horas, impacto: d.impacto, impactoAnual: d.impacto.total, sinCuantificar: d.sin }))
 
   // Por alcance
-  const alcanceMap = new Map<string, { cantidad: number; impacto: number }>()
+  const alcanceMap = new Map<string, { cantidad: number; impacto: Impacto }>()
   activos.forEach(r => {
     const k = r.alcance ?? 'SIN_ALCANCE'
-    const prev = alcanceMap.get(k) ?? { cantidad: 0, impacto: 0 }
-    alcanceMap.set(k, { cantidad: prev.cantidad + 1, impacto: prev.impacto + (r.impacto_economico_total_anual ?? 0) })
+    const prev = alcanceMap.get(k) ?? { cantidad: 0, impacto: IMPACTO_CERO }
+    alcanceMap.set(k, { cantidad: prev.cantidad + 1, impacto: sumarImpacto(prev.impacto, impactoEstimado(r)) })
   })
   const porAlcance = Array.from(alcanceMap.entries()).sort((a, b) => b[1].cantidad - a[1].cantidad)
-    .map(([alcance, d]) => ({ alcance, cantidad: d.cantidad, impactoAnual: d.impacto }))
+    .map(([alcance, d]) => ({ alcance, cantidad: d.cantidad, impacto: d.impacto, impactoAnual: d.impacto.total }))
 
   // Por origen
   const origenMap = new Map<string, number>()
@@ -131,19 +155,20 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
   const SIN_FECHA_KEY = 'sin-fecha'
   const entregasMesMap = new Map<string, {
     rows: RowPresidencial[]
-    impactoReal: number
-    impactoEstimado: number
+    impacto: Impacto
+    conReal: number
     horasAhorradasMes: number
   }>()
   activos
     .filter(r => estadoReporte(r.estado) === 'CERRADO')
     .forEach(r => {
       const mes = r.fecha_real_entrega ? r.fecha_real_entrega.substring(0, 7) : SIN_FECHA_KEY
-      const prev = entregasMesMap.get(mes) ?? { rows: [], impactoReal: 0, impactoEstimado: 0, horasAhorradasMes: 0 }
+      const prev = entregasMesMap.get(mes) ?? { rows: [], impacto: IMPACTO_CERO, conReal: 0, horasAhorradasMes: 0 }
+      const imp = impactoEntrega(r)
       entregasMesMap.set(mes, {
         rows: [...prev.rows, r],
-        impactoReal:       prev.impactoReal       + (r.impacto_economico_total_anual_real ?? 0),
-        impactoEstimado:   prev.impactoEstimado   + (r.impacto_economico_total_anual ?? 0),
+        impacto:           sumarImpacto(prev.impacto, imp),
+        conReal:           prev.conReal + (imp.esReal ? 1 : 0),
         horasAhorradasMes: prev.horasAhorradasMes + (r.horas_ahorradas_mes ?? 0),
       })
     })
@@ -162,19 +187,23 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
       sinFecha: mes === SIN_FECHA_KEY,
       cantidad: d.rows.length,
       rows: d.rows.sort((a, b) => (a.nombre_desarrollo ?? '').localeCompare(b.nombre_desarrollo ?? '')),
-      impactoReal:       d.impactoReal,
-      impactoEstimado:   d.impactoEstimado,
+      impacto:           d.impacto,
+      conReal:           d.conReal,
       horasAhorradasMes: d.horasAhorradasMes,
     }))
+  const impactoEntregas = porMesEntrega.reduce((s, m) => sumarImpacto(s, m.impacto), IMPACTO_CERO)
 
   // Top impacto
   const topImpacto = activos
     .filter(r => (r.impacto_economico_total_anual ?? 0) > 0)
     .sort((a, b) => (b.impacto_economico_total_anual ?? 0) - (a.impacto_economico_total_anual ?? 0))
     .slice(0, 10)
-    .map(r => ({ id: r.id, nombre: r.nombre_desarrollo ?? r.identificacion ?? '—', impacto: r.impacto_economico_total_anual ?? 0, proceso: r.proceso_interno ? procesoLabel(r.proceso_interno) : null, alcance: r.alcance ?? null }))
+    .map(r => {
+      const imp = impactoEstimado(r)
+      return { id: r.id, nombre: r.nombre_desarrollo ?? r.identificacion ?? '—', impacto: imp.total, impactoHH: imp.hh, impactoIndirecto: imp.indirecto, proceso: r.proceso_interno ? procesoLabel(r.proceso_interno) : null, alcance: r.alcance ?? null }
+    })
 
-  return { total, totalHoras, impactoTotal, impactoTotalReal, sinCuantificar, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto, porMesEntrega }
+  return { total, totalHoras, impacto, impactoTotal, impactoTotalReal, sinCuantificar, conImpactoHH, conImpactoIndirecto, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto, porMesEntrega, impactoEntregas }
 }
 
 /* ── Filtros state ────────────────────────────────────────────────────────── */
@@ -229,6 +258,71 @@ function Seccion({ titulo, icono: Icon, children, className }: { titulo: string;
         <h3 className="text-sm font-bold text-slate-700">{titulo}</h3>
       </div>
       {children}
+    </div>
+  )
+}
+
+/** Barra apilada: parte horas hombre + parte indirectos, escalada contra `max` */
+function BarraImpacto({ label, impacto, max }: { label: string; impacto: Impacto; max: number }) {
+  const pctHH  = max > 0 ? (impacto.hh / max) * 100 : 0
+  const pctInd = max > 0 ? (impacto.indirecto / max) * 100 : 0
+  return (
+    <div className="space-y-1">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-xs text-slate-600 truncate max-w-[45%]">{label}</span>
+        <span className="text-[11px] text-slate-400">
+          <span className="text-indigo-600">HH {cop(impacto.hh)}</span>
+          {' · '}
+          <span className="text-amber-600">Ind. {cop(impacto.indirecto)}</span>
+          {' · '}
+          <span className="font-bold text-emerald-700">{cop(impacto.total)}</span>
+        </span>
+      </div>
+      <div className="flex h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full bg-indigo-500 transition-all" style={{ width: `${pctHH}%` }} />
+        <div className="h-full bg-amber-400 transition-all" style={{ width: `${pctInd}%` }} />
+      </div>
+    </div>
+  )
+}
+
+function LeyendaImpacto() {
+  return (
+    <div className="flex items-center gap-4 text-[11px] text-slate-500">
+      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-indigo-500" /> Horas hombre</span>
+      <span className="flex items-center gap-1.5"><span className="h-2.5 w-2.5 rounded-full bg-amber-400" /> Indirectos</span>
+    </div>
+  )
+}
+
+/** Tres tarjetas: impacto por horas hombre, por indirectos y total, con su participación */
+function ResumenImpacto({ impacto, conHH, conIndirecto, total }: { impacto: Impacto; conHH: number; conIndirecto: number; total: number }) {
+  const base   = impacto.hh + impacto.indirecto
+  const pctHH  = base > 0 ? Math.round((impacto.hh / base) * 100) : 0
+  const pctInd = base > 0 ? 100 - pctHH : 0
+  const tarjetas = [
+    { label: 'Impacto horas hombre', valor: impacto.hh,        pct: pctHH,  sub: `${conHH} de ${total} requerimientos`,        cls: 'border-indigo-200 bg-indigo-50', text: 'text-indigo-700' },
+    { label: 'Impacto indirectos',   valor: impacto.indirecto, pct: pctInd, sub: `${conIndirecto} de ${total} requerimientos`, cls: 'border-amber-200 bg-amber-50',   text: 'text-amber-700' },
+    { label: 'Impacto total',        valor: impacto.total,     pct: 100,    sub: 'Horas hombre + indirectos',                  cls: 'border-emerald-200 bg-emerald-50', text: 'text-emerald-700' },
+  ]
+  return (
+    <div className="space-y-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        {tarjetas.map(t => (
+          <div key={t.label} className={cn('rounded-xl border p-4', t.cls)}>
+            <p className="text-[11px] font-semibold uppercase tracking-wide text-slate-500">{t.label}</p>
+            <p className={cn('mt-1 text-2xl font-extrabold', t.text)}>{cop(t.valor)}</p>
+            <p className="text-xs text-slate-500">
+              <span className={cn('font-bold', t.text)}>{t.pct}%</span> del total · {t.sub}
+            </p>
+          </div>
+        ))}
+      </div>
+      <div className="flex h-3 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full bg-indigo-500" style={{ width: `${pctHH}%` }} />
+        <div className="h-full bg-amber-400" style={{ width: `${pctInd}%` }} />
+      </div>
+      <LeyendaImpacto />
     </div>
   )
 }
@@ -439,7 +533,8 @@ export default function ReportePresidencialPage() {
       ...estados.codigos(),
       ...todos.map(r => r.estado).filter(Boolean) as string[],
     ].map(estadoReporte))
-    const orden = [...ETAPAS_FLUJO, ...ESTADOS_FUERA_DEL_FLUJO, 'DESISTIDO']
+    set.delete('DESISTIDO')
+    const orden = [...ETAPAS_FLUJO, ...ESTADOS_FUERA_DEL_FLUJO]
     return Array.from(set).sort((a, b) => (orden.indexOf(a) + 1 || 99) - (orden.indexOf(b) + 1 || 99) || a.localeCompare(b))
   }, [todos, estados])
 
@@ -550,7 +645,7 @@ export default function ReportePresidencialPage() {
             <KpiCard
               label="Impacto económico total"
               valor={cop(r.impactoTotal)}
-              sub={`${cop(r.impactoTotal)} / año`}
+              sub={`HH ${cop(r.impacto.hh)} · Indirectos ${cop(r.impacto.indirecto)} / año`}
               icon={TrendingUp}
               color="text-emerald-700"
             />
@@ -562,6 +657,11 @@ export default function ReportePresidencialPage() {
               color={r.sinCuantificar > 0 ? 'text-amber-600' : 'text-emerald-600'}
             />
           </div>
+
+          {/* ── Impacto económico: horas hombre vs indirectos ── */}
+          <Seccion titulo="Impacto económico anual: horas hombre vs indirectos" icono={TrendingUp}>
+            <ResumenImpacto impacto={r.impacto} conHH={r.conImpactoHH} conIndirecto={r.conImpactoIndirecto} total={r.total} />
+          </Seccion>
 
           {/* ── Fila 2: Estado + Alcance ── */}
           <div className="grid gap-4 lg:grid-cols-2">
@@ -588,7 +688,13 @@ export default function ReportePresidencialPage() {
                       {a.alcance}
                     </span>
                     <p className="text-lg font-extrabold text-slate-800">{a.cantidad}</p>
-                    {a.impactoAnual > 0 && <p className="text-[11px] text-emerald-600 font-semibold">{cop(a.impactoAnual)}</p>}
+                    {a.impactoAnual > 0 && (
+                      <>
+                        <p className="text-[11px] text-emerald-600 font-semibold">{cop(a.impactoAnual)}</p>
+                        <p className="text-[10px] text-indigo-600">HH {cop(a.impacto.hh)}</p>
+                        <p className="text-[10px] text-amber-600">Ind. {cop(a.impacto.indirecto)}</p>
+                      </>
+                    )}
                   </div>
                 ))}
               </div>
@@ -642,7 +748,7 @@ export default function ReportePresidencialPage() {
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b border-slate-100">
-                    {['Proceso', 'Requerimientos', 'Horas est.', 'Impacto anual', 'Sin cuantificar', 'Distribución'].map(h => (
+                    {['Proceso', 'Requerimientos', 'Horas est.', 'Impacto HH', 'Impacto indirectos', 'Impacto total', 'Sin cuantificar', 'Distribución'].map(h => (
                       <th key={h} className="pb-2 text-left font-semibold text-slate-400 px-2 first:px-0">{h}</th>
                     ))}
                   </tr>
@@ -656,6 +762,12 @@ export default function ReportePresidencialPage() {
                       </td>
                       <td className="px-2 py-2.5 font-semibold text-indigo-600">
                         {p.horasEstimadas > 0 ? `${p.horasEstimadas.toLocaleString('es-CO')} h` : '—'}
+                      </td>
+                      <td className="px-2 py-2.5 font-semibold text-indigo-600">
+                        {p.impacto.hh > 0 ? cop(p.impacto.hh) : '—'}
+                      </td>
+                      <td className="px-2 py-2.5 font-semibold text-amber-600">
+                        {p.impacto.indirecto > 0 ? cop(p.impacto.indirecto) : '—'}
                       </td>
                       <td className="px-2 py-2.5 font-bold text-emerald-600">
                         {p.impactoAnual > 0 ? cop(p.impactoAnual) : '—'}
@@ -673,6 +785,18 @@ export default function ReportePresidencialPage() {
                     </tr>
                   ))}
                 </tbody>
+                <tfoot>
+                  <tr className="border-t border-slate-200 font-bold">
+                    <td className="pt-2.5 pr-2 text-slate-700">Total</td>
+                    <td className="px-2 pt-2.5 text-center text-blue-700">{r.total}</td>
+                    <td className="px-2 pt-2.5 text-indigo-600">{r.totalHoras > 0 ? `${r.totalHoras.toLocaleString('es-CO')} h` : '—'}</td>
+                    <td className="px-2 pt-2.5 text-indigo-600">{cop(r.impacto.hh)}</td>
+                    <td className="px-2 pt-2.5 text-amber-600">{cop(r.impacto.indirecto)}</td>
+                    <td className="px-2 pt-2.5 text-emerald-700">{cop(r.impacto.total)}</td>
+                    <td className="px-2 pt-2.5 text-center text-amber-700">{r.sinCuantificar || '✓'}</td>
+                    <td />
+                  </tr>
+                </tfoot>
               </table>
             </div>
           </Seccion>
@@ -704,13 +828,23 @@ export default function ReportePresidencialPage() {
                 <p className="text-xs italic text-slate-400">Sin requerimientos con impacto cuantificado</p>
               ) : (
                 <div className="space-y-3">
+                  <LeyendaImpacto />
                   {r.porProceso.filter(p => p.impactoAnual > 0).sort((a, b) => b.impactoAnual - a.impactoAnual).map(p => (
-                    <BarraHorizontal key={p.proceso} label={p.label} valor={p.impactoAnual} max={maxImpactoProceso}
-                      display={cop(p.impactoAnual)} colorBar="bg-emerald-500" />
+                    <BarraImpacto key={p.proceso} label={p.label} impacto={p.impacto} max={maxImpactoProceso} />
                   ))}
-                  <div className="flex items-center justify-between rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2.5 mt-2">
-                    <span className="text-xs font-semibold text-emerald-700">Total impacto anual (filtrado)</span>
-                    <span className="text-base font-extrabold text-emerald-800">{cop(r.impactoTotal)}</span>
+                  <div className="grid grid-cols-3 gap-2 mt-2">
+                    <div className="rounded-xl bg-indigo-50 border border-indigo-200 px-3 py-2">
+                      <p className="text-[10px] font-semibold text-indigo-600">Horas hombre</p>
+                      <p className="text-sm font-extrabold text-indigo-800">{cop(r.impacto.hh)}</p>
+                    </div>
+                    <div className="rounded-xl bg-amber-50 border border-amber-200 px-3 py-2">
+                      <p className="text-[10px] font-semibold text-amber-600">Indirectos</p>
+                      <p className="text-sm font-extrabold text-amber-800">{cop(r.impacto.indirecto)}</p>
+                    </div>
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 px-3 py-2">
+                      <p className="text-[10px] font-semibold text-emerald-700">Total (filtrado)</p>
+                      <p className="text-sm font-extrabold text-emerald-800">{cop(r.impactoTotal)}</p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -742,7 +876,12 @@ export default function ReportePresidencialPage() {
                         </div>
                       </div>
                     </div>
-                    <span className="shrink-0 text-sm font-extrabold text-emerald-700">{cop(t.impacto)}</span>
+                    <div className="shrink-0 text-right">
+                      <p className="text-sm font-extrabold text-emerald-700">{cop(t.impacto)}</p>
+                      <p className="text-[10px] text-slate-400">
+                        <span className="text-indigo-600">HH {cop(t.impactoHH)}</span> · <span className="text-amber-600">Ind. {cop(t.impactoIndirecto)}</span>
+                      </p>
+                    </div>
                   </a>
                 ))}
               </div>
@@ -773,9 +912,12 @@ export default function ReportePresidencialPage() {
                   </div>
                   <div className="text-center">
                     <p className="text-lg font-extrabold text-emerald-700">
-                      {cop(r.porMesEntrega.reduce((s, m) => s + (m.impactoReal || m.impactoEstimado), 0))}
+                      {cop(r.impactoEntregas.total)}
                     </p>
                     <p className="text-[11px] text-emerald-600">Impacto total / año</p>
+                    <p className="text-[10px] text-slate-500">
+                      <span className="text-indigo-600">HH {cop(r.impactoEntregas.hh)}</span> · <span className="text-amber-600">Ind. {cop(r.impactoEntregas.indirecto)}</span>
+                    </p>
                   </div>
                 </div>
 
@@ -797,7 +939,7 @@ export default function ReportePresidencialPage() {
                 <div className="space-y-2 border-t border-slate-100 pt-3">
                   {r.porMesEntrega.map(m => {
                     const isOpen = expandedMeses.has(m.mes)
-                    const impactoMes = m.impactoReal || m.impactoEstimado
+                    const impactoMes = m.impacto.total
                     const accentBg  = m.sinFecha ? 'bg-amber-100'  : 'bg-emerald-100'
                     const accentText = m.sinFecha ? 'text-amber-700' : 'text-emerald-700'
                     return (
@@ -836,17 +978,27 @@ export default function ReportePresidencialPage() {
                         {isOpen && (
                           <div className="border-t border-slate-100 bg-slate-50">
                             {/* Consolidado del mes */}
-                            <div className="grid grid-cols-3 gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-2.5">
+                            <div className="grid grid-cols-5 gap-3 border-b border-slate-200 bg-emerald-50/60 px-4 py-2.5">
                               <div>
                                 <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Entregas</p>
                                 <p className="text-sm font-bold text-slate-700">{m.cantidad}</p>
                               </div>
                               <div>
-                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Impacto / año</p>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Impacto HH / año</p>
+                                <p className="text-sm font-bold text-indigo-600">{m.impacto.hh > 0 ? cop(m.impacto.hh) : '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Indirectos / año</p>
+                                <p className="text-sm font-bold text-amber-600">{m.impacto.indirecto > 0 ? cop(m.impacto.indirecto) : '—'}</p>
+                              </div>
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">Impacto total / año</p>
                                 <p className="text-sm font-bold text-emerald-700">
                                   {impactoMes > 0 ? cop(impactoMes) : '—'}
-                                  {m.impactoReal > 0 && (
-                                    <span className="ml-1 text-[10px] font-medium text-emerald-500">(real)</span>
+                                  {m.conReal > 0 && (
+                                    <span className="ml-1 text-[10px] font-medium text-emerald-500">
+                                      ({m.conReal === m.cantidad ? 'real' : `${m.conReal} real`})
+                                    </span>
                                   )}
                                 </p>
                               </div>
@@ -866,13 +1018,16 @@ export default function ReportePresidencialPage() {
                                   <th className="py-2 px-2 text-left font-semibold text-slate-400">Proceso</th>
                                   <th className="py-2 px-2 text-center font-semibold text-slate-400">Empresa</th>
                                   <th className="py-2 px-2 text-right font-semibold text-slate-400">HH/mes</th>
-                                  <th className="py-2 pr-4 text-right font-semibold text-slate-400">Impacto / año</th>
+                                  <th className="py-2 px-2 text-right font-semibold text-slate-400">Impacto HH</th>
+                                  <th className="py-2 px-2 text-right font-semibold text-slate-400">Indirectos</th>
+                                  <th className="py-2 pr-4 text-right font-semibold text-slate-400">Impacto total / año</th>
                                   {m.sinFecha && <th className="py-2 pr-4 text-right font-semibold text-slate-400">Fecha entrega</th>}
                                 </tr>
                               </thead>
                               <tbody className="divide-y divide-slate-100">
                                 {m.rows.map(row => {
-                                  const impactoRow = row.impacto_economico_total_anual_real ?? row.impacto_economico_total_anual ?? 0
+                                  const impRow = impactoEntrega(row)
+                                  const impactoRow = impRow.total
                                   return (
                                     <tr key={row.id} className="hover:bg-white transition-colors">
                                       <td className="py-2.5 pl-4 pr-2">
@@ -900,6 +1055,12 @@ export default function ReportePresidencialPage() {
                                         {row.horas_ahorradas_mes != null && row.horas_ahorradas_mes > 0
                                           ? `${row.horas_ahorradas_mes.toLocaleString('es-CO')} h`
                                           : <span className="text-slate-300 font-normal">—</span>}
+                                      </td>
+                                      <td className="px-2 py-2.5 text-right font-semibold text-indigo-600">
+                                        {impRow.hh > 0 ? cop(impRow.hh) : <span className="text-slate-300 font-normal">—</span>}
+                                      </td>
+                                      <td className="px-2 py-2.5 text-right font-semibold text-amber-600">
+                                        {impRow.indirecto > 0 ? cop(impRow.indirecto) : <span className="text-slate-300 font-normal">—</span>}
                                       </td>
                                       <td className="py-2.5 pl-2 pr-4 text-right font-bold text-emerald-600">
                                         {impactoRow > 0 ? cop(impactoRow) : <span className="text-slate-300 font-normal">Sin datos</span>}

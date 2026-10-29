@@ -93,8 +93,13 @@ export interface RowPresidencial {
   impacto_economico_total_anual_real: number | null
   ahorro_anual_cop: number | null
   total_beneficios_cualitativos_anual: number | null
+  ahorro_anual_cop_real: number | null
+  total_beneficios_cualitativos_anual_real: number | null
   fecha_real_entrega: string | null
 }
+
+/** Los requerimientos desistidos no forman parte del reporte presidencial */
+const ESTADO_EXCLUIDO = 'DESISTIDO'
 
 export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
   await exigirAccesoAdmin()
@@ -109,9 +114,10 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
       impacto_economico_total_anual,
       impacto_economico_total_anual_real,
       ahorro_anual_cop, total_beneficios_cualitativos_anual,
+      ahorro_anual_cop_real, total_beneficios_cualitativos_anual_real,
       fecha_real_entrega
     `)
-  return (data ?? []) as RowPresidencial[]
+  return ((data ?? []) as RowPresidencial[]).filter(r => r.estado !== ESTADO_EXCLUIDO)
 }
 
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
@@ -133,7 +139,7 @@ export async function fetchReportePresidencial(): Promise<ReportePresidencial> {
       ahorro_anual_cop, total_beneficios_cualitativos_anual
     `)
 
-  const todos: any[] = rows ?? []
+  const todos: any[] = (rows ?? []).filter((r: any) => r.estado !== ESTADO_EXCLUIDO)
   const activos = todos.filter(r => !r.es_borrador)
   const total = activos.length
 
