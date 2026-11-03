@@ -29,6 +29,7 @@ import {
   Gauge,
   Bug,
   SlidersHorizontal,
+  Bot,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
@@ -64,6 +65,8 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/lotes',              label: 'Lotes',             Icon: Layers,           menuResource: 'menu:lotes' },
   { href: '/admin/roles',               label: 'Roles y Permisos',  Icon: ShieldCheck,      menuResource: 'menu:roles' },
   { href: '/admin/configuracion',        label: 'Configuración',     Icon: Settings2,        menuResource: 'menu:configuracion' },
+  // Solo ADMIN_TIN: 'menu:conexion-mcp' no está en recursos-sistema, así que no se puede otorgar a otros roles
+  { href: '/admin/conexion-mcp',         label: 'Conexión MCP',      Icon: Bot,              menuResource: 'menu:conexion-mcp' },
 ]
 
 const NAV_ITEMS_PRESIDENCIA: NavItem[] = [

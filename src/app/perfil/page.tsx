@@ -15,8 +15,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useProcesos, opcionesProceso } from '@/context/ProcesosContext'
 import { formatFecha } from '@/lib/utils'
 import { Loader2, User } from 'lucide-react'
-import { TokensMcp } from '@/components/perfil/TokensMcp'
-
 const perfilSchema = z.object({
   nombre_completo: z.string().min(2, 'Nombre requerido'),
   cargo: z.string().optional(),
@@ -183,9 +181,6 @@ export default function PerfilPage() {
           </div>
         </form>
       </div>
-
-      {/* Tokens para Claude Code (MCP) — solo ADMIN_TIN */}
-      {perfil.rol === 'ADMIN_TIN' && <TokensMcp />}
     </div>
   )
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import { Bot, Check, Copy, KeyRound, Loader2 } from 'lucide-react'
+import { Check, Copy, KeyRound, Loader2 } from 'lucide-react'
 import { generarTokenMcp, listarMisTokensMcp, revocarTokenMcp, type TokenMcp } from '@/actions/mcp-tokens'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -83,11 +83,11 @@ export function TokensMcp() {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6">
       <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-700">
-        <Bot size={16} /> Conexión con Claude Code (MCP)
+        <KeyRound size={16} /> Mis tokens
       </h2>
       <p className="mb-4 text-xs text-slate-500">
-        Genera un token personal para consultar y analizar requerimientos desde Claude Code.
-        Vence a los 90 días. Trátalo como una contraseña: da acceso a todos los requerimientos con tu usuario.
+        Cada token vence a los 90 días. Trátalo como una contraseña: da acceso a todos los requerimientos con tu usuario.
+        Genera uno por equipo y revócalo si dejas de usarlo.
       </p>
 
       <div className="flex items-end gap-2">
