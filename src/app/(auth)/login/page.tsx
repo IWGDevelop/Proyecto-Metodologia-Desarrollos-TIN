@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import Link from 'next/link'
+import { COOKIE_NEXT, destinoSeguro } from '@/lib/redireccion'
 
 const loginSchema = z.object({
   email: z.string().email('Correo electrónico inválido'),
@@ -65,7 +66,7 @@ function LoginPageContent() {
       }
 
       // Hard navigation so the browser sends fresh cookies to the server
-      window.location.href = '/'
+      window.location.assign(destinoSeguro(searchParams.get('next')) ?? '/')
     } catch {
       setError('Error de conexión. Intenta de nuevo.')
     }
@@ -75,6 +76,11 @@ function LoginPageContent() {
     setGoogleLoading(true)
     setError(null)
     try {
+      // El destino viaja en una cookie corta: /auth/callback la lee al volver de Google
+      const destino = destinoSeguro(searchParams.get('next'))
+      document.cookie = destino
+        ? `${COOKIE_NEXT}=${encodeURIComponent(destino)}; path=/; max-age=600; samesite=lax`
+        : `${COOKIE_NEXT}=; path=/; max-age=0`
       const supabase = createClient()
       await supabase.auth.signInWithOAuth({
         provider: 'google',

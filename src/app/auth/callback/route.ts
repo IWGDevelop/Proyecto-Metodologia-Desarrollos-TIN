@@ -2,14 +2,18 @@ import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import { NextRequest, NextResponse } from 'next/server'
 import { registrarSesion } from '@/actions/sesiones'
+import { COOKIE_NEXT, destinoSeguro } from '@/lib/redireccion'
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = request.nextUrl
   const code = searchParams.get('code')
-  const next = searchParams.get('next') ?? '/'
+  const cookieStore = await cookies()
+  // Destino validado: ?next= o la cookie que deja el login antes de ir a Google
+  const next = destinoSeguro(searchParams.get('next'))
+    ?? destinoSeguro(decodeURIComponent(cookieStore.get(COOKIE_NEXT)?.value ?? ''))
+    ?? '/'
 
   if (code) {
-    const cookieStore = await cookies()
 
     const supabase = createServerClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -57,7 +61,9 @@ export async function GET(request: NextRequest) {
           user_agent: request.headers.get('user-agent') ?? null,
         })
 
-        return NextResponse.redirect(`${origin}${next}`)
+        const respuesta = NextResponse.redirect(`${origin}${next}`)
+        respuesta.cookies.delete(COOKIE_NEXT)
+        return respuesta
       }
     }
   }

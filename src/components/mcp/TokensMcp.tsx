@@ -83,7 +83,7 @@ export function TokensMcp() {
   return (
     <div className="rounded-xl border border-slate-200 bg-white p-6">
       <h2 className="mb-1 flex items-center gap-2 text-sm font-semibold text-slate-700">
-        <KeyRound size={16} /> Mis tokens
+        <KeyRound size={16} /> Tokens personales (alternativa para Claude Code)
       </h2>
       <p className="mb-4 text-xs text-slate-500">
         Cada token vence a los 90 días. Trátalo como una contraseña: da acceso a todos los requerimientos con tu usuario.

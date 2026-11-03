@@ -1,23 +1,34 @@
 import { WebStandardStreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js'
-import { autenticarTokenMcp } from '@/lib/mcp/tokens'
+import { autenticarTokenMcp, type UsuarioMcp } from '@/lib/mcp/tokens'
+import { autenticarAccessToken, esAccessTokenOAuth, origenPublico, wwwAuthenticate } from '@/lib/mcp/oauth'
 import { crearServidorMcp } from '@/lib/mcp/servidor'
 
-// Endpoint MCP (Streamable HTTP, sin estado) para conectar Claude Code.
-// Autenticación: `Authorization: Bearer <token>` generado en /perfil (solo ADMIN_TIN).
+// Endpoint MCP (Streamable HTTP, sin estado) para Claude web, Desktop y Code.
+// Autenticación (Authorization: Bearer …), ambas solo para ADMIN_TIN:
+//  - OAuth 2.1: Claude inicia el flujo al recibir el 401 con WWW-Authenticate (ver src/lib/mcp/oauth.ts)
+//  - Token personal generado en /admin/conexion-mcp (para `claude mcp add --header`)
 // Está excluido del redirect a /login en middleware.ts porque valida su propio token.
 
 export const maxDuration = 60
 
+async function autenticar(req: Request, origen: string): Promise<UsuarioMcp | null> {
+  const authorization = req.headers.get('authorization')
+  const token = authorization?.match(/^Bearer\s+(\S+)$/i)?.[1]
+  if (!token) return null
+  if (esAccessTokenOAuth(token)) return autenticarAccessToken(token, origen)
+  return autenticarTokenMcp(authorization)
+}
+
 async function manejar(req: Request): Promise<Response> {
-  const usuario = await autenticarTokenMcp(req.headers.get('authorization'))
+  const origen = origenPublico(req.headers)
+  const usuario = await autenticar(req, origen)
   if (!usuario) {
     return Response.json(
       {
-        jsonrpc: '2.0',
-        error: { code: -32001, message: 'Token inválido, vencido o revocado, o el usuario no es ADMIN_TIN. Genera uno nuevo en /perfil.' },
-        id: null,
+        error: 'invalid_token',
+        error_description: 'Inicia sesión en TIN-FLOW con un usuario ADMIN_TIN para usar este conector.',
       },
-      { status: 401 }
+      { status: 401, headers: { 'WWW-Authenticate': wwwAuthenticate(origen) } }
     )
   }
 

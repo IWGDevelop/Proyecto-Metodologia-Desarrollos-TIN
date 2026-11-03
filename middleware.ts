@@ -8,7 +8,12 @@ export async function middleware(request: NextRequest) {
 
   // /api/mcp y /api/cron validan su propio token Bearer (token MCP y CRON_SECRET).
   // Vercel Cron no envía cookies de sesión: sin esta excepción se redirigían a /login y nunca se ejecutaban.
-  const publicPaths = ['/login', '/auth/callback', '/login/recuperar', '/api/mcp', '/api/cron']
+  // OAuth del MCP: /.well-known y /api/oauth son públicos por especificación; /oauth/autorizar
+  // valida la sesión por su cuenta para conservar la query completa al mandar a /login.
+  const publicPaths = [
+    '/login', '/auth/callback', '/login/recuperar', '/api/mcp', '/api/cron',
+    '/.well-known', '/api/oauth', '/oauth',
+  ]
   const isPublic = publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   // Always allow public paths through — no auth check needed
