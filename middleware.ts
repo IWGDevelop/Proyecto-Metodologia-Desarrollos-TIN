@@ -6,7 +6,8 @@ export async function middleware(request: NextRequest) {
 
   const { pathname } = request.nextUrl
 
-  const publicPaths = ['/login', '/auth/callback', '/login/recuperar']
+  // /api/mcp valida su propio token Bearer (ver src/app/api/mcp/route.ts)
+  const publicPaths = ['/login', '/auth/callback', '/login/recuperar', '/api/mcp']
   const isPublic = publicPaths.some(p => pathname === p || pathname.startsWith(p + '/'))
 
   // Always allow public paths through — no auth check needed
