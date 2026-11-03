@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import { redirect } from 'next/navigation'
-import { Bot, Search, FileText, BarChart2, ListChecks, Globe, Terminal } from 'lucide-react'
+import { Bot, Search, FileText, BarChart2, ListChecks, Globe, Terminal, CalendarRange } from 'lucide-react'
 import { getPerfil } from '@/lib/supabase/auth'
 import { origenPublico, urlRecurso } from '@/lib/mcp/oauth'
 import { TokensMcp } from '@/components/mcp/TokensMcp'
@@ -13,6 +13,7 @@ const HERRAMIENTAS = [
   { nombre: 'buscar_requerimientos', Icon: Search, texto: 'Listados con filtros por texto, estado, proceso, alcance, prioridad o responsable.' },
   { nombre: 'obtener_requerimiento', Icon: FileText, texto: 'Detalle completo con historial de estados, comentarios y planeación.' },
   { nombre: 'metricas_requerimientos', Icon: BarChart2, texto: 'Conteos, atrasos, SLA, más estancados, horas e impacto estimado vs. real.' },
+  { nombre: 'planeacion_requerimientos', Icon: CalendarRange, texto: 'Planeación por etapas: plan vs. real, etapas vigentes hoy, cumplimiento y desviaciones.' },
 ]
 
 const EJEMPLOS = [
@@ -20,6 +21,8 @@ const EJEMPLOS = [
   'Dame las métricas de los requerimientos de OPERACIONES.',
   '¿Cuáles están atrasados frente a su fecha estimada de entrega?',
   'Compara el impacto estimado vs. el real de los requerimientos entregados.',
+  '¿Qué requerimientos tienen etapas planeadas activas hoy?',
+  '¿Cuáles van atrasados frente a su planeación y por cuántos días?',
 ]
 
 function Codigo({ children }: { children: React.ReactNode }) {

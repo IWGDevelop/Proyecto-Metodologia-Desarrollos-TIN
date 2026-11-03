@@ -2,6 +2,19 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js'
 import { z } from 'zod'
 import { createAdminClient } from '@/lib/supabase/admin'
 import type { UsuarioMcp } from './tokens'
+import { calcularReportePlaneacion, type CumplimientoEtapa, type EtapaReporte } from '@/lib/reporte-planeacion'
+import { ETAPAS_PLANEACION } from '@/lib/etapas-planeacion'
+
+const CUMPLIMIENTOS: [CumplimientoEtapa, ...CumplimientoEtapa[]] = [
+  'A_TIEMPO', 'RETRASADA', 'EN_CURSO', 'VENCIDA', 'INICIO_ATRASADO', 'PENDIENTE', 'OMITIDA',
+]
+
+/** La etapa está vigente hoy si hoy cae dentro de su rango planeado (con una sola fecha, ese día) */
+function etapaVigente(e: EtapaReporte, hoy: string): boolean {
+  const inicio = e.planInicio ?? e.planFin
+  const fin = e.planFin ?? e.planInicio
+  return !!inicio && !!fin && inicio <= hoy && hoy <= fin
+}
 
 // Servidor MCP de gestión de requerimientos — Fase 1: solo lectura.
 // Se crea uno por petición (modo sin estado), ya autenticado como `usuario`.
@@ -135,7 +148,8 @@ export function crearServidorMcp(usuario: UsuarioMcp): McpServer {
         `Conectado como ${usuario.nombre} (${usuario.email}, ${usuario.rol}). ` +
         'Fase 1: herramientas de solo lectura. Usa listar_estados para conocer los códigos de estado, ' +
         'buscar_requerimientos para listados filtrados, obtener_requerimiento para el detalle completo ' +
-        'y metricas_requerimientos para análisis agregados. Los montos están en COP.',
+        'metricas_requerimientos para análisis agregados y planeacion_requerimientos para la planeación ' +
+        'por etapas (plan vs. real, vigentes hoy, atrasos). Los montos están en COP.',
     }
   )
 
@@ -328,6 +342,97 @@ export function crearServidorMcp(usuario: UsuarioMcp): McpServer {
           impacto_economico_total_anual_cop: suma(conReal, 'impacto_economico_total_anual_real'),
           estimado_de_esos_mismos_cop: suma(conReal, 'impacto_economico_total_anual'),
         },
+      })
+    }
+  )
+
+  // ── planeacion_requerimientos ─────────────────────────────────────────────
+  server.registerTool(
+    'planeacion_requerimientos',
+    {
+      title: 'Planeación de requerimientos',
+      description:
+        'Planeación por etapas (plan vs. ejecución), con la misma lógica del Reporte de Planeación de TIN-FLOW. ' +
+        'Por defecto devuelve los requerimientos que tienen fechas de planeación registradas. ' +
+        'Con solo_vigentes_hoy=true, solo los que tienen al menos una etapa cuyo rango planeado incluye hoy. ' +
+        'Por etapa entrega fechas planeadas y reales, desviación en días (positivo = retraso), duración y ' +
+        'cumplimiento: A_TIEMPO, RETRASADA, EN_CURSO, VENCIDA (en ejecución con el fin planeado vencido), ' +
+        'INICIO_ATRASADO (no ha iniciado y ya pasó el inicio planeado), PENDIENTE, OMITIDA. ' +
+        `Etapas planeables: ${ETAPAS_PLANEACION.map(e => `${e.estado} (${e.label})`).join(', ')}.`,
+      inputSchema: {
+        solo_vigentes_hoy: z.boolean().optional()
+          .describe('Solo requerimientos con alguna etapa cuyo rango planeado incluye la fecha de hoy'),
+        etapa: z.string().optional().describe('Código de la etapa, ej. EN_DESARROLLO'),
+        cumplimiento: z.array(z.enum(CUMPLIMIENTOS)).optional()
+          .describe('Solo etapas con estos cumplimientos, ej. ["VENCIDA","INICIO_ATRASADO"]'),
+        estados: z.array(z.string()).optional().describe('Estado actual del requerimiento'),
+        proceso_interno: z.string().optional().describe('Código del proceso interno, ej. OPERACIONES'),
+        desarrollador: z.string().optional().describe('Nombre o parte del nombre de un desarrollador asignado'),
+        texto: z.string().optional().describe('Busca en el nombre o número del requerimiento'),
+      },
+      annotations: soloLectura,
+    },
+    async (args) => {
+      let filas
+      try {
+        filas = await calcularReportePlaneacion(createAdminClient())
+      } catch (e) {
+        return error(`Error calculando la planeación: ${(e as Error).message}`)
+      }
+
+      const hoy = hoyBogota()
+      const norm = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+      const filtroEtapa = !!(args.etapa || args.cumplimiento?.length || args.solo_vigentes_hoy)
+
+      const etapaPasa = (e: EtapaReporte) =>
+        e.cumplimiento !== 'SIN_PLAN' &&
+        (!args.etapa || e.estado === args.etapa) &&
+        (!args.cumplimiento?.length || args.cumplimiento.includes(e.cumplimiento)) &&
+        (!args.solo_vigentes_hoy || etapaVigente(e, hoy))
+
+      const resultado = filas
+        .filter(r => r.tienePlan) // solo con planeación propia (el reporte agrega padres/hijos como contexto)
+        .filter(r => !args.estados?.length || args.estados.includes(r.estado))
+        .filter(r => !args.proceso_interno || r.proceso_interno === args.proceso_interno)
+        .filter(r => !args.desarrollador || r.desarrolladores.some(d => norm(d.nombre).includes(norm(args.desarrollador!))))
+        .filter(r => !args.texto || norm(`${r.numero ?? ''} ${r.nombre}`).includes(norm(args.texto)))
+        .map(r => ({ r, etapas: r.etapas.filter(etapaPasa) }))
+        .filter(({ etapas }) => etapas.length > 0)
+        .map(({ r, etapas }) => ({
+          id: r.id,
+          numero: r.numero,
+          prioridad: r.etiqueta,
+          nombre: r.nombre,
+          estado_actual: r.estado,
+          proceso_interno: r.proceso_interno,
+          desarrolladores: r.desarrolladores.map(d => d.nombre),
+          etapas: etapas.map(e => ({
+            etapa: e.estado,
+            nombre: e.label,
+            plan_inicio: e.planInicio,
+            plan_fin: e.planFin,
+            real_inicio: e.realInicio,
+            real_fin: e.realFin,
+            en_curso: e.enCurso,
+            vigente_hoy: etapaVigente(e, hoy),
+            cumplimiento: e.cumplimiento,
+            desviacion_inicio_dias: e.desvInicio,
+            desviacion_fin_dias: e.desvFin,
+            duracion_plan_dias: e.duracionPlan,
+            duracion_real_dias: e.duracionReal,
+            veces_en_etapa: e.veces,
+          })),
+        }))
+
+      const etapasDevueltas = resultado.flatMap(r => r.etapas)
+      return json({
+        fecha_corte: hoy,
+        filtro_por_etapa: filtroEtapa,
+        requerimientos: resultado.length,
+        etapas: etapasDevueltas.length,
+        etapas_por_cumplimiento: contarPor(etapasDevueltas, 'cumplimiento'),
+        etapas_vigentes_hoy: etapasDevueltas.filter(e => e.vigente_hoy).length,
+        detalle: resultado,
       })
     }
   )
