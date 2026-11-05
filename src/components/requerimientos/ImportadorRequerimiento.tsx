@@ -108,7 +108,7 @@ const REFERENCIA = {
   estado:            ['SIN_GESTION', 'ANALISIS', 'EN_DEFINICION_USUARIO', 'EN_DESARROLLO', 'PRUEBAS_USUARIO', 'STAND_BY', 'ENTREGADO', 'CERRADO'],
   proceso_interno:   ['FINANCIERO', 'OPERACIONES', 'COMERCIAL', 'CARGA', 'SISTEMAS_GESTION', 'SERVICIO_CLIENTE', 'COMPRAS', 'SEGUROS', 'DATOS', 'TI', 'GENERAL'],
   impacta:           ['FUNCIONARIOS', 'CLIENTES', 'AMBOS'],
-  rama:              ['TIN', 'IA'],
+  rama:              ['TIN', 'IA', 'IA-TIN'],
   categoria_tarea:   ['DESARROLLO', 'TESTING', 'DOCUMENTAL', 'ADMINISTRATIVO', 'OTRO'],
   cargo_responsable: ['AUXILIAR_TIN', 'ING_DESARROLLO', 'ANALISTA_TIN', 'COORDINADOR_TIN', 'DIRECTOR_CORPORATIVO_TIN'],
 }

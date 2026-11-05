@@ -5,7 +5,7 @@ import { useQuery } from '@tanstack/react-query'
 import {
   TrendingUp, Clock, AlertCircle, BarChart3,
   Building2, Layers, MapPin, Target, Tag, ShieldAlert, X,
-  RefreshCw, CalendarCheck, ChevronDown,
+  RefreshCw, CalendarCheck, ChevronDown, GitBranch,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { fetchDatosRawPresidencial } from '@/actions/reporte-presidencial'
@@ -45,6 +45,17 @@ const ETAPAS_FLUJO = [
 /** Estados que no son una etapa del flujo; se muestran después de Cerrado si tienen requerimientos */
 const ESTADOS_FUERA_DEL_FLUJO = [
   'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'STAND_BY', 'EN_ESPERA_POR_TERCEROS', 'NO_VIABLE',
+]
+
+/** Etapas desde Desarrollo en adelante: las que se reportan por rama */
+const ETAPAS_DESDE_DESARROLLO = ETAPAS_FLUJO.slice(ETAPAS_FLUJO.indexOf('EN_DESARROLLO'))
+
+/** Ramas del desarrollo, en el orden en que se muestran */
+const RAMAS: { value: string; label: string; bar: string; badge: string }[] = [
+  { value: 'TIN',       label: 'TIN',         bar: 'bg-blue-500',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { value: 'IA',        label: 'IA',          bar: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700 border-purple-200' },
+  { value: 'IA-TIN',    label: 'IA-TIN',      bar: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
+  { value: 'SIN_RAMA',  label: 'Sin definir', bar: 'bg-slate-300',  badge: 'bg-slate-100 text-slate-600 border-slate-200' },
 ]
 
 /** "Entregado y en funcionamiento" ahora se llama Cerrado: se reporta como la misma etapa */
@@ -100,6 +111,20 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
         porcentaje: total > 0 ? Math.round((cantidad / total) * 100) : 0,
       }
     })
+
+  // Por rama — solo requerimientos en Desarrollo o etapas posteriores
+  const enDesarrollo = activos.filter(r => ETAPAS_DESDE_DESARROLLO.includes(estadoReporte(r.estado)))
+  const totalRama = enDesarrollo.length
+  const porRama = RAMAS.map(rama => {
+    const filas = enDesarrollo.filter(r => (r.rama ?? 'SIN_RAMA') === rama.value)
+    return {
+      ...rama,
+      cantidad: filas.length,
+      porcentaje: totalRama > 0 ? Math.round((filas.length / totalRama) * 100) : 0,
+      porEstado: ETAPAS_DESDE_DESARROLLO.map(e => filas.filter(r => estadoReporte(r.estado) === e).length),
+    }
+  }).filter(r => r.cantidad > 0 || r.value !== 'SIN_RAMA')
+  const estadosRama = ETAPAS_DESDE_DESARROLLO.map(e => ({ estado: e, label: estadoLabel(e) }))
 
   // Por proceso
   const procesoMap = new Map<string, { cantidad: number; horas: number; impacto: Impacto; sin: number }>()
@@ -203,7 +228,7 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
       return { id: r.id, nombre: r.nombre_desarrollo ?? r.identificacion ?? '—', impacto: imp.total, impactoHH: imp.hh, impactoIndirecto: imp.indirecto, proceso: r.proceso_interno ? procesoLabel(r.proceso_interno) : null, alcance: r.alcance ?? null }
     })
 
-  return { total, totalHoras, impacto, impactoTotal, impactoTotalReal, sinCuantificar, conImpactoHH, conImpactoIndirecto, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto, porMesEntrega, impactoEntregas }
+  return { total, totalHoras, impacto, impactoTotal, impactoTotalReal, sinCuantificar, conImpactoHH, conImpactoIndirecto, porEstado, porProceso, porAlcance, porOrigen, porTipoSolicitud, porPrioridad, topImpacto, porMesEntrega, impactoEntregas, porRama, totalRama, estadosRama }
 }
 
 /* ── Filtros state ────────────────────────────────────────────────────────── */
@@ -700,6 +725,56 @@ export default function ReportePresidencialPage() {
               </div>
             </Seccion>
           </div>
+
+          {/* ── Rama del desarrollo (Desarrollo en adelante) ── */}
+          <Seccion titulo="Requerimientos por rama (Desarrollo en adelante)" icono={GitBranch}>
+            {r.totalRama > 0 ? (
+              <div className="grid gap-6 lg:grid-cols-2">
+                <div className="space-y-3">
+                  {r.porRama.map(ra => (
+                    <BarraHorizontal key={ra.value} label={ra.label} valor={ra.cantidad}
+                      max={Math.max(...r.porRama.map(x => x.cantidad), 1)}
+                      display={`${ra.cantidad} (${ra.porcentaje}%)`} colorBar={ra.bar} />
+                  ))}
+                  <p className="pt-1 text-[11px] text-slate-400">
+                    {r.totalRama} requerimiento{r.totalRama === 1 ? '' : 's'} en {r.estadosRama.map(e => e.label).join(', ')}
+                  </p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b border-slate-100">
+                        <th className="py-2 pr-2 text-left font-semibold text-slate-500">Estado</th>
+                        {r.porRama.map(ra => (
+                          <th key={ra.value} className="px-1 py-2 text-center">
+                            <span className={cn('inline-block rounded-full border px-2 py-0.5 text-[10px] font-bold', ra.badge)}>{ra.label}</span>
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {r.estadosRama.map((e, i) => (
+                        <tr key={e.estado} className="border-b border-slate-50">
+                          <td className="py-1.5 pr-2 text-slate-600">{e.label}</td>
+                          {r.porRama.map(ra => (
+                            <td key={ra.value} className={cn('px-1 py-1.5 text-center font-semibold', ra.porEstado[i] ? 'text-slate-800' : 'text-slate-300')}>
+                              {ra.porEstado[i]}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                      <tr>
+                        <td className="py-1.5 pr-2 font-bold text-slate-700">Total</td>
+                        {r.porRama.map(ra => (
+                          <td key={ra.value} className="px-1 py-1.5 text-center font-extrabold text-slate-800">{ra.cantidad}</td>
+                        ))}
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            ) : <p className="text-xs italic text-slate-400">No hay requerimientos en Desarrollo o etapas posteriores</p>}
+          </Seccion>
 
           {/* ── Fila 3: Tipo solicitud + Prioridad ── */}
           <div className="grid gap-4 lg:grid-cols-2">

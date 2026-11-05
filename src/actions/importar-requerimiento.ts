@@ -27,7 +27,7 @@ export interface ImportarPayload {
     estado?: string
     prioridad?: number | null
     es_borrador?: boolean
-    rama?: 'TIN' | 'IA' | null
+    rama?: 'TIN' | 'IA' | 'IA-TIN' | null
 
     /* ── Solicitante ── */
     empresa?: string | null

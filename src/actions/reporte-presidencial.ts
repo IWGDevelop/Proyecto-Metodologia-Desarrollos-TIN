@@ -96,6 +96,7 @@ export interface RowPresidencial {
   ahorro_anual_cop_real: number | null
   total_beneficios_cualitativos_anual_real: number | null
   fecha_real_entrega: string | null
+  rama: 'TIN' | 'IA' | 'IA-TIN' | null
 }
 
 /** Los requerimientos desistidos no forman parte del reporte presidencial */
@@ -104,7 +105,7 @@ const ESTADO_EXCLUIDO = 'DESISTIDO'
 export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
   await exigirAccesoAdmin()
   const supabase = createAdminClient()
-  const { data } = await (supabase as any)
+  const [{ data }, { data: ramas }] = await Promise.all([(supabase as any)
     .from('v_metricas_requerimientos')
     .select(`
       id, identificacion, nombre_desarrollo,
@@ -116,8 +117,16 @@ export async function fetchDatosRawPresidencial(): Promise<RowPresidencial[]> {
       ahorro_anual_cop, total_beneficios_cualitativos_anual,
       ahorro_anual_cop_real, total_beneficios_cualitativos_anual_real,
       fecha_real_entrega
-    `)
-  return ((data ?? []) as RowPresidencial[]).filter(r => r.estado !== ESTADO_EXCLUIDO)
+    `),
+    // La rama vive en requerimientos (la vista de métricas no la expone)
+    (supabase as any).from('requerimientos').select('id, rama'),
+  ])
+  const ramaPorId = new Map<string, RowPresidencial['rama']>(
+    ((ramas ?? []) as { id: string; rama: RowPresidencial['rama'] }[]).map(r => [r.id, r.rama ?? null]),
+  )
+  return ((data ?? []) as Omit<RowPresidencial, 'rama'>[])
+    .filter(r => r.estado !== ESTADO_EXCLUIDO)
+    .map(r => ({ ...r, rama: ramaPorId.get(r.id) ?? null }))
 }
 
 export async function fetchReportePresidencial(): Promise<ReportePresidencial> {

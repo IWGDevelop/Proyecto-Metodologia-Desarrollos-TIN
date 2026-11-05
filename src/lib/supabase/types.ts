@@ -41,6 +41,7 @@ export interface RegistroHorasTarea {
 
 export type CategoriaTarea = 'DESARROLLO' | 'TESTING' | 'DOCUMENTAL' | 'ADMINISTRATIVO' | 'OTRO'
 export type CargoTIN = 'AUXILIAR_TIN' | 'ING_DESARROLLO' | 'ANALISTA_TIN' | 'COORDINADOR_TIN' | 'DIRECTOR_CORPORATIVO_TIN'
+export type RamaDesarrollo = 'TIN' | 'IA' | 'IA-TIN'
 
 export interface TareaTecnica {
   id: string
@@ -192,7 +193,7 @@ export interface Requerimiento {
   ahorro_mensual_cop: number | null
   ahorro_anual_cop: number | null
   beneficios_cualitativos: BeneficioCualitativo[]
-  rama: 'TIN' | 'IA' | null
+  rama: RamaDesarrollo | null
   fecha_envio_tin: string | null
   fecha_inicio_desarrollo: string | null
   fecha_estimada_entrega: string | null

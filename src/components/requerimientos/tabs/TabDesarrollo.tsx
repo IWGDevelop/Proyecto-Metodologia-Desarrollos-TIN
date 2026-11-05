@@ -849,7 +849,7 @@ function DevCard({
 /* ── Props del componente principal ──────────────────────────────────────── */
 interface Props {
   requerimientoId: string
-  rama: 'TIN' | 'IA' | null
+  rama: 'TIN' | 'IA' | 'IA-TIN' | null
   tareas: TareaTecnica[]
   desarrolladores: RequerimientoDesarrollador[]
   perfilesDisponibles: Perfil[]
@@ -890,7 +890,7 @@ export function TabDesarrollo({
 
   const [tareas, setTareas] = useState<TareaTecnica[]>(tareasIniciales)
   const [devs, setDevs]     = useState<RequerimientoDesarrollador[]>(devIniciales)
-  const [rama, setRama]     = useState<'TIN' | 'IA' | null>(ramaInicial)
+  const [rama, setRama]     = useState<'TIN' | 'IA' | 'IA-TIN' | null>(ramaInicial)
 
   // Horas estimadas de desarrollo
   const [horasEst, setHorasEst]             = useState<number>(horasEstimadasDesarrollo ?? 0)
@@ -1012,7 +1012,7 @@ export function TabDesarrollo({
 
   // ── Acciones sobre desarrolladores ──────────────────────────────────────
   const handleRama = (val: string | null) => {
-    const r = (val as 'TIN' | 'IA' | null) ?? null
+    const r = (val as 'TIN' | 'IA' | 'IA-TIN' | null) ?? null
     setRama(r)
     startTransition(async () => {
       const res = await actualizarRama(requerimientoId, r)
@@ -1063,12 +1063,19 @@ export function TabDesarrollo({
               <SelectContent>
                 <SelectItem value="TIN"><span className="flex items-center gap-2"><Cpu size={13} /> TIN</span></SelectItem>
                 <SelectItem value="IA"><span className="flex items-center gap-2"><Brain size={13} /> IA</span></SelectItem>
+                <SelectItem value="IA-TIN"><span className="flex items-center gap-2"><Brain size={13} /><Cpu size={13} /> IA-TIN</span></SelectItem>
               </SelectContent>
             </Select>
           ) : (
             rama ? (
-              <Badge className={rama === 'IA' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100' : 'bg-blue-100 text-blue-700 hover:bg-blue-100'}>
-                {rama === 'IA' ? <><Brain size={11} className="mr-1" />IA</> : <><Cpu size={11} className="mr-1" />TIN</>}
+              <Badge className={
+                rama === 'IA' ? 'bg-purple-100 text-purple-700 hover:bg-purple-100'
+                : rama === 'IA-TIN' ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-100'
+                : 'bg-blue-100 text-blue-700 hover:bg-blue-100'
+              }>
+                {rama === 'IA' ? <><Brain size={11} className="mr-1" />IA</>
+                  : rama === 'IA-TIN' ? <><Brain size={11} className="mr-1" /><Cpu size={11} className="mr-1" />IA-TIN</>
+                  : <><Cpu size={11} className="mr-1" />TIN</>}
               </Badge>
             ) : <span className="text-sm text-slate-400">Sin definir</span>
           )}

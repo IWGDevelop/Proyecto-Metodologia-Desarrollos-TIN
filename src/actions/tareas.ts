@@ -222,7 +222,7 @@ export async function eliminarRegistroHoras(id: string): Promise<{ ok: boolean }
 
 export async function actualizarRama(
   requerimientoId: string,
-  rama: 'TIN' | 'IA' | null
+  rama: 'TIN' | 'IA' | 'IA-TIN' | null
 ): Promise<{ ok: boolean; error?: string }> {
   try {
     const supabase = createAdminClient()
