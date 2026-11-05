@@ -508,6 +508,118 @@ function FiltrosPresidencial({ filtros, onChange, totalFiltrado, totalBase, esta
 }
 
 /* ── Página principal ────────────────────────────────────────────────────── */
+/* ── Detalle de lo trabajado por frente del departamento (rama) ─────────── */
+function DetallePorFrente({ rows, procesoLabel, estadoLabel }: {
+  rows: RowPresidencial[]
+  procesoLabel: (p: string) => string
+  estadoLabel: (e: string) => string
+}) {
+  const conRama = rows.filter(r => r.rama)
+  const [sel, setSel] = useState<string>(() => RAMAS.find(ra => conRama.some(r => r.rama === ra.value))?.value ?? 'TIN')
+  const rama = RAMAS.find(ra => ra.value === sel) ?? RAMAS[0]
+
+  // Etapas más avanzadas primero (lo cerrado arriba), luego por nombre
+  const filas = conRama
+    .filter(r => r.rama === sel)
+    .map(r => ({ r, estado: estadoReporte(r.estado), imp: impactoEstimado(r) }))
+    .sort((a, b) => ETAPAS_FLUJO.indexOf(b.estado) - ETAPAS_FLUJO.indexOf(a.estado)
+      || (a.r.nombre_desarrollo ?? '').localeCompare(b.r.nombre_desarrollo ?? ''))
+
+  const cerrados = filas.filter(f => f.estado === 'CERRADO').length
+  const horas    = filas.reduce((s, f) => s + (f.r.horas_estimadas_desarrollo ?? 0), 0)
+  const impacto  = filas.reduce((s, f) => s + f.imp.total, 0)
+
+  if (conRama.length === 0) {
+    return <p className="text-xs italic text-slate-400">No hay requerimientos con rama de desarrollo asignada</p>
+  }
+
+  const kpis = [
+    { label: 'Requerimientos',     valor: String(filas.length),            color: 'text-slate-800' },
+    { label: 'Cerrados',           valor: String(cerrados),                color: 'text-teal-700' },
+    { label: 'En curso',           valor: String(filas.length - cerrados), color: 'text-indigo-700' },
+    { label: 'Horas estimadas',    valor: horas.toLocaleString('es-CO'),   color: 'text-slate-800' },
+    { label: 'Impacto anual est.', valor: cop(impacto),                    color: 'text-emerald-700' },
+  ]
+
+  return (
+    <div className="space-y-4">
+      {/* Selector de frente */}
+      <div className="flex flex-wrap gap-2">
+        {RAMAS.map(ra => {
+          const n = conRama.filter(r => r.rama === ra.value).length
+          return (
+            <button key={ra.value} type="button" onClick={() => setSel(ra.value)}
+              className={cn('rounded-full border px-3 py-1 text-xs font-bold transition-colors',
+                sel === ra.value ? ra.badge : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50')}>
+              {ra.label} <span className="ml-1 font-semibold opacity-70">{n}</span>
+            </button>
+          )
+        })}
+      </div>
+
+      {/* Resumen del frente */}
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+        {kpis.map(k => (
+          <div key={k.label} className="rounded-xl border border-slate-100 bg-slate-50 p-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-slate-400">{k.label}</p>
+            <p className={cn('mt-0.5 text-lg font-extrabold', k.color)}>{k.valor}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Detalle */}
+      {filas.length > 0 ? (
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-100 text-left text-slate-500">
+                <th className="py-2 pr-3 font-semibold">Requerimiento</th>
+                <th className="py-2 pr-3 font-semibold">Estado</th>
+                <th className="py-2 pr-3 font-semibold">Empresa</th>
+                <th className="py-2 pr-3 font-semibold">Proceso</th>
+                <th className="py-2 pr-3 text-right font-semibold">Horas est.</th>
+                <th className="py-2 pr-3 text-right font-semibold">Impacto anual</th>
+                <th className="py-2 text-right font-semibold">Entrega</th>
+              </tr>
+            </thead>
+            <tbody>
+              {filas.map(({ r, estado, imp }) => (
+                <tr key={r.id} className="border-b border-slate-50 hover:bg-slate-50">
+                  <td className="max-w-[18rem] py-2 pr-3">
+                    <a href={`/admin/requerimientos/${r.id}`} className="block truncate font-semibold text-slate-700 hover:text-blue-600">
+                      {r.nombre_desarrollo ?? r.identificacion}
+                    </a>
+                    <span className="text-[10px] text-slate-400">{r.identificacion}</span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    <span className="inline-flex items-center gap-1.5 whitespace-nowrap text-slate-600">
+                      <span className={cn('h-2 w-2 shrink-0 rounded-full', ESTADO_BAR[estado] ?? 'bg-slate-400')} />
+                      {estadoLabel(estado)}
+                    </span>
+                  </td>
+                  <td className="py-2 pr-3">
+                    {r.alcance ? (
+                      <span className={cn('rounded-full border px-1.5 py-px text-[10px] font-bold', ALCANCE_COLOR[r.alcance]?.badge ?? 'bg-slate-100 text-slate-500 border-slate-300')}>
+                        {r.alcance}
+                      </span>
+                    ) : <span className="text-slate-300">—</span>}
+                  </td>
+                  <td className="py-2 pr-3 text-slate-600">{r.proceso_interno ? procesoLabel(r.proceso_interno) : <span className="text-slate-300">—</span>}</td>
+                  <td className="py-2 pr-3 text-right text-slate-700">{r.horas_estimadas_desarrollo ? r.horas_estimadas_desarrollo.toLocaleString('es-CO') : <span className="text-slate-300">—</span>}</td>
+                  <td className="py-2 pr-3 text-right font-semibold text-emerald-700">{imp.total > 0 ? cop(imp.total) : <span className="font-normal text-slate-300">—</span>}</td>
+                  <td className="whitespace-nowrap py-2 text-right text-slate-600">
+                    {r.fecha_real_entrega ? new Date(r.fecha_real_entrega.slice(0, 10) + 'T00:00:00').toLocaleDateString('es-CO') : <span className="text-slate-300">—</span>}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ) : <p className="text-xs italic text-slate-400">No hay requerimientos en el frente {rama.label}</p>}
+    </div>
+  )
+}
+
 export default function ReportePresidencialPage() {
   const procesos = useProcesos()
   const estados = useEstados()
@@ -773,6 +885,11 @@ export default function ReportePresidencialPage() {
                 </div>
               </div>
             ) : <p className="text-xs italic text-slate-400">No hay requerimientos con rama de desarrollo asignada</p>}
+          </Seccion>
+
+          {/* ── Detalle de lo trabajado por frente del departamento ── */}
+          <Seccion titulo="Detalle de lo trabajado por frente del departamento" icono={GitBranch}>
+            <DetallePorFrente rows={activos} procesoLabel={procesos.label} estadoLabel={estados.label} />
           </Seccion>
 
           {/* ── Fila 3: Tipo solicitud + Prioridad ── */}
