@@ -47,15 +47,11 @@ const ESTADOS_FUERA_DEL_FLUJO = [
   'EN_ESPERA_DE_COMITE_DE_PRIORIDADES', 'STAND_BY', 'EN_ESPERA_POR_TERCEROS', 'NO_VIABLE',
 ]
 
-/** Etapas desde Desarrollo en adelante: las que se reportan por rama */
-const ETAPAS_DESDE_DESARROLLO = ETAPAS_FLUJO.slice(ETAPAS_FLUJO.indexOf('EN_DESARROLLO'))
-
 /** Ramas del desarrollo, en el orden en que se muestran */
 const RAMAS: { value: string; label: string; bar: string; badge: string }[] = [
   { value: 'TIN',       label: 'TIN',         bar: 'bg-blue-500',   badge: 'bg-blue-100 text-blue-700 border-blue-200' },
   { value: 'IA',        label: 'IA',          bar: 'bg-purple-500', badge: 'bg-purple-100 text-purple-700 border-purple-200' },
   { value: 'IA-TIN',    label: 'IA-TIN',      bar: 'bg-indigo-500', badge: 'bg-indigo-100 text-indigo-700 border-indigo-200' },
-  { value: 'SIN_RAMA',  label: 'Sin definir', bar: 'bg-slate-300',  badge: 'bg-slate-100 text-slate-600 border-slate-200' },
 ]
 
 /** "Entregado y en funcionamiento" ahora se llama Cerrado: se reporta como la misma etapa */
@@ -112,19 +108,22 @@ function computar(activos: RowPresidencial[], procesoLabel: (p: string) => strin
       }
     })
 
-  // Por rama — solo requerimientos en Desarrollo o etapas posteriores
-  const enDesarrollo = activos.filter(r => ETAPAS_DESDE_DESARROLLO.includes(estadoReporte(r.estado)))
-  const totalRama = enDesarrollo.length
+  // Por rama (frente del departamento) — todos los requerimientos con rama asignada, en cualquier estado
+  const conRama = activos.filter(r => r.rama)
+  const totalRama = conRama.length
+  const estadosRama = porEstado
+    .map(e => e.estado)
+    .filter(e => conRama.some(r => estadoReporte(r.estado) === e))
+    .map(e => ({ estado: e, label: estadoLabel(e) }))
   const porRama = RAMAS.map(rama => {
-    const filas = enDesarrollo.filter(r => (r.rama ?? 'SIN_RAMA') === rama.value)
+    const filas = conRama.filter(r => r.rama === rama.value)
     return {
       ...rama,
       cantidad: filas.length,
       porcentaje: totalRama > 0 ? Math.round((filas.length / totalRama) * 100) : 0,
-      porEstado: ETAPAS_DESDE_DESARROLLO.map(e => filas.filter(r => estadoReporte(r.estado) === e).length),
+      porEstado: estadosRama.map(e => filas.filter(r => estadoReporte(r.estado) === e.estado).length),
     }
-  }).filter(r => r.cantidad > 0 || r.value !== 'SIN_RAMA')
-  const estadosRama = ETAPAS_DESDE_DESARROLLO.map(e => ({ estado: e, label: estadoLabel(e) }))
+  })
 
   // Por proceso
   const procesoMap = new Map<string, { cantidad: number; horas: number; impacto: Impacto; sin: number }>()
@@ -726,8 +725,8 @@ export default function ReportePresidencialPage() {
             </Seccion>
           </div>
 
-          {/* ── Rama del desarrollo (Desarrollo en adelante) ── */}
-          <Seccion titulo="Requerimientos por rama (Desarrollo en adelante)" icono={GitBranch}>
+          {/* ── Rama del desarrollo: requerimientos por frente del departamento ── */}
+          <Seccion titulo="Requerimiento por frente del departamento" icono={GitBranch}>
             {r.totalRama > 0 ? (
               <div className="grid gap-6 lg:grid-cols-2">
                 <div className="space-y-3">
@@ -737,7 +736,7 @@ export default function ReportePresidencialPage() {
                       display={`${ra.cantidad} (${ra.porcentaje}%)`} colorBar={ra.bar} />
                   ))}
                   <p className="pt-1 text-[11px] text-slate-400">
-                    {r.totalRama} requerimiento{r.totalRama === 1 ? '' : 's'} en {r.estadosRama.map(e => e.label).join(', ')}
+                    {r.totalRama} requerimiento{r.totalRama === 1 ? '' : 's'} con rama de desarrollo asignada
                   </p>
                 </div>
                 <div className="overflow-x-auto">
@@ -773,7 +772,7 @@ export default function ReportePresidencialPage() {
                   </table>
                 </div>
               </div>
-            ) : <p className="text-xs italic text-slate-400">No hay requerimientos en Desarrollo o etapas posteriores</p>}
+            ) : <p className="text-xs italic text-slate-400">No hay requerimientos con rama de desarrollo asignada</p>}
           </Seccion>
 
           {/* ── Fila 3: Tipo solicitud + Prioridad ── */}
