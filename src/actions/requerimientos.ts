@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import type { Requerimiento } from '@/lib/supabase/types'
-import { AVANCE_POR_ESTADO } from '@/lib/constants'
+import { AVANCE_POR_ESTADO, MOTIVOS_DESISTIMIENTO } from '@/lib/constants'
 import { sendEmail } from '@/lib/email'
 import { templateCambioEstado, templateNuevoComentario, subjectReq } from '@/lib/email-templates'
 import { getEmailsActivos, getConfigParam } from '@/actions/config-email'
@@ -144,10 +144,23 @@ export async function cambiarEstado(
   id: string,
   estado: string,
   observacion?: string,
-  fechaTransicion?: string  // YYYY-MM-DD; reemplaza la fecha auto-asignada del estado destino
+  fechaTransicion?: string,  // YYYY-MM-DD; reemplaza la fecha auto-asignada del estado destino
+  motivoDesistimiento?: string
 ) {
   await exigirAccesoAdmin()
   const supabase = createAdminClient()
+
+  // Al desistir, el motivo es obligatorio (y si es "Otro", también la observación)
+  if (estado === 'DESISTIDO') {
+    if (!motivoDesistimiento || !(MOTIVOS_DESISTIMIENTO as readonly string[]).includes(motivoDesistimiento)) {
+      throw new Error('Selecciona el motivo del desistimiento')
+    }
+    if (motivoDesistimiento === 'Otro' && !observacion?.trim()) {
+      throw new Error('Describe el motivo del desistimiento en la observación')
+    }
+    observacion = `Motivo del desistimiento: ${motivoDesistimiento}`
+      + (observacion?.trim() ? ` — ${observacion.trim()}` : '')
+  }
 
   // Obtener datos del requerimiento antes del cambio
   const { data: req } = await (supabase as any)
@@ -168,7 +181,15 @@ export async function cambiarEstado(
   if (estado === 'ENTREGADO')     updates.fecha_real_entrega       = fecha
   if (estado === 'CERRADO')       updates.fecha_cierre             = fecha
 
-  const { error } = await (supabase as any).from('requerimientos').update(updates).eq('id', id)
+  if (estado === 'DESISTIDO') updates.motivo_desistimiento = motivoDesistimiento
+
+  let { error } = await (supabase as any).from('requerimientos').update(updates).eq('id', id)
+  // Si la migración de motivo_desistimiento no se ha ejecutado, reintenta sin la columna
+  // (el motivo queda igual registrado en la observación del historial)
+  if (error && 'motivo_desistimiento' in updates && error.message?.includes('motivo_desistimiento')) {
+    delete updates.motivo_desistimiento
+    ;({ error } = await (supabase as any).from('requerimientos').update(updates).eq('id', id))
+  }
   if (error) throw new Error(`Error al cambiar estado: ${error.message}`)
 
   if (observacion?.trim()) {

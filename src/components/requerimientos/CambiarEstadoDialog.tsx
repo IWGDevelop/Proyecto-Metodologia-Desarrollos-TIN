@@ -15,6 +15,7 @@ import {
 import { useEstados } from '@/context/EstadosContext'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { toast } from 'sonner'
+import { MotivoDesistimientoSelect, errorMotivoDesistimiento } from './MotivoDesistimientoSelect'
 import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 import type { Estado } from '@/lib/supabase/types'
@@ -47,19 +48,29 @@ export function CambiarEstadoDialog({
   const [fechaTransicion, setFechaTransicion] = useState(hoyISO)
   const [isPending, startTransition] = useTransition()
 
+  const [motivoDesistimiento, setMotivoDesistimiento] = useState('')
+
   const tieneFecha = nuevoEstado in FECHA_LABEL
+  const esDesistido = nuevoEstado === 'DESISTIDO'
+  const errorMotivo = esDesistido ? errorMotivoDesistimiento(motivoDesistimiento, observacion) : null
 
   const handleSubmit = () => {
     if (nuevoEstado === estadoActual) {
       toast.error('El estado seleccionado es igual al actual')
       return
     }
+    if (errorMotivo) {
+      toast.error(errorMotivo)
+      return
+    }
     startTransition(async () => {
       try {
         await cambiarEstado(
           requerimientoId, nuevoEstado, observacion,
-          tieneFecha ? fechaTransicion : undefined
+          tieneFecha ? fechaTransicion : undefined,
+          esDesistido ? motivoDesistimiento : undefined
         )
+        setMotivoDesistimiento('')
         toast.success(`Estado cambiado a "${getEstadoCfg(nuevoEstado).label}"`)
         onOpenChange(false)
         setObservacion('')
@@ -139,9 +150,17 @@ export function CambiarEstadoDialog({
             </div>
           )}
 
+          {esDesistido && (
+            <MotivoDesistimientoSelect value={motivoDesistimiento} onChange={setMotivoDesistimiento} />
+          )}
+
           {nuevoEstado !== 'STAND_BY' && (
             <div className="space-y-1.5">
-              <Label htmlFor="observacion">Observación (opcional)</Label>
+              <Label htmlFor="observacion">
+                {esDesistido && motivoDesistimiento === 'Otro'
+                  ? <span>Describe el motivo <span className="text-red-500">*</span></span>
+                  : 'Observación (opcional)'}
+              </Label>
               <Textarea
                 id="observacion"
                 placeholder="Agrega una observación al cambio de estado..."
@@ -159,7 +178,7 @@ export function CambiarEstadoDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || (nuevoEstado === 'STAND_BY' && !observacion.trim())}
+            disabled={isPending || (nuevoEstado === 'STAND_BY' && !observacion.trim()) || !!errorMotivo}
             className="bg-blue-600 hover:bg-blue-700"
           >
             {isPending ? 'Guardando...' : 'Confirmar cambio'}

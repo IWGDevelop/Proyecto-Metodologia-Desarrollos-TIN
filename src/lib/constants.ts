@@ -228,6 +228,15 @@ export const AVANCE_POR_ESTADO: Record<string, number> = {
   NO_VIABLE:                          0,
 }
 
+// ─── Motivos de desistimiento ────────────────────────────────────────────────
+export const MOTIVOS_DESISTIMIENTO = [
+  'Cambio de prioridad',
+  'Inviabilidad técnica',
+  'Falta de respuesta del solicitante',
+  'Otro',
+] as const
+export type MotivoDesistimiento = (typeof MOTIVOS_DESISTIMIENTO)[number]
+
 // ─── Prioridades ─────────────────────────────────────────────────────────────
 export const PRIORIDADES: Record<
   number,

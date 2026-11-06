@@ -17,6 +17,7 @@ import { KanbanColumna } from './KanbanColumna'
 import { KanbanCard } from './KanbanCard'
 import { KanbanFiltros, type FiltrosKanban } from './KanbanFiltros'
 import { KanbanCardDetail } from './KanbanCardDetail'
+import { MotivoDesistimientoSelect, errorMotivoDesistimiento } from '@/components/requerimientos/MotivoDesistimientoSelect'
 import { Skeleton } from '@/components/ui/skeleton'
 import { ESTADOS, COLOR_PALETTE } from '@/lib/constants'
 import { cambiarEstado } from '@/actions/requerimientos'
@@ -82,6 +83,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   const [activeCard, setActiveCard] = useState<MetricaRequerimiento | null>(null)
   const [pendingMove, setPendingMove] = useState<PendingMove | null>(null)
   const [observacion, setObservacion] = useState('')
+  const [motivoDesistimiento, setMotivoDesistimiento] = useState('')
   const [confirmando, setConfirmando] = useState(false)
   // Impacto real al finalizar
   const [showImpactoReal, setShowImpactoReal] = useState(false)
@@ -133,6 +135,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     if (!card || fromEstado === toEstado) return
     setPendingMove({ card, fromEstado, toEstado })
     setObservacion('')
+    setMotivoDesistimiento('')
     setShowImpactoReal(false)
     // Pre-fill impacto real con los estimados del card
     setHorasMesReal((card as any).horas_ahorradas_mes ?? 0)
@@ -142,10 +145,17 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   const registraImpacto = !!pendingMove && ESTADOS_FINALIZADOS.includes(pendingMove.toEstado) && showImpactoReal && horasMesReal > 0
   const variacionHH     = calcularVariacionHH((pendingMove?.card as any)?.horas_ahorradas_mes, horasMesReal)
   const faltaJustificacionHH = registraImpacto && variacionHH !== null && variacionHH < 0 && !justificacionHH.trim()
+  const esDesistido = pendingMove?.toEstado === 'DESISTIDO'
+  const errorMotivo = esDesistido ? errorMotivoDesistimiento(motivoDesistimiento, observacion) : null
 
   const confirmarCambio = async () => {
     if (!pendingMove) return
     const { card, fromEstado, toEstado } = pendingMove
+
+    if (errorMotivo) {
+      toast.error(errorMotivo)
+      return
+    }
 
     if (toEstado === 'STAND_BY' && !observacion.trim()) {
       toast.error('El motivo del stand by es requerido')
@@ -170,7 +180,10 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     setConfirmando(true)
 
     try {
-      await cambiarEstado(card.id, toEstado, observacion || undefined)
+      await cambiarEstado(
+        card.id, toEstado, observacion || undefined, undefined,
+        toEstado === 'DESISTIDO' ? motivoDesistimiento : undefined
+      )
       // Guardar impacto real si se ingresaron datos y es estado finalizado
       if (registraImpacto) {
         const ahorroMensual = Math.round(horasMesReal * valorHoraReal)
@@ -195,6 +208,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
     } finally {
       setConfirmando(false)
       setObservacion('')
+      setMotivoDesistimiento('')
       setShowImpactoReal(false)
       setJustificacionHH('')
     }
@@ -203,6 +217,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
   const cancelarCambio = () => {
     setPendingMove(null)
     setObservacion('')
+    setMotivoDesistimiento('')
     setShowImpactoReal(false)
     setJustificacionHH('')
   }
@@ -269,10 +284,15 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
                     {getLabel(pendingMove.toEstado, columnas)}
                   </span>
                 </div>
+                {esDesistido && (
+                  <MotivoDesistimientoSelect value={motivoDesistimiento} onChange={setMotivoDesistimiento} />
+                )}
                 <div className="space-y-1.5">
                   <Label htmlFor="obs-kanban" className="text-sm">
                     {pendingMove.toEstado === 'STAND_BY'
                       ? <><span>Motivo del stand by</span> <span className="text-red-500">*</span></>
+                      : esDesistido && motivoDesistimiento === 'Otro'
+                      ? <><span>Describe el motivo</span> <span className="text-red-500">*</span></>
                       : 'Observación (opcional)'}
                   </Label>
                   <Textarea
@@ -375,7 +395,7 @@ export function KanbanBoard({ isAdmin = false }: { isAdmin?: boolean }) {
             <Button variant="outline" onClick={cancelarCambio} disabled={confirmando}>Cancelar</Button>
             <Button
               onClick={confirmarCambio}
-              disabled={confirmando || (pendingMove?.toEstado === 'STAND_BY' && !observacion.trim()) || faltaJustificacionHH}
+              disabled={confirmando || (pendingMove?.toEstado === 'STAND_BY' && !observacion.trim()) || faltaJustificacionHH || !!errorMotivo}
               className="bg-blue-600 hover:bg-blue-700"
             >
               {confirmando ? 'Guardando...' : 'Confirmar cambio'}

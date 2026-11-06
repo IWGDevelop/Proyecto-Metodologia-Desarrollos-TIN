@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { cambiarEstado } from '@/actions/requerimientos'
 import { toast } from 'sonner'
+import { MotivoDesistimientoSelect, errorMotivoDesistimiento } from './MotivoDesistimientoSelect'
 
 const ESTADOS_FINALES = ['DESISTIDO', 'CERRADO', 'ENTREGADO']
 
@@ -23,14 +24,18 @@ export function DesistirBtn({ requerimientoId, estadoActual }: Props) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
   const [observacion, setObservacion] = useState('')
+  const [motivo, setMotivo] = useState('')
   const [isPending, startT] = useTransition()
 
   if (ESTADOS_FINALES.includes(estadoActual)) return null
 
+  const errorMotivo = errorMotivoDesistimiento(motivo, observacion)
+
   const handleConfirmar = () => {
+    if (errorMotivo) { toast.error(errorMotivo); return }
     startT(async () => {
       try {
-        await cambiarEstado(requerimientoId, 'DESISTIDO', observacion || undefined)
+        await cambiarEstado(requerimientoId, 'DESISTIDO', observacion || undefined, undefined, motivo)
         toast.success('Solicitud marcada como desistida')
         setOpen(false)
         router.refresh()
@@ -45,7 +50,7 @@ export function DesistirBtn({ requerimientoId, estadoActual }: Props) {
       <Button
         size="sm"
         variant="outline"
-        onClick={() => { setObservacion(''); setOpen(true) }}
+        onClick={() => { setObservacion(''); setMotivo(''); setOpen(true) }}
         className="gap-1.5 border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700"
       >
         <Ban size={13} /> Desistir solicitud
@@ -65,8 +70,14 @@ export function DesistirBtn({ requerimientoId, estadoActual }: Props) {
               </p>
             </div>
 
+            <MotivoDesistimientoSelect value={motivo} onChange={setMotivo} />
+
             <div className="space-y-1.5">
-              <Label htmlFor="motivo">Motivo del desistimiento (opcional)</Label>
+              <Label htmlFor="motivo">
+                {motivo === 'Otro'
+                  ? <span>Describe el motivo <span className="text-red-500">*</span></span>
+                  : 'Observación (opcional)'}
+              </Label>
               <Textarea
                 id="motivo"
                 rows={3}
@@ -83,7 +94,7 @@ export function DesistirBtn({ requerimientoId, estadoActual }: Props) {
             </Button>
             <Button
               onClick={handleConfirmar}
-              disabled={isPending}
+              disabled={isPending || !!errorMotivo}
               className="gap-1.5 bg-red-600 hover:bg-red-700"
             >
               <Ban size={13} />

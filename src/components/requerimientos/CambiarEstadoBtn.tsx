@@ -15,6 +15,7 @@ import { cambiarEstado } from '@/actions/requerimientos'
 import { guardarImpactoReal } from '@/actions/impacto-real'
 import { COLOR_PALETTE } from '@/lib/constants'
 import { toast } from 'sonner'
+import { MotivoDesistimientoSelect, errorMotivoDesistimiento } from './MotivoDesistimientoSelect'
 import { cn, formatCOP, calcularVariacionHH } from '@/lib/utils'
 import type { EstadoKanban } from '@/lib/supabase/types'
 
@@ -41,6 +42,7 @@ export function CambiarEstadoBtn({
   const [open, setOpen] = useState(false)
   const [estadoDestino, setEstadoDestino] = useState<EstadoKanban | null>(null)
   const [observacion, setObservacion] = useState('')
+  const [motivoDesistimiento, setMotivoDesistimiento] = useState('')
   const [isPending, startT] = useTransition()
 
   const hoyISO = () => new Date().toISOString().split('T')[0]
@@ -65,6 +67,7 @@ export function CambiarEstadoBtn({
   const abrirDialog = (e: EstadoKanban) => {
     setEstadoDestino(e)
     setObservacion('')
+    setMotivoDesistimiento('')
     setShowImpacto(false)
     setHorasMes(horasEstimadas ?? 0)
     setValorHora(valorHoraEstimado ?? 0)
@@ -76,9 +79,15 @@ export function CambiarEstadoBtn({
   const registraImpacto = !!estadoDestino && ESTADOS_FINALIZADOS.includes(estadoDestino.nombre) && showImpacto && horasMes > 0
   const variacionHH     = calcularVariacionHH(horasEstimadas, horasMes)
   const faltaJustificacionHH = registraImpacto && variacionHH !== null && variacionHH < 0 && !justificacionHH.trim()
+  const esDesistido = estadoDestino?.nombre === 'DESISTIDO'
+  const errorMotivo = esDesistido ? errorMotivoDesistimiento(motivoDesistimiento, observacion) : null
 
   const handleConfirmar = () => {
     if (!estadoDestino) return
+    if (errorMotivo) {
+      toast.error(errorMotivo)
+      return
+    }
     if (estadoDestino.nombre === 'STAND_BY' && !observacion.trim()) {
       toast.error('El motivo del stand by es obligatorio')
       return
@@ -92,7 +101,8 @@ export function CambiarEstadoBtn({
       try {
         await cambiarEstado(
           requerimientoId, estadoDestino.nombre, observacion || undefined,
-          estadoDestino.nombre in FECHA_LABEL ? fechaTransicion : undefined
+          estadoDestino.nombre in FECHA_LABEL ? fechaTransicion : undefined,
+          esDesistido ? motivoDesistimiento : undefined
         )
 
         if (registraImpacto) {
@@ -203,11 +213,18 @@ export function CambiarEstadoBtn({
                 </div>
               )}
 
+              {/* Motivo del desistimiento */}
+              {esDesistido && (
+                <MotivoDesistimientoSelect value={motivoDesistimiento} onChange={setMotivoDesistimiento} />
+              )}
+
               {/* Observación */}
               <div className="space-y-1.5">
                 <Label className="text-sm">
                   {estadoDestino.nombre === 'STAND_BY'
                     ? <span>Motivo del stand by <span className="text-red-500">*</span></span>
+                    : esDesistido && motivoDesistimiento === 'Otro'
+                    ? <span>Describe el motivo <span className="text-red-500">*</span></span>
                     : 'Observación (opcional)'}
                 </Label>
                 <Textarea
@@ -320,7 +337,8 @@ export function CambiarEstadoBtn({
               disabled={
                 isPending ||
                 (estadoDestino?.nombre === 'STAND_BY' && !observacion.trim()) ||
-                faltaJustificacionHH
+                faltaJustificacionHH ||
+                !!errorMotivo
               }
               className="bg-blue-600 hover:bg-blue-700"
             >
