@@ -105,6 +105,8 @@ export function SubirAdjuntos({ carpeta, value, onChange, requerirImagen, disabl
   useEffect(() => {
     if (disabled) return
     const onPaste = (e: ClipboardEvent) => {
+      // El editor de comentarios ya manejó el pegado (la captura queda dentro del texto)
+      if (e.defaultPrevented) return
       const items = e.clipboardData?.items
       if (!items) return
       const archivos: File[] = []

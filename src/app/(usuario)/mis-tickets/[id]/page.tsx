@@ -14,6 +14,7 @@ import {
 } from '@/lib/tickets/constantes'
 import type { EstadoTicket } from '@/lib/tickets/types'
 import { cn } from '@/lib/utils'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 import { EstadoChip, PrioridadChip, TipoGestionChip, fechaHora, fechaSolo } from '@/components/tickets/funcionario/Chips'
 import { ComentarYAdjuntar, DecisionResuelto } from '@/components/tickets/funcionario/AccionesMiTicket'
 import type { EventoVisible } from '@/components/tickets/funcionario/tipos'
@@ -76,7 +77,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
           {t.solicitudPendiente && t.solicitudPendiente.textos.length > 0 ? (
             <ul className="mt-2 space-y-1.5">
               {t.solicitudPendiente.textos.map((x, i) => (
-                <li key={i} className="whitespace-pre-wrap rounded-lg bg-white/70 px-3 py-2 text-sm text-amber-950">{x}</li>
+                <li key={i}><ContenidoComentario texto={x} className="rounded-lg bg-white/70 px-3 py-2 text-amber-950" /></li>
               ))}
             </ul>
           ) : (
@@ -212,12 +213,10 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
                   </p>
                   <p className="text-sm font-medium text-slate-700">{textoEvento(e)}</p>
                   {e.comentario && (
-                    <p className={cn(
-                      'mt-1 whitespace-pre-wrap rounded-lg px-3 py-2 text-sm',
-                      e.es_mio ? 'bg-blue-50 text-blue-950' : 'bg-slate-50 text-slate-700',
-                    )}>
-                      {e.comentario}
-                    </p>
+                    <ContenidoComentario
+                      texto={e.comentario}
+                      className={cn('mt-1 rounded-lg px-3 py-2', e.es_mio ? 'bg-blue-50 text-blue-950' : 'bg-slate-50 text-slate-700')}
+                    />
                   )}
                 </li>
               ))}

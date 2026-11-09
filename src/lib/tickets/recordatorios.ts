@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/email'
 import { obtenerConfigTickets, type ConfigTickets } from './config'
 import { ESTADOS_ABIERTOS, ESTADOS_ESPERA, LABEL_ESTADO_TICKET, LABEL_PRIORIDAD_TICKET, codigoTicket } from './constantes'
 import { aplicarCambioEstado } from './flujo'
+import { textoPlanoComentario } from './comentario-rico'
 import { registrarEvento } from './historial'
 import { cargarCalendarioLaboral, diasHabilesEntre, diferenciaDiasHabiles, esDiaHabil, fechaLocal, horaLocal, type CalendarioLaboral } from './horas-habiles'
 import { crearNotificacion } from './notificar'
@@ -437,7 +438,7 @@ async function pendienteDelUsuario(supabase: SupabaseClient, ticketId: string): 
     .order('fecha', { ascending: false })
     .limit(1)
   const c = (data?.[0] as { comentario?: string } | undefined)?.comentario?.trim()
-  return c ? c.slice(0, 500) : null
+  return c ? textoPlanoComentario(c).slice(0, 500) : null
 }
 
 async function ejecutarDisparo(ctx: Ctx, t: TicketCron, dsp: Disparo, codigo: string): Promise<boolean> {

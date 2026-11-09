@@ -23,6 +23,7 @@ import {
 } from '@/actions/tickets/flujo'
 import { registrarAdjuntos } from '@/actions/tickets/adjuntos'
 import { SubirAdjuntos, type AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
+import { EditorComentario, type EstadoEditorComentario } from '@/components/tickets/EditorComentario'
 import { AsignarDialog } from './AsignarDialog'
 import { ResolverDialog } from './ResolverDialog'
 import { HistorialTicket } from './HistorialTicket'
@@ -146,7 +147,9 @@ export function GestionTicket({
   const router = useRouter()
   const { label: labelArea } = useProcesos()
   const [dialogo, setDialogo] = useState<Dialogo>(null)
-  const [comentario, setComentario] = useState('')
+  const [editor, setEditor] = useState<EstadoEditorComentario>({ contenido: '', subiendo: 0 })
+  const [versionEditor, setVersionEditor] = useState(0)
+  const comentario = editor.contenido
   const [visible, setVisible] = useState(true)
   const [nuevosAdjuntos, setNuevosAdjuntos] = useState<AdjuntoNuevo[]>([])
   const [prioridad, setPrioridad] = useState<PrioridadTicket>(t.prioridad)
@@ -169,12 +172,14 @@ export function GestionTicket({
     })
 
   const enviarComentario = () => {
+    if (editor.subiendo > 0) { toast.error('Espera a que terminen de subir las imágenes'); return }
     if (!comentario.trim()) { toast.error('Escribe el comentario'); return }
     startT(async () => {
       const res = await agregarComentarioTicket(t.id, comentario, visible)
       if (!res.ok) { toast.error(res.error ?? 'No se pudo guardar'); return }
       toast.success(visible ? 'Comentario enviado al usuario' : 'Nota interna guardada')
-      setComentario('')
+      setEditor({ contenido: '', subiendo: 0 })
+      setVersionEditor(v => v + 1)
       refrescar()
     })
   }
@@ -311,12 +316,13 @@ export function GestionTicket({
           <Seccion titulo="Historial" icon={History}>
             {(p.gestionar || p.esSolicitante) && (
               <div className="mb-5 space-y-2 rounded-xl border border-slate-200 bg-slate-50/50 p-3">
-                <textarea
-                  value={comentario}
-                  onChange={e => setComentario(e.target.value)}
-                  rows={3}
+                <EditorComentario
+                  key={versionEditor}
+                  carpeta={t.id}
+                  onChange={setEditor}
+                  disabled={pending}
                   placeholder={visible ? 'Comentario para el usuario (lo verá en su ticket)…' : 'Nota interna de TIN (el usuario no la ve)…'}
-                  className={cn(inputCls, !visible && 'border-amber-200 bg-amber-50/40')}
+                  className={cn(!visible && 'border-amber-200 bg-amber-50/40')}
                 />
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   {p.gestionar ? (
@@ -331,7 +337,7 @@ export function GestionTicket({
                       </button>
                     </div>
                   ) : <span className="text-xs text-slate-400">Tu comentario es visible para TIN</span>}
-                  <button type="button" onClick={enviarComentario} disabled={pending || !comentario.trim()} className={btnPrimario}>
+                  <button type="button" onClick={enviarComentario} disabled={pending || !comentario.trim() || editor.subiendo > 0} className={btnPrimario}>
                     {pending ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />} Comentar
                   </button>
                 </div>

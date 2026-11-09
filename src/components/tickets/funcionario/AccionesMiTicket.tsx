@@ -7,6 +7,7 @@ import { CheckCircle2, Loader2, MessageSquare, Paperclip, RotateCcw } from 'luci
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { SubirAdjuntos, type AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
+import { EditorComentario, type EstadoEditorComentario } from '@/components/tickets/EditorComentario'
 import { registrarAdjuntos } from '@/actions/tickets/adjuntos'
 import { agregarComentarioTicket, confirmarSolucionTicket, reabrirTicket } from '@/actions/tickets/flujo'
 import type { EstadoTicket } from '@/lib/tickets/types'
@@ -72,12 +73,15 @@ export function DecisionResuelto({ ticketId }: { ticketId: string }) {
 /** Comentar y adjuntar archivos desde la vista del solicitante */
 export function ComentarYAdjuntar({ ticketId, estado }: { ticketId: string; estado: EstadoTicket }) {
   const router = useRouter()
-  const [texto, setTexto] = useState('')
+  const [editor, setEditor] = useState<EstadoEditorComentario>({ contenido: '', subiendo: 0 })
+  const [versionEditor, setVersionEditor] = useState(0)
+  const texto = editor.contenido
   const [adjuntos, setAdjuntos] = useState<AdjuntoNuevo[]>([])
-  const [mostrarAdjuntos, setMostrarAdjuntos] = useState(estado === 'ESPERA_USUARIO')
+  const [mostrarAdjuntos, setMostrarAdjuntos] = useState(false)
   const [pending, start] = useTransition()
 
   const enviar = () => start(async () => {
+    if (editor.subiendo > 0) { toast.error('Espera a que terminen de subir las imágenes'); return }
     if (!texto.trim() && adjuntos.length === 0) { toast.error('Escribe un comentario o adjunta un archivo'); return }
     const n = adjuntos.length
     if (n > 0) {
@@ -90,7 +94,8 @@ export function ComentarYAdjuntar({ ticketId, estado }: { ticketId: string; esta
     if (comentario) {
       const r = await agregarComentarioTicket(ticketId, comentario, true)
       if (!r.ok) { toast.error(r.error ?? 'No se pudo enviar el comentario'); return }
-      setTexto('')
+      setEditor({ contenido: '', subiendo: 0 })
+      setVersionEditor(v => v + 1)
     }
     toast.success(estado === 'ESPERA_USUARIO' ? 'Respuesta enviada a TIN' : 'Enviado')
     router.refresh()
@@ -98,19 +103,18 @@ export function ComentarYAdjuntar({ ticketId, estado }: { ticketId: string; esta
 
   return (
     <div className="space-y-3">
-      <Textarea
-        value={texto}
-        onChange={e => setTexto(e.target.value)}
-        rows={3}
+      <EditorComentario
+        key={versionEditor}
+        carpeta={ticketId}
+        onChange={setEditor}
         placeholder={estado === 'ESPERA_USUARIO' ? 'Responde lo que TIN te pidió…' : 'Escribe un comentario para TIN…'}
-        aria-label="Comentario"
         disabled={pending}
       />
       {mostrarAdjuntos && (
         <SubirAdjuntos carpeta={ticketId} value={adjuntos} onChange={setAdjuntos} disabled={pending} />
       )}
       <div className="flex flex-wrap items-center gap-2">
-        <Button onClick={enviar} disabled={pending} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+        <Button onClick={enviar} disabled={pending || editor.subiendo > 0} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
           {pending ? <Loader2 size={14} className="animate-spin" /> : <MessageSquare size={14} />}
           {estado === 'ESPERA_USUARIO' ? 'Enviar respuesta' : 'Enviar'}
         </Button>

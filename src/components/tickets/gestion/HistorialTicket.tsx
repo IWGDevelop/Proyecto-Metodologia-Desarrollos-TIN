@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils'
 import { LABEL_ESTADO_TICKET, LABEL_EVENTO_TICKET, LABEL_PRIORIDAD_TICKET } from '@/lib/tickets/constantes'
 import type { EstadoTicket, PrioridadTicket, TicketHistorial, TipoEventoTicket } from '@/lib/tickets/types'
 import { formatFechaHora } from './ui'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 
 const ICONOS: Record<TipoEventoTicket, typeof CircleDot> = {
   CREACION: PlusCircle,
@@ -113,7 +114,7 @@ export function HistorialTicket({ eventos }: { eventos: (TicketHistorial & { aut
               </div>
               {resumen(e) && <div className="mt-0.5 text-xs">{resumen(e)}</div>}
               {e.comentario && (
-                <p className={cn('mt-1 whitespace-pre-wrap text-sm', esComentario ? 'text-slate-800' : 'text-slate-600')}>{e.comentario}</p>
+                <ContenidoComentario texto={e.comentario} className={cn('mt-1', esComentario ? 'text-slate-800' : 'text-slate-600')} />
               )}
             </div>
           </li>

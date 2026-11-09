@@ -287,7 +287,8 @@ export async function agregarComentarioTicket(ticketId: string, texto: string, v
     if (!ctx) return { ok: false, error: NO_AUTORIZADO }
     const contenido = String(texto ?? '').trim()
     if (!contenido) return { ok: false, error: 'Escribe el comentario' }
-    if (contenido.length > 5000) return { ok: false, error: 'El comentario es demasiado largo (máximo 5000 caracteres)' }
+    // Las imágenes intercaladas ocupan ~300 caracteres cada una (![nombre](url))
+    if (contenido.length > 20000) return { ok: false, error: 'El comentario es demasiado largo' }
 
     const supabase = createAdminClient()
     const t = await cargarTicket(supabase, ticketId)
