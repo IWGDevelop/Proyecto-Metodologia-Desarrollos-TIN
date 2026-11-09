@@ -69,6 +69,7 @@ export function PlantillaIngresoForm({ datos }: { datos: DatosPlantillaFormulari
         </p>
       </div>
 
+      <div className="grid gap-6 xl:grid-cols-2 xl:items-start">
       <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
         <div className="space-y-1.5">
           <Label className="text-sm font-medium text-slate-700">Plantilla<Req /></Label>
@@ -146,12 +147,13 @@ export function PlantillaIngresoForm({ datos }: { datos: DatosPlantillaFormulari
             <Input id="pl-fecha" type="date" aria-invalid={!!errors.fecha} {...register('fecha')} />
             {errors.fecha && <p className="text-xs text-red-600">{errors.fecha.message}</p>}
           </div>
-          <div className="space-y-1.5 sm:col-span-2">
+          <div className="space-y-1.5 col-span-full">
             <Label htmlFor="pl-obs" className="text-sm font-medium text-slate-700">Observaciones</Label>
             <Textarea id="pl-obs" rows={3} placeholder="Perfil de referencia, software requerido, a quién se delegan las cuentas…" {...register('observaciones')} />
           </div>
         </div>
       </section>
+      </div>
 
       <div className="flex justify-end">
         <Button type="submit" disabled={isSubmitting} className="gap-1.5 bg-blue-600 hover:bg-blue-700">

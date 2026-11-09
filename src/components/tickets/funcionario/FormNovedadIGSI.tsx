@@ -142,7 +142,7 @@ export function FormNovedadIGSI({ servicios }: { servicios: ServiciosIGSI }) {
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="igsi-servicio" className="text-sm font-medium text-slate-700">Servicio<Req /></Label>
           {hayCatalogo ? (
@@ -178,18 +178,17 @@ export function FormNovedadIGSI({ servicios }: { servicios: ServiciosIGSI }) {
           )}
           <MsgError msg={e?.modalidad?.message} />
         </div>
+        <div className="space-y-1.5">
+          <Label htmlFor="igsi-accion" className="text-sm font-medium text-slate-700">¿Qué estabas haciendo?<Req /></Label>
+          <select id="igsi-accion" className={SELECT_CLASS} aria-invalid={!!e?.accion} {...register('igsi.accion')}>
+            <option value="">Selecciona la acción…</option>
+            {ACCIONES_IGSI.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
+          </select>
+          <MsgError msg={e?.accion?.message} />
+        </div>
       </div>
 
-      <div className="space-y-1.5">
-        <Label htmlFor="igsi-accion" className="text-sm font-medium text-slate-700">¿Qué estabas haciendo?<Req /></Label>
-        <select id="igsi-accion" className={cn(SELECT_CLASS, 'sm:w-64')} aria-invalid={!!e?.accion} {...register('igsi.accion')}>
-          <option value="">Selecciona la acción…</option>
-          {ACCIONES_IGSI.map(a => <option key={a.value} value={a.value}>{a.label}</option>)}
-        </select>
-        <MsgError msg={e?.accion?.message} />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <div className="space-y-1.5">
           <Label htmlFor="igsi-paso" className="text-sm font-medium text-slate-700">¿Qué pasó?<Req /></Label>
           <Textarea id="igsi-paso" rows={3} placeholder="Lo que hizo el sistema" aria-invalid={!!e?.que_paso} {...register('igsi.que_paso')} />
@@ -200,11 +199,10 @@ export function FormNovedadIGSI({ servicios }: { servicios: ServiciosIGSI }) {
           <Textarea id="igsi-esperaba" rows={3} placeholder="Lo que debía pasar según el proceso" aria-invalid={!!e?.que_esperaba} {...register('igsi.que_esperaba')} />
           <MsgError msg={e?.que_esperaba?.message} />
         </div>
-      </div>
-
-      <div className="space-y-1.5">
-        <Label htmlFor="igsi-error" className="text-sm font-medium text-slate-700">Mensaje de error</Label>
-        <Textarea id="igsi-error" rows={2} placeholder="Copia el texto del mensaje, si apareció" {...register('igsi.mensaje_error')} />
+        <div className="space-y-1.5 sm:col-span-2 lg:col-span-1">
+          <Label htmlFor="igsi-error" className="text-sm font-medium text-slate-700">Mensaje de error</Label>
+          <Textarea id="igsi-error" rows={3} placeholder="Copia el texto del mensaje, si apareció" {...register('igsi.mensaje_error')} />
+        </div>
       </div>
 
       <div className="space-y-1.5">

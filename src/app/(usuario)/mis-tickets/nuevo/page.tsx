@@ -9,7 +9,7 @@ export default async function NuevoTicketPage() {
   if (!catalogo) redirect('/login')
 
   return (
-    <div className="mx-auto max-w-3xl p-6">
+    <div className="p-6">
       {catalogo.categorias.length === 0 ? (
         <div className="rounded-xl border border-dashed border-slate-200 bg-white py-12 text-center text-sm text-slate-500">
           El catálogo de tickets aún no está configurado. Comunícate con TIN.

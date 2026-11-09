@@ -14,7 +14,7 @@ export default async function AprobacionesTicketsPage({
   const aprobaciones = await listarAprobacionesPendientes()
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-6">
+    <div className="space-y-5 p-6">
       <div>
         <h1 className="flex items-center gap-2 text-xl font-bold text-slate-800">
           <CheckSquare size={20} className="text-emerald-600" /> Aprobar tickets

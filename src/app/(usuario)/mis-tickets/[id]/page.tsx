@@ -50,7 +50,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
   const docLabel = n ? (n.tipo_documento === 'OTRO' ? (n.tipo_documento_otro ?? 'Otro') : CADENA_IGSI.find(c => c.value === n.tipo_documento)?.label) : null
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 p-6">
+    <div className="space-y-5 p-6">
       <Link href="/mis-tickets" className="inline-flex items-center gap-1 text-xs text-slate-400 hover:text-slate-600">
         <ArrowLeft size={13} /> Volver a mis tickets
       </Link>

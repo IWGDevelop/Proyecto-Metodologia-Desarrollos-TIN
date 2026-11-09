@@ -266,6 +266,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
                 <FormNovedadIGSI servicios={catalogo.serviciosIGSI} />
               ) : (
                 <>
+                  <div className="grid gap-4 lg:grid-cols-2">
                   <div className="space-y-1.5">
                     <Label className="text-sm font-medium text-slate-700">Impacto<span className="ml-0.5 text-red-500">*</span></Label>
                     <div className="flex flex-wrap gap-2">
@@ -286,6 +287,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
                     <Input id="asunto" maxLength={300} placeholder="Resumen corto de la novedad o solicitud" aria-invalid={!!errors.asunto} {...register('asunto')} />
                     {errors.asunto && <p className="text-xs text-red-600">{errors.asunto.message}</p>}
                   </div>
+                  </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="descripcion" className="text-sm font-medium text-slate-700">Descripción<span className="ml-0.5 text-red-500">*</span></Label>
                     <Textarea id="descripcion" rows={5} placeholder="Detalle de la novedad o solicitud" aria-invalid={!!errors.descripcion} {...register('descripcion')} />
@@ -297,9 +299,9 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
               {campos.length > 0 && (
                 <div className="space-y-4 border-t border-slate-100 pt-4">
                   <p className="text-sm font-semibold text-slate-700">Datos específicos de “{tipologia.nombre}”</p>
-                  <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
                     {campos.map(c => (
-                      <div key={c.id} className={cn(c.tipo_dato === 'TEXTO_LARGO' && 'sm:col-span-2')}>
+                      <div key={c.id} className={cn(c.tipo_dato === 'TEXTO_LARGO' && 'col-span-full')}>
                         <CampoDinamico campo={c} usuarios={catalogo.usuarios} />
                       </div>
                     ))}
@@ -308,8 +310,9 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
               )}
             </section>
 
+            <div className="grid gap-6 lg:grid-cols-3 lg:items-start">
             {/* 3. Adjuntos */}
-            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+            <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 lg:col-span-2">
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">
                 3. {tipologia.es_novedad_igsi ? 'Capturas de pantalla' : 'Imágenes y adjuntos'}
                 {(tipologia.adjunto_obligatorio || tipologia.es_novedad_igsi) && <span className="ml-0.5 text-red-500">*</span>}
@@ -325,7 +328,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
             </section>
 
             {/* Prioridad y envío */}
-            <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between">
+            <section className="flex flex-col gap-3 rounded-xl border border-slate-200 bg-white p-5 sm:flex-row sm:items-center sm:justify-between lg:sticky lg:top-6 lg:flex-col lg:items-stretch">
               <div className="text-sm">
                 <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Prioridad calculada</p>
                 {prioridad ? (
@@ -342,6 +345,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
                 Crear ticket
               </Button>
             </section>
+            </div>
           </>
         )}
       </form>
