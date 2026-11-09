@@ -4,9 +4,15 @@ import { NuevoTicketForm } from '@/components/tickets/funcionario/NuevoTicketFor
 
 export const dynamic = 'force-dynamic'
 
-export default async function NuevoTicketPage() {
-  const catalogo = await obtenerCatalogoFormulario()
+export default async function NuevoTicketPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>
+}) {
+  const [catalogo, sp] = await Promise.all([obtenerCatalogoFormulario(), searchParams])
   if (!catalogo) redirect('/login')
+  // ?requerimiento=<id>: viene del botón "Abrir ticket relacionado" del requerimiento
+  const requerimiento = Array.isArray(sp.requerimiento) ? sp.requerimiento[0] : sp.requerimiento
 
   return (
     <div className="p-6">
@@ -15,7 +21,7 @@ export default async function NuevoTicketPage() {
           El catálogo de tickets aún no está configurado. Comunícate con TIN.
         </div>
       ) : (
-        <NuevoTicketForm catalogo={catalogo} />
+        <NuevoTicketForm catalogo={catalogo} requerimientoInicial={requerimiento ?? null} />
       )}
     </div>
   )

@@ -3,6 +3,7 @@
 import { exigirAccesoAdmin } from '@/lib/supabase/guards'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { labelTipoFechaPlaneacion } from '@/lib/etapas-planeacion'
+import { ticketsDeRequerimiento } from '@/lib/tickets/requerimientos'
 
 export type EventoTipo =
   | 'estado'
@@ -17,6 +18,7 @@ export type EventoTipo =
   | 'anexo'
   | 'doc_tecnica'
   | 'penalizacion'
+  | 'ticket'
 
 export interface EventoHistorial {
   id: string
@@ -416,6 +418,32 @@ export async function getHistorialCompleto(reqId: string): Promise<EventoHistori
       descripcion: partes.length ? partes.join(' · ') : null,
       extra: { tipo_penalizacion: p.tipo, monto_cop: p.monto_cop, responsables: p.responsables ?? [] },
     })
+  }
+
+  // Tickets de soporte abiertos sobre el requerimiento después de su entrega o cierre
+  for (const t of await ticketsDeRequerimiento(supabase, reqId)) {
+    if (t.restringida) continue
+    const base = { codigo: t.codigo, ticket_id: t.id, estado_ticket: t.estado }
+    eventos.push({
+      id: `ticket-${t.id}`,
+      tipo: 'ticket',
+      fecha: t.fecha_creacion,
+      usuario: t.solicitante,
+      titulo: `Ticket ${t.codigo} abierto: ${t.asunto}`,
+      descripcion: `${t.categoria} · ${t.tipologia}`,
+      extra: base,
+    })
+    if (t.fecha_cierre) {
+      eventos.push({
+        id: `ticket-cierre-${t.id}`,
+        tipo: 'ticket',
+        fecha: t.fecha_cierre,
+        usuario: null,
+        titulo: `Ticket ${t.codigo} cerrado: ${t.asunto}`,
+        descripcion: null,
+        extra: base,
+      })
+    }
   }
 
   return eventos.sort((a, b) => new Date(b.fecha).getTime() - new Date(a.fecha).getTime())

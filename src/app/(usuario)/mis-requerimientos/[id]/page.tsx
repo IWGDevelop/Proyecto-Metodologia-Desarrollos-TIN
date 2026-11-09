@@ -15,6 +15,9 @@ import { getTareas } from '@/actions/tareas'
 import { getDesarrolladoresReq } from '@/actions/desarrolladores-req'
 import { getPerfil } from '@/lib/supabase/auth'
 import type { Estado, ActividadImpacto, BeneficioCualitativo } from '@/lib/supabase/types'
+import { ESTADOS_REQ_PARA_TICKET } from '@/lib/tickets/requerimientos'
+import { misTicketsDeRequerimiento } from '@/actions/tickets/mis-tickets'
+import { TabTicketsSoporte } from '@/components/requerimientos/tabs/TabTicketsSoporte'
 
 interface Props {
   params: Promise<{ id: string }>
@@ -47,6 +50,8 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
   const impacto     = (req as any).impacto_economico_total_anual ?? req.ahorro_anual_cop
 
   const estadoActualIdx = ORDEN_ESTADOS.indexOf(req.estado as Estado)
+  const puedeAbrirTicket = (ESTADOS_REQ_PARA_TICKET as readonly string[]).includes(req.estado)
+  const misTickets = puedeAbrirTicket ? await misTicketsDeRequerimiento(id) : []
 
   return (
     <div className="space-y-5 p-6 max-w-3xl">
@@ -189,6 +194,11 @@ export default async function MiRequerimientoDetailPage({ params }: Props) {
           isAdmin={false}
           currentUserId={perfilActual?.id}
         />
+      )}
+
+      {/* Soporte después de la entrega: tickets relacionados con este requerimiento */}
+      {puedeAbrirTicket && (
+        <TabTicketsSoporte requerimientoId={id} tickets={misTickets} puedeAbrir rutaTicket="/mis-tickets" />
       )}
 
       {/* Comentarios */}

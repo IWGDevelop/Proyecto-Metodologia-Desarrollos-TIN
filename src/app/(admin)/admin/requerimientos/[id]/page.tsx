@@ -5,8 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import {
   ArrowLeft, Lock, Info, CalendarDays, Link2, Calculator, TrendingUp, Code2, FileCode, Workflow,
-  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, FileDiff, type LucideIcon,
+  History, Activity, BadgeCheck, MessageSquare, Users, Paperclip, AlertTriangle, ListTodo, FileDiff, LifeBuoy, type LucideIcon,
 } from 'lucide-react'
+import { ESTADOS_REQ_PARA_TICKET, ticketsDeRequerimiento } from '@/lib/tickets/requerimientos'
+import { TabTicketsSoporte } from '@/components/requerimientos/tabs/TabTicketsSoporte'
 import { PRIORIDADES, formatPrioridad } from '@/lib/constants'
 import { getCatalogoEstados } from '@/actions/estados-kanban'
 import { cfgDeEstado } from '@/lib/estados'
@@ -52,7 +54,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const { id } = await params
   const supabase = createAdminClient()
 
-  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas, responsablesFechas, planeacionEtapas] = await Promise.all([
+  const [{ data: req, error }, { data: historial }, tareas, desarrolladores, perfilesDisponibles, perfilAdmin, hijosReq, etiquetaJerarquica, historialFechas, eventosActividad, tareasConsolidadas, responsablesFechas, planeacionEtapas, ticketsSoporteTodos] = await Promise.all([
     (supabase as any).from('requerimientos').select('*, lote:lotes(id, numero, nombre, cerrado)').eq('id', id).single(),
     (supabase as any).from('historial_estados').select('*')
       .eq('requerimiento_id', id).order('created_at', { ascending: false }),
@@ -67,6 +69,7 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
     getTareasConsolidadasRequerimiento(id),
     getResponsablesFechas(id),
     getPlaneacionEtapas(id),
+    ticketsDeRequerimiento(supabase, id),
   ])
 
   if (error || !req) notFound()
@@ -91,6 +94,12 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
   const loteCerrado = lote?.cerrado === true
 
   const pv = (recurso: string) => isAdmin || permisos[recurso]?.puede_ver === true
+
+  // Tickets de soporte abiertos sobre el requerimiento (los de tipologías restringidas solo los ve quien tiene el permiso)
+  const verRestringidas = isAdmin || permisos['tickets:restringidas']?.puede_ver === true
+  const ticketsSoporte = ticketsSoporteTodos.filter(t => !t.restringida || verRestringidas)
+  const ticketsSinCerrar = ticketsSoporte.filter(t => t.estado !== 'CERRADO').length
+  const puedeAbrirTicket = (ESTADOS_REQ_PARA_TICKET as readonly string[]).includes(req.estado)
   // Admin siempre puede editar; usuarios normales bloqueados si el lote está cerrado
   const pe = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_editar === true)
   const pc = (recurso: string) => isAdmin || (!loteCerrado && permisos[recurso]?.puede_crear === true)
@@ -148,6 +157,14 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
         { value: 'flujo',        label: 'Flujo',        Icon: Workflow,     visible: true },
         { value: 'historial',    label: 'Historial',    Icon: History,      visible: pv('req:historial') },
         { value: 'asociaciones', label: 'Asociaciones', Icon: Link2,        visible: true },
+        {
+          value: 'tickets', label: 'Tickets de soporte', Icon: LifeBuoy, visible: true,
+          badge: ticketsSoporte.length > 0 ? (
+            <span className={cn('rounded-full px-1.5 py-0.5 text-[10px] font-bold text-white', ticketsSinCerrar > 0 ? 'bg-violet-600' : 'bg-slate-400')}>
+              {ticketsSoporte.length}
+            </span>
+          ) : undefined,
+        },
       ],
     },
     {
@@ -457,6 +474,15 @@ export default async function AdminRequerimientoDetailPage({ params }: Props) {
             padre={padreReq}
             hijos={hijosReq}
             etiquetaActual={etiquetaJerarquica}
+          />
+        </TabsContent>
+
+        <TabsContent value="tickets" className="mt-4">
+          <TabTicketsSoporte
+            requerimientoId={id}
+            tickets={ticketsSoporte}
+            puedeAbrir={puedeAbrirTicket}
+            rutaTicket="/admin/tickets"
           />
         </TabsContent>
 

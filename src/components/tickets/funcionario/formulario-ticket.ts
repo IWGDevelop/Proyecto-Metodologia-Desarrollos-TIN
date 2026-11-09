@@ -36,6 +36,11 @@ const igsiSchema = z.object({
   impacto_operacion: z.string(),
 })
 
+/** Tipologías de "Ajuste a un desarrollo entregado…": exigen relacionar el requerimiento */
+export function pideRequerimiento(nombreTipologia: string): boolean {
+  return nombreTipologia.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().includes('desarrollo entregado')
+}
+
 export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
   return z.object({
     categoriaId: z.string().min(1, 'Elige la categoría'),
@@ -46,6 +51,7 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
     valores: z.record(z.string(), z.string()),
     adjuntos: z.array(adjuntoSchema),
     igsi: igsiSchema,
+    requerimientoId: z.string(),
   }).superRefine((v, ctx) => {
     const tip = catalogo.tipologias.find(t => t.id === v.tipologiaId)
     if (!tip) return
@@ -73,6 +79,9 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
       }
     }
     if (v.adjuntos.some(a => !ADJUNTOS_ACEPTADOS.includes(a.tipo_archivo))) falta(['adjuntos'], 'Hay un adjunto con tipo no admitido')
+    if (pideRequerimiento(tip.nombre) && !v.requerimientoId) {
+      falta(['requerimientoId'], 'Elige el requerimiento entregado sobre el que pides el ajuste')
+    }
 
     for (const c of catalogo.campos.filter(c => c.tipologia_id === tip.id)) {
       const valor = (v.valores[claveCampo(c.id)] ?? '').trim()

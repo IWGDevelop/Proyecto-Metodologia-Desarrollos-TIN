@@ -20,6 +20,13 @@ import {
   codigoTicket,
 } from '@/lib/tickets/constantes'
 import { accesoTickets, filasAdjuntos, hoyISO } from '@/lib/tickets/solicitante'
+import {
+  etiquetaRequerimiento,
+  listarRequerimientosParaTicket,
+  validarRequerimientoParaTicket,
+  type RequerimientoResumen,
+} from '@/lib/tickets/requerimientos'
+import { pideRequerimiento } from '@/components/tickets/funcionario/formulario-ticket'
 import type {
   EstadoTicket,
   ImpactoTicket,
@@ -155,6 +162,7 @@ interface DatosInsercion {
   fechaRequerida: string | null
   ticketPadreId?: string | null
   plantillaId?: string | null
+  requerimiento?: RequerimientoResumen | null
   /** Quien ejecuta la acción (normalmente el solicitante) */
   usuarioId: string
   metadataCreacion?: Record<string, unknown>
@@ -206,6 +214,8 @@ async function insertarTicket(
       aprobador_id: aprobadorId,
       ticket_padre_id: d.ticketPadreId ?? null,
       plantilla_id: d.plantillaId ?? null,
+      // Solo se envía si hay relación: así crear tickets no depende de migration_tickets_requerimientos.sql
+      ...(d.requerimiento ? { requerimiento_id: d.requerimiento.id } : {}),
       canal: 'FORMULARIO',
       asunto: d.asunto.slice(0, 300),
       descripcion: d.descripcion,
@@ -253,6 +263,11 @@ async function insertarTicket(
       ...(esAuditoriaVencida ? { auditoria_vencida: true } : {}),
       ...(d.ticketPadreId ? { ticket_padre_id: d.ticketPadreId } : {}),
       ...(d.plantillaId ? { plantilla_id: d.plantillaId } : {}),
+      ...(d.requerimiento ? {
+        requerimiento_id: d.requerimiento.id,
+        requerimiento: etiquetaRequerimiento(d.requerimiento),
+        requerimiento_estado: d.requerimiento.estado,
+      } : {}),
       ...(d.metadataCreacion ?? {}),
     },
   }]
@@ -341,7 +356,7 @@ export async function obtenerCatalogoFormulario(): Promise<CatalogoFormulario | 
   if (!acceso) return null
   const supabase = createAdminClient()
 
-  const [cats, tips, perfil, config, usuarios] = await Promise.all([
+  const [cats, tips, perfil, config, usuarios, requerimientos] = await Promise.all([
     (supabase as any).from('ticket_categorias').select('id, nombre, descripcion').eq('activa', true)
       .order('orden', { ascending: true }).order('nombre', { ascending: true }),
     (supabase as any).from('ticket_tipologias')
@@ -350,6 +365,7 @@ export async function obtenerCatalogoFormulario(): Promise<CatalogoFormulario | 
     cargarPerfil(supabase, acceso.usuarioId),
     obtenerConfigTickets(supabase),
     (supabase as any).from('perfiles').select('id, nombre_completo').eq('activo', true).order('nombre_completo'),
+    listarRequerimientosParaTicket(supabase),
   ])
 
   const categorias = (cats.data ?? []) as CatalogoFormulario['categorias']
@@ -389,6 +405,7 @@ export async function obtenerCatalogoFormulario(): Promise<CatalogoFormulario | 
       jefeNombre,
     },
     puedePlantillas: acceso.esAdmin || acceso.atender || acceso.coordinar,
+    requerimientos,
   }
 }
 
@@ -417,6 +434,17 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
 
     const perfil = await cargarPerfil(supabase, acceso.usuarioId)
     if (!perfil) return { ok: false, error: 'No se encontró tu perfil' }
+
+    // Requerimiento relacionado (opcional): debe estar entregado o cerrado
+    let requerimiento: RequerimientoResumen | null = null
+    const reqId = String(input.requerimientoId ?? '').trim()
+    if (reqId) {
+      const r = await validarRequerimientoParaTicket(supabase, reqId)
+      if (!r.ok) return { ok: false, error: r.error }
+      requerimiento = r.req
+    } else if (pideRequerimiento(tipologia.nombre)) {
+      return { ok: false, error: 'Elige el requerimiento entregado sobre el que pides el ajuste' }
+    }
 
     // Novedad IGSI
     let impacto = input.impacto
@@ -511,6 +539,7 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
       descripcion,
       valores: val.filas,
       fechaRequerida: val.fechaRequerida,
+      requerimiento,
       usuarioId: acceso.usuarioId,
       metadataCreacion: { adjuntos: adj.filas.length, ...(filaIgsi ? { novedad_igsi: true } : {}) },
       extras: async ticketId => {
@@ -610,6 +639,7 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
 
     await avisarCreacion(creados)
     refrescar()
+    if (requerimiento) revalidatePath(`/admin/requerimientos/${requerimiento.id}`)
     return { ok: true, id: creado.id, codigo: codigoTicket(creado.numero), hijos }
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'Error al crear el ticket' }

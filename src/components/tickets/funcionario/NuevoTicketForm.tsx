@@ -32,8 +32,10 @@ import {
   SELECT_CLASS,
   claveCampo,
   crearEsquemaTicket,
+  pideRequerimiento,
   type FormularioTicket,
 } from './formulario-ticket'
+import { SelectorRequerimiento } from './SelectorRequerimiento'
 import type { CatalogoFormulario } from './tipos'
 
 function hoy() {
@@ -42,7 +44,7 @@ function hoy() {
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
-export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) {
+export function NuevoTicketForm({ catalogo, requerimientoInicial }: { catalogo: CatalogoFormulario; requerimientoInicial?: string | null }) {
   const router = useRouter()
   const [carpeta] = useState(() => `nuevos/${catalogo.solicitante.id}/${Date.now()}`)
   const esquema = useMemo(() => crearEsquemaTicket(catalogo), [catalogo])
@@ -58,6 +60,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
       valores: {},
       adjuntos: [],
       igsi: IGSI_VACIO,
+      requerimientoId: catalogo.requerimientos.some(r => r.id === requerimientoInicial) ? requerimientoInicial! : '',
     },
   })
   const { register, control, setValue, handleSubmit, formState: { errors, isSubmitting } } = form
@@ -68,6 +71,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
   const impactoIgsi = useWatch({ control, name: 'igsi.impacto_operacion' })
   const valores = useWatch({ control, name: 'valores' })
   const adjuntos = useWatch({ control, name: 'adjuntos' }) as AdjuntoNuevo[]
+  const requerimientoId = useWatch({ control, name: 'requerimientoId' })
 
   const categoria = catalogo.categorias.find(c => c.id === categoriaId) ?? null
   const tipologiasCat = catalogo.tipologias.filter(t => t.categoria_id === categoriaId)
@@ -144,6 +148,7 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
       valores: valoresServidor,
       adjuntos: v.adjuntos,
       igsi,
+      requerimientoId: v.requerimientoId || null,
     })
     if (!res.ok || !res.id) {
       toast.error(res.error ?? 'No se pudo crear el ticket')
@@ -233,6 +238,28 @@ export function NuevoTicketForm({ catalogo }: { catalogo: CatalogoFormulario }) 
               )}
             </div>
           )}
+
+          <div className="space-y-1.5 border-t border-slate-100 pt-4">
+            <Label className="text-sm font-medium text-slate-700">
+              Requerimiento relacionado
+              {tipologia && pideRequerimiento(tipologia.nombre)
+                ? <span className="ml-0.5 text-red-500">*</span>
+                : <span className="ml-1 font-normal text-slate-400">(opcional)</span>}
+            </Label>
+            <p className="text-xs text-slate-500">
+              Si tu solicitud es sobre un desarrollo que TIN ya entregó o cerró, relaciónalo para que quede la traza en el requerimiento.
+            </p>
+            <div className="lg:max-w-2xl">
+              <SelectorRequerimiento
+                requerimientos={catalogo.requerimientos}
+                value={requerimientoId}
+                onChange={id => setValue('requerimientoId', id, { shouldValidate: form.formState.isSubmitted })}
+                destacado={!!tipologia && pideRequerimiento(tipologia.nombre)}
+                disabled={isSubmitting}
+              />
+            </div>
+            {errors.requerimientoId && <p className="text-xs text-red-600">{errors.requerimientoId.message}</p>}
+          </div>
 
           {tipologia?.requiere_aprobacion && (
             catalogo.solicitante.jefeNombre ? (

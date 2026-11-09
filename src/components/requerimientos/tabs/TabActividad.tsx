@@ -6,7 +6,7 @@ import { es } from 'date-fns/locale'
 import {
   GitBranch, Calendar, MessageSquare, Users, CheckSquare,
   CheckCircle2, Paperclip, BookOpen, Filter, ChevronDown, ChevronUp,
-  AlertOctagon, ClipboardList, AlertTriangle, Clock, FileText,
+  AlertOctagon, ClipboardList, AlertTriangle, Clock, FileText, LifeBuoy,
 } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
 import { useEstados } from '@/context/EstadosContext'
@@ -39,6 +39,7 @@ const TIPO_CFG: Record<EventoTipo, {
   tarea_solicitud:           { label: 'Tarea / Solicitud',    icon: ClipboardList, iconBg: 'bg-cyan-100',    iconColor: 'text-cyan-600',    badge: 'bg-cyan-100 text-cyan-700',       card: 'bg-cyan-50/70 border-cyan-300' },
   tarea_solicitud_completada:{ label: 'Solicitud completada', icon: CheckCircle2,  iconBg: 'bg-emerald-100', iconColor: 'text-emerald-600', badge: 'bg-emerald-100 text-emerald-700', card: 'bg-emerald-50/70 border-emerald-300' },
   penalizacion:              { label: 'Penalización',         icon: AlertOctagon,  iconBg: 'bg-rose-100',    iconColor: 'text-rose-600',    badge: 'bg-rose-100 text-rose-700',       card: 'bg-rose-50/70 border-rose-300' },
+  ticket:                    { label: 'Ticket de soporte',    icon: LifeBuoy,      iconBg: 'bg-violet-100',  iconColor: 'text-violet-600',  badge: 'bg-violet-100 text-violet-700',   card: 'bg-violet-50/70 border-violet-300' },
 }
 
 const TODOS_LOS_TIPOS = Object.keys(TIPO_CFG) as EventoTipo[]

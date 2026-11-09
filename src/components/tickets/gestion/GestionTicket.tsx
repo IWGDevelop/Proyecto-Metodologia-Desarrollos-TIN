@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import {
-  ArrowLeft, Bug, CheckCircle2, Clock, Eye, EyeOff, FileText, Flag, GitBranch, History, Loader2, Lock, Mail,
+  ArrowLeft, Bug, CheckCircle2, Clock, Eye, EyeOff, FileText, Flag, FolderGit2, GitBranch, History, Loader2, Lock, Mail,
   MessageSquare, Paperclip, PauseCircle, Play, RotateCcw, Send, ShieldCheck, ShieldX, Tag, Truck, UserCheck, UserPlus, XCircle,
 } from 'lucide-react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
@@ -27,6 +27,7 @@ import { EditorComentario, type EstadoEditorComentario } from '@/components/tick
 import { AsignarDialog } from './AsignarDialog'
 import { ResolverDialog } from './ResolverDialog'
 import { HistorialTicket } from './HistorialTicket'
+import { RequerimientoRelacionado } from './RequerimientoRelacionado'
 import { EstadoBadge, PrioridadBadge, Semaforo, btnPrimario, btnSecundario, formatFechaCorta, formatFechaHora, inputCls } from './ui'
 
 type Resultado = { ok: boolean; error?: string }
@@ -488,6 +489,12 @@ export function GestionTicket({
               )}
             </dl>
           </Seccion>
+
+          {(t.requerimiento || p.gestionar) && (
+            <Seccion titulo="Requerimiento relacionado" icon={FolderGit2}>
+              <RequerimientoRelacionado ticketId={t.id} requerimiento={t.requerimiento} puedeEditar={p.gestionar} onDone={refrescar} />
+            </Seccion>
+          )}
 
           {(t.padre || t.hijos.length > 0) && (
             <Seccion titulo="Tickets relacionados" icon={GitBranch}>

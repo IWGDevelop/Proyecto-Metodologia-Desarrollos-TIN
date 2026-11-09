@@ -121,6 +121,8 @@ export interface Ticket {
   aprobador_id: string | null
   ticket_padre_id: string | null
   plantilla_id: string | null
+  /** Requerimiento entregado/cerrado sobre el que se abre el ticket (migration_tickets_requerimientos.sql) */
+  requerimiento_id?: string | null
   canal: CanalTicket
   asunto: string
   descripcion: string

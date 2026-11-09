@@ -21,6 +21,12 @@ import {
 } from '@/lib/tickets/flujo'
 import { avisar, enviarAsignacion } from '@/lib/tickets/emails-flujo'
 import { crearBug, enlazarTicketABug } from '@/lib/tickets/bugs'
+import {
+  cargarRequerimientoResumen,
+  etiquetaRequerimiento,
+  validarRequerimientoParaTicket,
+  type RequerimientoResumen,
+} from '@/lib/tickets/requerimientos'
 import type {
   ClasificacionBug,
   EstadoTicket,
@@ -800,3 +806,51 @@ export async function reclasificarTicket(ticketId: string, tipologiaId: string, 
   }
 }
 
+
+// ── Requerimiento relacionado ────────────────────────────────────────────────
+
+/** Relaciona (o quita) el requerimiento entregado/cerrado sobre el que se abrió el ticket */
+export async function relacionarRequerimientoTicket(ticketId: string, requerimientoId: string | null): Promise<Resultado> {
+  try {
+    const prep = await prepararGestion(ticketId)
+    if (!prep.ok) return prep
+    const { ctx, supabase, t } = prep
+
+    const { data: actual, error: eAct } = await supabase.from('tickets').select('requerimiento_id').eq('id', t.id).maybeSingle()
+    if (eAct) return { ok: false, error: 'Falta ejecutar supabase/migration_tickets_requerimientos.sql' }
+    const anteriorId = (actual as { requerimiento_id: string | null } | null)?.requerimiento_id ?? null
+    const nuevoId = requerimientoId?.trim() || null
+    if (anteriorId === nuevoId) return { ok: true }
+
+    let nuevo: RequerimientoResumen | null = null
+    if (nuevoId) {
+      const r = await validarRequerimientoParaTicket(supabase, nuevoId)
+      if (!r.ok) return { ok: false, error: r.error }
+      nuevo = r.req
+    }
+    const anterior = await cargarRequerimientoResumen(supabase, anteriorId)
+
+    const { error } = await supabase.from('tickets')
+      .update({ requerimiento_id: nuevoId, updated_at: new Date().toISOString() } as never)
+      .eq('id', t.id)
+    if (error) return { ok: false, error: error.message }
+
+    await registrarEvento(supabase, {
+      ticketId: t.id,
+      tipo: 'COMENTARIO',
+      usuarioId: ctx.usuarioId,
+      comentario: nuevo
+        ? `Ticket relacionado con el requerimiento ${etiquetaRequerimiento(nuevo)}`
+        : `Se quitó la relación con el requerimiento ${anterior ? etiquetaRequerimiento(anterior) : ''}`.trim(),
+      visibleUsuario: true,
+      metadata: { tipo: 'RELACION_REQUERIMIENTO', requerimiento_anterior_id: anteriorId, requerimiento_id: nuevoId },
+    })
+
+    refrescar(ticketId)
+    if (anteriorId) revalidatePath(`/admin/requerimientos/${anteriorId}`)
+    if (nuevoId) revalidatePath(`/admin/requerimientos/${nuevoId}`)
+    return { ok: true }
+  } catch (e) {
+    return { ok: false, error: mensajeError(e, 'No se pudo relacionar el requerimiento') }
+  }
+}

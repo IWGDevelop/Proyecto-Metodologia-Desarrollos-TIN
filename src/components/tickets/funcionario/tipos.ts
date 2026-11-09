@@ -13,6 +13,7 @@ import type {
   TipoGestion,
 } from '@/lib/tickets/types'
 import type { AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
+import type { RequerimientoResumen } from '@/lib/tickets/requerimientos'
 
 export interface CategoriaFormulario {
   id: string
@@ -48,6 +49,8 @@ export interface CatalogoFormulario {
     jefeNombre: string | null
   }
   puedePlantillas: boolean
+  /** Requerimientos entregados o cerrados que se pueden relacionar con el ticket */
+  requerimientos: RequerimientoResumen[]
 }
 
 export interface NovedadIGSIInput {
@@ -76,6 +79,8 @@ export interface CrearTicketInput {
   valores: Record<string, string>
   adjuntos: AdjuntoNuevo[]
   igsi?: NovedadIGSIInput | null
+  /** Requerimiento entregado o cerrado sobre el que se abre el ticket */
+  requerimientoId?: string | null
 }
 
 export interface ResultadoCrear {
@@ -193,4 +198,5 @@ export interface MiTicketDetalle {
   solicitudPendiente: { fecha: string; textos: string[] } | null
   padre: { id: string; codigo: string; asunto: string } | null
   hijos: { id: string; codigo: string; asunto: string; estado: EstadoTicket }[]
+  requerimiento: RequerimientoResumen | null
 }

@@ -234,6 +234,12 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
               <Dato label="Impacto">{LABEL_IMPACTO_TICKET[t.impacto]}</Dato>
               <Dato label="Área / sede">{[t.area, t.sede].filter(Boolean).join(' · ')}</Dato>
               <Dato label="Canal">{t.canal === 'CORREO' ? 'Correo' : 'Formulario TIN-FLOW'}</Dato>
+              {t.requerimiento && (
+                <Dato label="Requerimiento relacionado">
+                  {t.requerimiento.numero && <span className="font-mono text-xs text-violet-700">#{t.requerimiento.numero} </span>}
+                  {t.requerimiento.nombre}
+                </Dato>
+              )}
             </dl>
           </section>
           <section className="rounded-xl border border-slate-200 bg-white p-5">

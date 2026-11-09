@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual } from '@/lib/supabase/guards'
 import { ESTADOS_TICKET, codigoTicket } from '@/lib/tickets/constantes'
 import { nombresPerfiles } from '@/lib/tickets/solicitante'
+import { cargarRequerimientoResumen, ticketsDeRequerimiento, type TicketDeRequerimiento } from '@/lib/tickets/requerimientos'
 import type { EstadoTicket, TicketHistorial } from '@/lib/tickets/types'
 import type {
   EventoVisible,
@@ -63,6 +64,13 @@ export async function listarMisTickets(filtros: FiltrosMisTickets = {}): Promise
 }
 
 /** Detalle para el solicitante. null si no existe o no es suyo (la página responde 404). */
+/** Tickets del usuario actual relacionados con un requerimiento (detalle "Mis requerimientos") */
+export async function misTicketsDeRequerimiento(requerimientoId: string): Promise<TicketDeRequerimiento[]> {
+  const actual = await getUsuarioActual()
+  if (!actual || !/^[0-9a-f-]{36}$/i.test(String(requerimientoId ?? ''))) return []
+  return ticketsDeRequerimiento(createAdminClient(), requerimientoId, actual.user.id)
+}
+
 export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | null> {
   const actual = await getUsuarioActual()
   if (!actual || !/^[0-9a-f-]{36}$/i.test(String(id ?? ''))) return null
@@ -76,7 +84,7 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
     .maybeSingle()
   if (!t || t.solicitante_id !== yo) return null
 
-  const [valoresR, novedadR, adjuntosR, historialR, cierreR, padreR, hijosR] = await Promise.all([
+  const [valoresR, novedadR, adjuntosR, historialR, cierreR, padreR, hijosR, requerimiento] = await Promise.all([
     (supabase as any).from('ticket_valores_campo')
       .select('valor, campo:ticket_campos_tipologia(etiqueta, tipo_dato, orden)').eq('ticket_id', id),
     (supabase as any).from('ticket_novedades_igsi').select('*').eq('ticket_id', id).maybeSingle(),
@@ -88,6 +96,7 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
       ? (supabase as any).from('tickets').select('id, numero, asunto, solicitante_id').eq('id', t.ticket_padre_id).maybeSingle()
       : Promise.resolve({ data: null }),
     (supabase as any).from('tickets').select('id, numero, asunto, estado').eq('ticket_padre_id', id).eq('solicitante_id', yo).order('numero'),
+    cargarRequerimientoResumen(supabase, t.requerimiento_id),
   ])
 
   // Historial: solo eventos visibles para el usuario y los cambios de estado (sin comentario interno)
@@ -202,5 +211,6 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
     hijos: ((hijosR.data ?? []) as any[]).map(h => ({
       id: h.id, codigo: codigoTicket(Number(h.numero)), asunto: h.asunto, estado: h.estado as EstadoTicket,
     })),
+    requerimiento,
   }
 }
