@@ -104,6 +104,8 @@ export function AsistenteTickets() {
   const [entrada, setEntrada] = useState('')
   const [enviando, setEnviando] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  // Identifica la conversación en el historial del servidor; cambia con "Nueva conversación"
+  const [conversacionId, setConversacionId] = useState(() => crypto.randomUUID())
   const finRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
 
@@ -128,7 +130,7 @@ export function AsistenteTickets() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         // La bienvenida es local: no se envía al modelo
-        body: JSON.stringify({ mensajes: historial.filter(m => m !== BIENVENIDA) }),
+        body: JSON.stringify({ mensajes: historial.filter(m => m !== BIENVENIDA), conversacionId }),
         signal: ctrl.signal,
       })
       if (!res.ok || !res.body) {
@@ -158,6 +160,7 @@ export function AsistenteTickets() {
   const reiniciar = () => {
     abortRef.current?.abort()
     setMensajes([BIENVENIDA])
+    setConversacionId(crypto.randomUUID())
     setError(null)
     setEnviando(false)
   }
@@ -238,7 +241,7 @@ export function AsistenteTickets() {
           </button>
         </div>
         <p className="mt-1.5 px-1 text-[10.5px] text-slate-400">
-          Respuestas generadas con IA; pueden contener errores. No escribas contraseñas.
+          Respuestas generadas con IA; pueden contener errores. Las conversaciones se guardan para mejorar el servicio. No escribas contraseñas.
         </p>
       </form>
     </div>

@@ -4,16 +4,19 @@ import { accesoTickets } from '@/lib/tickets/solicitante'
 import {
   catalogoParaAsistente,
   instruccionesSistema,
+  registrarInteraccion,
   streamGemini,
   type MensajeAsistente,
 } from '@/lib/tickets/asistente'
 
 // Asistente de IA de TIN-TICKETS: recibe la conversación y responde en streaming (texto plano).
+// Cada pregunta queda registrada en ticket_asistente_interacciones (trazabilidad y estadísticas).
 export const maxDuration = 60
 
 const MAX_MENSAJES = 16
 const MAX_CARACTERES = 2000
 const LIMITE_POR_MINUTO = 12
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 // Límite simple por usuario y por instancia, para evitar abusos del API key
 const usos = new Map<string, number[]>()
@@ -43,32 +46,62 @@ function validarMensajes(entrada: unknown): MensajeAsistente[] | null {
 export async function POST(req: Request) {
   const acceso = await accesoTickets()
   if (!acceso) return NextResponse.json({ error: 'No autorizado' }, { status: 401 })
-  if (excedeLimite(acceso.usuarioId)) {
-    return NextResponse.json({ error: 'Enviaste muchos mensajes seguidos. Espera un minuto e intenta de nuevo.' }, { status: 429 })
-  }
 
-  let cuerpo: unknown
+  let cuerpo: { mensajes?: unknown; conversacionId?: unknown; turno?: unknown }
   try {
     cuerpo = await req.json()
   } catch {
     return NextResponse.json({ error: 'Solicitud inválida' }, { status: 400 })
   }
-  const mensajes = validarMensajes((cuerpo as { mensajes?: unknown })?.mensajes)
+  const mensajes = validarMensajes(cuerpo?.mensajes)
   if (!mensajes) return NextResponse.json({ error: 'Conversación inválida' }, { status: 400 })
 
+  const supabase = createAdminClient()
+  const conversacionId = typeof cuerpo.conversacionId === 'string' && RE_UUID.test(cuerpo.conversacionId)
+    ? cuerpo.conversacionId
+    : crypto.randomUUID()
+  const turno = mensajes.filter(m => m.rol === 'usuario').length
+  const base = {
+    usuarioId: acceso.usuarioId,
+    conversacionId,
+    turno,
+    pregunta: mensajes[mensajes.length - 1].texto,
+  }
+
+  if (excedeLimite(acceso.usuarioId)) {
+    await registrarInteraccion(supabase, { ...base, estado: 'LIMITE' })
+    return NextResponse.json({ error: 'Enviaste muchos mensajes seguidos. Espera un minuto e intenta de nuevo.' }, { status: 429 })
+  }
+
+  const inicio = Date.now()
   try {
-    const supabase = createAdminClient()
     const [catalogo, perfil] = await Promise.all([
       catalogoParaAsistente(supabase, acceso),
       supabase.from('perfiles').select('nombre_completo').eq('id', acceso.usuarioId).maybeSingle(),
     ])
     const nombre = (perfil.data as { nombre_completo?: string } | null)?.nombre_completo?.split(' ')[0] ?? null
-    const stream = await streamGemini(instruccionesSistema(catalogo, nombre), mensajes)
+    const stream = await streamGemini(instruccionesSistema(catalogo, nombre), mensajes, fin =>
+      registrarInteraccion(supabase, {
+        ...base,
+        respuesta: fin.texto,
+        estado: fin.estado === 'OK' && !fin.texto.trim() ? 'ERROR' : fin.estado,
+        error: fin.error ?? (fin.estado === 'OK' && !fin.texto.trim() ? 'Respuesta vacía' : null),
+        modelo: fin.modelo,
+        duracionMs: Date.now() - inicio,
+        uso: fin.uso,
+      }),
+    )
     return new Response(stream, {
       headers: { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' },
     })
   } catch (err) {
     console.error('[asistente tickets]', err)
+    await registrarInteraccion(supabase, {
+      ...base,
+      estado: 'ERROR',
+      error: (err as Error).message,
+      duracionMs: Date.now() - inicio,
+    })
     return NextResponse.json({ error: 'El asistente no está disponible en este momento. Intenta más tarde.' }, { status: 502 })
   }
 }

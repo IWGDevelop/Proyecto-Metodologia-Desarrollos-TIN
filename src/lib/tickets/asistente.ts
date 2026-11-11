@@ -149,14 +149,35 @@ export function instruccionesSistema(catalogo: string, nombreUsuario: string | n
   ].join('\n')
 }
 
+export interface UsoGemini {
+  tokensEntrada: number | null
+  tokensSalida: number | null
+  tokensRazonamiento: number | null
+}
+
+export interface FinRespuesta {
+  /** Texto completo (o parcial, si se canceló o falló a mitad) */
+  texto: string
+  estado: 'OK' | 'CANCELADA' | 'ERROR'
+  error?: string
+  modelo: string
+  uso: UsoGemini
+}
+
 /**
  * Llama a Gemini en streaming (SSE) y devuelve un ReadableStream de texto plano.
  * Lanza error si la API responde con un estado no exitoso.
+ * `alTerminar` se espera antes de cerrar el stream, para que el registro quede guardado
+ * dentro de la misma petición.
  */
-export async function streamGemini(sistema: string, mensajes: MensajeAsistente[]): Promise<ReadableStream<Uint8Array>> {
+export async function streamGemini(
+  sistema: string,
+  mensajes: MensajeAsistente[],
+  alTerminar?: (fin: FinRespuesta) => Promise<void>,
+): Promise<ReadableStream<Uint8Array>> {
   const clave = process.env.GEMINI_API_KEY
   if (!clave) throw new Error('GEMINI_API_KEY no está configurada')
-  const modelo = process.env.GEMINI_MODEL || GEMINI_MODELO_DEFECTO
+  let modelo = process.env.GEMINI_MODEL || GEMINI_MODELO_DEFECTO
 
   const res = await fetch(
     `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelo)}:streamGenerateContent?alt=sse`,
@@ -185,41 +206,108 @@ export async function streamGemini(sistema: string, mensajes: MensajeAsistente[]
   const encoder = new TextEncoder()
   const lector = res.body.getReader()
   let buffer = ''
+  let completo = ''
+  const uso: UsoGemini = { tokensEntrada: null, tokensSalida: null, tokensRazonamiento: null }
+  let terminado = false
+  const terminar = async (estado: FinRespuesta['estado'], error?: string) => {
+    if (terminado) return
+    terminado = true
+    try {
+      await alTerminar?.({ texto: completo, estado, error, modelo, uso })
+    } catch (e) {
+      console.error('[asistente tickets] no se pudo registrar la interacción', e)
+    }
+  }
 
   return new ReadableStream<Uint8Array>({
     async pull(controller) {
-      while (true) {
-        const { value, done } = await lector.read()
-        if (done) {
-          controller.close()
-          return
-        }
-        buffer += decoder.decode(value, { stream: true })
-        const eventos = buffer.split(/\r?\n\r?\n/)
-        buffer = eventos.pop() ?? ''
-        let emitido = false
-        for (const ev of eventos) {
-          const datos = ev.split(/\r?\n/).filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('')
-          if (!datos) continue
-          try {
-            const json = JSON.parse(datos)
-            const texto = (json?.candidates?.[0]?.content?.parts ?? [])
-              .filter((p: any) => typeof p?.text === 'string' && !p.thought)
-              .map((p: any) => p.text)
-              .join('')
-            if (texto) {
-              controller.enqueue(encoder.encode(texto))
-              emitido = true
-            }
-          } catch {
-            // fragmento incompleto o no JSON: se ignora
+      try {
+        while (true) {
+          const { value, done } = await lector.read()
+          if (done) {
+            await terminar('OK')
+            controller.close()
+            return
           }
+          buffer += decoder.decode(value, { stream: true })
+          const eventos = buffer.split(/\r?\n\r?\n/)
+          buffer = eventos.pop() ?? ''
+          let emitido = false
+          for (const ev of eventos) {
+            const datos = ev.split(/\r?\n/).filter(l => l.startsWith('data:')).map(l => l.slice(5).trim()).join('')
+            if (!datos) continue
+            try {
+              const json = JSON.parse(datos)
+              if (typeof json?.modelVersion === 'string') modelo = json.modelVersion
+              const u = json?.usageMetadata
+              if (u) {
+                uso.tokensEntrada = u.promptTokenCount ?? uso.tokensEntrada
+                uso.tokensSalida = u.candidatesTokenCount ?? uso.tokensSalida
+                uso.tokensRazonamiento = u.thoughtsTokenCount ?? uso.tokensRazonamiento
+              }
+              const texto = (json?.candidates?.[0]?.content?.parts ?? [])
+                .filter((p: any) => typeof p?.text === 'string' && !p.thought)
+                .map((p: any) => p.text)
+                .join('')
+              if (texto) {
+                completo += texto
+                controller.enqueue(encoder.encode(texto))
+                emitido = true
+              }
+            } catch {
+              // fragmento incompleto o no JSON: se ignora
+            }
+          }
+          if (emitido) return
         }
-        if (emitido) return
+      } catch (e) {
+        await terminar('ERROR', (e as Error).message)
+        controller.error(e)
       }
     },
-    cancel() {
+    async cancel() {
       lector.cancel().catch(() => {})
+      await terminar('CANCELADA')
     },
   })
+}
+
+const RE_TIPOLOGIA = /\[\[TIPOLOGIA:([0-9a-f-]{36})\]\]/i
+
+export interface Interaccion {
+  usuarioId: string
+  conversacionId: string
+  turno: number
+  pregunta: string
+  respuesta?: string | null
+  estado: 'OK' | 'CANCELADA' | 'ERROR' | 'LIMITE'
+  error?: string | null
+  modelo?: string | null
+  duracionMs?: number | null
+  uso?: UsoGemini
+}
+
+/** Guarda una pregunta del asistente y su respuesta en ticket_asistente_interacciones */
+export async function registrarInteraccion(supabase: SupabaseClient, i: Interaccion): Promise<void> {
+  const fila = {
+    usuario_id: i.usuarioId,
+    conversacion_id: i.conversacionId,
+    turno: i.turno,
+    pregunta: i.pregunta,
+    respuesta: i.respuesta || null,
+    tipologia_sugerida_id: i.respuesta?.match(RE_TIPOLOGIA)?.[1]?.toLowerCase() ?? null,
+    estado: i.estado,
+    error: i.error ? i.error.slice(0, 1000) : null,
+    modelo: i.modelo ?? null,
+    duracion_ms: i.duracionMs ?? null,
+    tokens_entrada: i.uso?.tokensEntrada ?? null,
+    tokens_salida: i.uso?.tokensSalida ?? null,
+    tokens_razonamiento: i.uso?.tokensRazonamiento ?? null,
+  }
+  let { error } = await (supabase as any).from('ticket_asistente_interacciones').insert(fila)
+  // Si el modelo propuso un id de tipología que no existe (FK), se guarda sin él
+  if (error?.code === '23503' && fila.tipologia_sugerida_id) {
+    ;({ error } = await (supabase as any).from('ticket_asistente_interacciones').insert({ ...fila, tipologia_sugerida_id: null }))
+  }
+  if (error) console.error('[asistente tickets] error al guardar la interacción:', error.message)
 }
