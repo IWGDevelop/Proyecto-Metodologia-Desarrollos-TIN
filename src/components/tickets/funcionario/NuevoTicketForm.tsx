@@ -150,6 +150,9 @@ export function NuevoTicketForm({
   const valores = useWatch({ control, name: 'valores' })
   const adjuntos = useWatch({ control, name: 'adjuntos' }) as AdjuntoNuevo[]
   const requerimientoId = useWatch({ control, name: 'requerimientoId' })
+  // "Requerimiento relacionado" va oculto salvo que el usuario diga que es sobre un desarrollo,
+  // venga preseleccionado o la tipología lo exija (ajuste a un desarrollo entregado)
+  const [relacionarDesarrollo, setRelacionarDesarrollo] = useState(() => !!form.getValues('requerimientoId'))
   const descripcion = useWatch({ control, name: 'descripcion' })
   const quePaso = useWatch({ control, name: 'igsi.que_paso' })
 
@@ -359,7 +362,27 @@ export function NuevoTicketForm({
             </div>
           )}
 
-          <div className="space-y-1.5 border-t border-slate-100 pt-4">
+          {!(tipologia && pideRequerimiento(tipologia.nombre)) && (
+            <label className="flex cursor-pointer items-start gap-2 border-t border-slate-100 pt-4 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                className="mt-0.5 accent-blue-600"
+                checked={relacionarDesarrollo || !!requerimientoId}
+                disabled={isSubmitting}
+                onChange={e => {
+                  setRelacionarDesarrollo(e.target.checked)
+                  if (!e.target.checked) setValue('requerimientoId', '', { shouldValidate: form.formState.isSubmitted })
+                }}
+              />
+              <span>
+                Está relacionado con un desarrollo específico de TIN
+                <span className="block text-xs text-slate-400">Márcalo si tu solicitud es sobre un desarrollo que TIN ya entregó o cerró.</span>
+              </span>
+            </label>
+          )}
+
+          {(relacionarDesarrollo || !!requerimientoId || (!!tipologia && pideRequerimiento(tipologia.nombre))) && (
+          <div className={cn('space-y-1.5', tipologia && pideRequerimiento(tipologia.nombre) && 'border-t border-slate-100 pt-4')}>
             <Label className="text-sm font-medium text-slate-700">
               Requerimiento relacionado
               {tipologia && pideRequerimiento(tipologia.nombre)
@@ -380,6 +403,7 @@ export function NuevoTicketForm({
             </div>
             {errors.requerimientoId && <p className="text-xs text-red-600">{errors.requerimientoId.message}</p>}
           </div>
+          )}
 
           {tipologia?.requiere_aprobacion && (
             catalogo.solicitante.jefeNombre ? (
