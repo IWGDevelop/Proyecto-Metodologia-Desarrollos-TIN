@@ -1,13 +1,14 @@
 'use client'
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
+import Image from 'next/image'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowRight, Loader2, RotateCcw, Send, Sparkles, X } from 'lucide-react'
+import { ArrowRight, Loader2, RotateCcw, Send, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { RE_TIPOLOGIA_ASISTENTE, extraerBorrador, guardarBorrador, textoVisible } from './borrador-asistente'
 
-// Asistente de IA (Gemini) que guía al funcionario para reportar su ticket.
+// ConeIA: asistente de IA (Gemini) que guía al funcionario para reportar su ticket.
 // La conversación vive solo en el navegador; se envía completa en cada pregunta.
 
 interface Mensaje {
@@ -22,10 +23,22 @@ const SUGERENCIAS = [
   '¿Cómo reabro un ticket que no quedó resuelto?',
 ]
 
+/** Cabeza del robot ConeIA en un círculo (avatar) */
+function AvatarConeIA({ tamano = 28, className }: { tamano?: number; className?: string }) {
+  return (
+    <span
+      className={cn('inline-flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-white ring-1 ring-slate-200', className)}
+      style={{ width: tamano, height: tamano }}
+    >
+      <Image src="/tickets/coneia-cabeza.png" alt="ConeIA" width={tamano} height={tamano} className="h-full w-full object-cover" />
+    </span>
+  )
+}
+
 const BIENVENIDA: Mensaje = {
   rol: 'asistente',
   texto:
-    'Hola, soy el asistente de TIN-TICKETS. Cuéntame qué te pasa o qué necesitas y te ayudo a elegir la tipología correcta, ' +
+    '¡Hola! Soy ConeIA de TIN-TICKETS. Cuéntame qué te pasa o qué necesitas y te ayudo a elegir la tipología correcta, ' +
     'a saber qué información y adjuntos preparar y a dejar tu ticket bien reportado.',
 }
 
@@ -86,10 +99,11 @@ function Burbuja({ m, escribiendo, alAbrirFormulario }: { m: Mensaje; escribiend
   const texto = textoVisible(m.texto)
   const esUsuario = m.rol === 'usuario'
   return (
-    <div className={cn('flex', esUsuario ? 'justify-end' : 'justify-start')}>
+    <div className={cn('flex items-end gap-2', esUsuario ? 'justify-end' : 'justify-start')}>
+      {!esUsuario && <AvatarConeIA tamano={28} className="mb-0.5" />}
       <div
         className={cn(
-          'max-w-[88%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed',
+          'max-w-[82%] rounded-2xl px-3.5 py-2 text-[13px] leading-relaxed',
           esUsuario ? 'rounded-br-sm bg-blue-600 text-white' : 'rounded-bl-sm bg-slate-100 text-slate-800',
         )}
       >
@@ -199,9 +213,20 @@ export function AsistenteTickets() {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        className="fixed bottom-5 right-5 z-40 flex items-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-3 text-sm font-semibold text-white shadow-lg transition hover:shadow-xl"
+        title="Pregúntale a ConeIA"
+        className="group fixed bottom-5 right-5 z-40 flex items-end gap-1"
       >
-        <Sparkles size={17} /> ¿Cómo reporto mi ticket?
+        <span className="mb-3 rounded-full rounded-br-sm bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition group-hover:shadow-xl">
+          Hola, soy ConeIA · ¿Cómo reporto mi ticket?
+        </span>
+        <Image
+          src="/tickets/coneia.png"
+          alt="ConeIA"
+          width={64}
+          height={97}
+          priority
+          className="drop-shadow-lg transition-transform group-hover:-translate-y-1"
+        />
       </button>
     )
   }
@@ -209,10 +234,10 @@ export function AsistenteTickets() {
   return (
     <div className="fixed bottom-5 right-5 z-40 flex h-[min(620px,calc(100vh-2.5rem))] w-[min(400px,calc(100vw-2.5rem))] flex-col overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
       <div className="flex items-center gap-2 bg-gradient-to-r from-violet-600 to-fuchsia-600 px-4 py-3 text-white">
-        <Sparkles size={18} />
+        <AvatarConeIA tamano={36} className="ring-2 ring-white/40" />
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-semibold leading-tight">Asistente TIN-TICKETS</p>
-          <p className="text-[11px] text-white/80">Te ayuda a reportar tu ticket · IA</p>
+          <p className="text-sm font-semibold leading-tight">ConeIA</p>
+          <p className="text-[11px] text-white/80">Asistente de TIN-TICKETS · Te ayuda a reportar tu ticket</p>
         </div>
         <button type="button" onClick={reiniciar} title="Nueva conversación" className="rounded-md p-1.5 hover:bg-white/15">
           <RotateCcw size={15} />
