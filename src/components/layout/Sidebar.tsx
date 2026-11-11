@@ -30,9 +30,12 @@ import {
   Bug,
   SlidersHorizontal,
   Bot,
+  ArrowLeft,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { InterflowLogo, InterflowLogoIcon } from '@/components/layout/InterflowLogo'
+import { TinTicketsLogo, TinTicketsLogoIcon } from '@/components/layout/TinTicketsLogo'
+import { esRutaTickets } from '@/components/layout/TinTicketsSplash'
 import type { RolUsuario } from '@/lib/supabase/types'
 import type { PermisosMap } from '@/actions/roles-permisos'
 
@@ -42,6 +45,16 @@ interface NavItem {
   Icon: React.ComponentType<{ size?: number; className?: string }>
   menuResource: string
 }
+
+// Menú propio de la solución TIN-TICKETS (mismas rutas, acceso independiente)
+const NAV_ITEMS_TICKETS: NavItem[] = [
+  { href: '/admin/tickets',               label: 'Tickets',               Icon: Ticket,           menuResource: 'menu:tickets' },
+  { href: '/admin/tickets-dashboard',     label: 'Dashboard Tickets',     Icon: Gauge,            menuResource: 'menu:tickets-dashboard' },
+  { href: '/admin/tickets-bugs',          label: 'Bugs IGSI',             Icon: Bug,              menuResource: 'menu:tickets-bugs' },
+  { href: '/admin/tickets-configuracion', label: 'Config. Tickets',       Icon: SlidersHorizontal, menuResource: 'menu:tickets-config' },
+]
+
+const TICKETS_ENTRADA = '#tin-tickets'
 
 const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/dashboard',             label: 'Dashboard',         Icon: LayoutDashboard, menuResource: 'menu:dashboard' },
@@ -53,10 +66,8 @@ const NAV_ITEMS_ADMIN: NavItem[] = [
   { href: '/admin/reporte-prioridades',   label: 'Rep. Prioridades',    Icon: ListOrdered,      menuResource: 'menu:reporte-prioridades' },
   { href: '/admin/reporte-planeacion',    label: 'Rep. Planeación',     Icon: CalendarRange,    menuResource: 'menu:reporte-planeacion' },
   { href: '/admin/reporte-penalizaciones', label: 'Rep. Penalizaciones', Icon: AlertOctagon,    menuResource: 'menu:reporte-penalizaciones' },
-  { href: '/admin/tickets',               label: 'Tickets',               Icon: Ticket,           menuResource: 'menu:tickets' },
-  { href: '/admin/tickets-dashboard',     label: 'Dashboard Tickets',     Icon: Gauge,            menuResource: 'menu:tickets-dashboard' },
-  { href: '/admin/tickets-bugs',          label: 'Bugs IGSI',             Icon: Bug,              menuResource: 'menu:tickets-bugs' },
-  { href: '/admin/tickets-configuracion', label: 'Config. Tickets',       Icon: SlidersHorizontal, menuResource: 'menu:tickets-config' },
+  // Acceso a la solución TIN-TICKETS: se resuelve al primer menú de tickets permitido
+  { href: TICKETS_ENTRADA,                label: 'TIN-TICKETS',           Icon: Ticket,           menuResource: 'menu:tin-tickets' },
   { href: '/admin/pendientes',            label: 'Pendientes',            Icon: AlarmClock,       menuResource: 'menu:pendientes' },
   { href: '/admin/cronograma',            label: 'Cronograma',           Icon: GanttChartSquare, menuResource: 'menu:cronograma' },
   { href: '/admin/cronograma-tin',       label: 'Cronograma TIN',       Icon: CalendarClock,    menuResource: 'menu:cronograma-tin' },
@@ -105,12 +116,32 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
     })
   }
 
-  const navItems = useMemo(() => {
-    if (rol === 'ADMIN_TIN') return NAV_ITEMS_ADMIN
-    if (rol === 'PRESIDENCIA') return NAV_ITEMS_PRESIDENCIA
-    // USUARIO and other roles: filter based on configured permissions
-    return NAV_ITEMS_ADMIN.filter(item => permisos[item.menuResource]?.puede_ver === true)
+  const enTickets = esRutaTickets(pathname)
+
+  // Menús de tickets que el rol puede ver
+  const ticketItems = useMemo(() => {
+    if (rol === 'ADMIN_TIN') return NAV_ITEMS_TICKETS
+    if (rol === 'PRESIDENCIA') return []
+    return NAV_ITEMS_TICKETS.filter(item => permisos[item.menuResource]?.puede_ver === true)
   }, [rol, permisos])
+
+  const flowItems = useMemo(() => {
+    let base: NavItem[]
+    if (rol === 'ADMIN_TIN') base = NAV_ITEMS_ADMIN
+    else if (rol === 'PRESIDENCIA') base = NAV_ITEMS_PRESIDENCIA
+    // USUARIO and other roles: filter based on configured permissions
+    else base = NAV_ITEMS_ADMIN.filter(item => item.href === TICKETS_ENTRADA || permisos[item.menuResource]?.puede_ver === true)
+    // El acceso a TIN-TICKETS lleva al primer menú de tickets permitido; se oculta si no hay ninguno
+    return base.flatMap(item =>
+      item.href !== TICKETS_ENTRADA
+        ? [item]
+        : ticketItems.length > 0 ? [{ ...item, href: ticketItems[0].href }] : []
+    )
+  }, [ticketItems, rol, permisos])
+
+  const navItems = enTickets ? ticketItems : flowItems
+  // Destino de "Volver a TIN-FLOW": primer menú de TIN-FLOW permitido que no sea de tickets
+  const hrefVolver = flowItems.find(item => !esRutaTickets(item.href))?.href ?? '/mis-requerimientos'
 
   const navContent = (
     <div className="flex h-full flex-col">
@@ -121,7 +152,9 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
           collapsed ? 'justify-center' : 'justify-between'
         )}
       >
-        {collapsed ? (
+        {enTickets ? (
+          collapsed ? <TinTicketsLogoIcon px={30} /> : <TinTicketsLogo size="sm" />
+        ) : collapsed ? (
           <InterflowLogoIcon px={30} />
         ) : (
           <div className="flex flex-col gap-0.5">
@@ -144,8 +177,23 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
 
       {/* Nav */}
       <nav className="flex-1 space-y-1 overflow-y-auto px-2 py-4">
+        {enTickets && (
+          <Link
+            href={hrefVolver}
+            onClick={onMobileClose}
+            className={cn(
+              'mb-3 flex items-center gap-3 rounded-lg border border-slate-700 px-3 py-2 text-xs font-medium text-slate-400 transition-colors hover:bg-slate-700 hover:text-white',
+              collapsed && 'justify-center px-2'
+            )}
+            title={collapsed ? 'Volver a TIN-FLOW' : undefined}
+          >
+            <ArrowLeft size={16} className="shrink-0" />
+            {!collapsed && <span>Volver a TIN-FLOW</span>}
+          </Link>
+        )}
         {navItems.map(({ href, label, Icon }) => {
           const isActive = pathname === href || pathname.startsWith(href + '/')
+          const esAccesoTickets = !enTickets && label === 'TIN-TICKETS'
           const esPendientes = href === '/admin/pendientes'
           const badge = esPendientes && pendientesCount > 0 ? pendientesCount : 0
           return (
@@ -156,8 +204,10 @@ export function Sidebar({ mobileOpen, onMobileClose, onCollapsedChange, rol, per
               className={cn(
                 'flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors',
                 isActive
-                  ? 'bg-blue-600 text-white'
-                  : 'text-slate-300 hover:bg-slate-700 hover:text-white',
+                  ? enTickets ? 'bg-gradient-to-r from-violet-600 to-pink-600 text-white' : 'bg-blue-600 text-white'
+                  : esAccesoTickets
+                    ? 'text-fuchsia-300 hover:bg-gradient-to-r hover:from-violet-600 hover:to-pink-600 hover:text-white'
+                    : 'text-slate-300 hover:bg-slate-700 hover:text-white',
                 collapsed && 'justify-center px-2'
               )}
               title={collapsed ? label : undefined}

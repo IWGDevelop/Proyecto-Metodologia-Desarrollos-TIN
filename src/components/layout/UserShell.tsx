@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { SidebarUsuario } from './SidebarUsuario'
 import { TopbarUsuario } from './TopbarUsuario'
+import { TinTicketsSplash } from './TinTicketsSplash'
 import type { Perfil } from '@/lib/supabase/types'
 
 interface Props {
@@ -27,6 +28,7 @@ export function UserShell({ children, perfil }: Props) {
         <TopbarUsuario perfil={perfil} onMenuClick={() => setMobileOpen(true)} />
         <main className="flex-1 overflow-y-auto">{children}</main>
       </div>
+      <TinTicketsSplash />
     </div>
   )
 }

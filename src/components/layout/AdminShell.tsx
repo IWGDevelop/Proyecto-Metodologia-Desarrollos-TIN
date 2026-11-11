@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { Sidebar } from './Sidebar'
 import { Topbar } from './Topbar'
 import { PermisosProvider } from '@/context/PermisosContext'
+import { TinTicketsSplash } from './TinTicketsSplash'
 import type { Perfil } from '@/lib/supabase/types'
 import type { PermisosMap } from '@/actions/roles-permisos'
 
@@ -50,6 +51,7 @@ export function AdminShell({ children, perfil, permisos = {}, pendientesCount = 
           <Topbar onMenuClick={() => setMobileOpen(true)} perfil={perfil} permisos={permisos} />
           <main className="flex-1 overflow-y-auto">{children}</main>
         </div>
+        <TinTicketsSplash />
       </div>
     </PermisosProvider>
   )
