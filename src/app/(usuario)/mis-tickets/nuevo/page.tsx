@@ -15,6 +15,8 @@ export default async function NuevoTicketPage({
   const requerimiento = Array.isArray(sp.requerimiento) ? sp.requerimiento[0] : sp.requerimiento
   // ?tipologia=<id>: viene del botón del asistente de IA
   const tipologia = Array.isArray(sp.tipologia) ? sp.tipologia[0] : sp.tipologia
+  // ?t=<marca>: distingue cada clic del botón, para aplicar la tipología aunque se repita
+  const marca = Array.isArray(sp.t) ? sp.t[0] : sp.t
 
   return (
     <div className="p-6">
@@ -23,7 +25,7 @@ export default async function NuevoTicketPage({
           El catálogo de tickets aún no está configurado. Comunícate con TIN.
         </div>
       ) : (
-        <NuevoTicketForm catalogo={catalogo} requerimientoInicial={requerimiento ?? null} tipologiaInicial={tipologia ?? null} />
+        <NuevoTicketForm catalogo={catalogo} requerimientoInicial={requerimiento ?? null} tipologiaInicial={tipologia ?? null} marcaTipologia={marca ?? null} />
       )}
     </div>
   )

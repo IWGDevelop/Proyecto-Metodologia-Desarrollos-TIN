@@ -2,6 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, type ReactNode } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2, RotateCcw, Send, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
 
@@ -70,7 +71,7 @@ function TextoFormateado({ texto }: { texto: string }) {
   return <>{bloques}</>
 }
 
-function Burbuja({ m, escribiendo }: { m: Mensaje; escribiendo?: boolean }) {
+function Burbuja({ m, escribiendo, alAbrirFormulario }: { m: Mensaje; escribiendo?: boolean; alAbrirFormulario: (url: string) => void }) {
   const ids = [...m.texto.matchAll(RE_MARCADOR)].map(x => x[1])
   const texto = m.texto.replace(RE_MARCADOR, '').trim()
   const esUsuario = m.rol === 'usuario'
@@ -88,6 +89,11 @@ function Burbuja({ m, escribiendo }: { m: Mensaje; escribiendo?: boolean }) {
           <Link
             key={id}
             href={`/mis-tickets/nuevo?tipologia=${id}`}
+            onClick={e => {
+              if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
+              e.preventDefault()
+              alAbrirFormulario(`/mis-tickets/nuevo?tipologia=${id}&t=${Date.now()}`)
+            }}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
           >
             Abrir el formulario con esta tipología <ArrowRight size={13} />
@@ -99,6 +105,7 @@ function Burbuja({ m, escribiendo }: { m: Mensaje; escribiendo?: boolean }) {
 }
 
 export function AsistenteTickets() {
+  const router = useRouter()
   const [abierto, setAbierto] = useState(false)
   const [mensajes, setMensajes] = useState<Mensaje[]>([BIENVENIDA])
   const [entrada, setEntrada] = useState('')
@@ -195,7 +202,16 @@ export function AsistenteTickets() {
 
       <div className="flex-1 space-y-3 overflow-y-auto px-3 py-3">
         {mensajes.map((m, i) => (
-          <Burbuja key={i} m={m} escribiendo={enviando && i === mensajes.length - 1 && m.rol === 'asistente'} />
+          <Burbuja
+            key={i}
+            m={m}
+            escribiendo={enviando && i === mensajes.length - 1 && m.rol === 'asistente'}
+            // Se minimiza para que el formulario quede a la vista; la conversación se conserva
+            alAbrirFormulario={url => {
+              setAbierto(false)
+              router.push(url)
+            }}
+          />
         ))}
         {mensajes.length === 1 && (
           <div className="flex flex-wrap gap-1.5 pt-1">

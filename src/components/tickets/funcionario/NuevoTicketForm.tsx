@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { FormProvider, useForm, useWatch } from 'react-hook-form'
@@ -48,10 +48,12 @@ export function NuevoTicketForm({
   catalogo,
   requerimientoInicial,
   tipologiaInicial,
+  marcaTipologia,
 }: {
   catalogo: CatalogoFormulario
   requerimientoInicial?: string | null
   tipologiaInicial?: string | null
+  marcaTipologia?: string | null
 }) {
   const router = useRouter()
   const tipologiaSugerida = catalogo.tipologias.find(t => t.id === tipologiaInicial) ?? null
@@ -115,6 +117,33 @@ export function NuevoTicketForm({
     setValue('valores', {})
     setValue('igsi', IGSI_VACIO)
   }
+
+  // Tipología sugerida por el asistente de IA (?tipologia=<id>). Se aplica también cuando el
+  // formulario ya está abierto: la navegación a la misma ruta no vuelve a montar el componente.
+  const idSugerida = tipologiaSugerida?.id ?? null
+  const aplicada = useRef<string | null>(null)
+  useEffect(() => {
+    if (!idSugerida) return
+    const clave = `${idSugerida}:${marcaTipologia ?? ''}`
+    if (aplicada.current === clave) return
+    aplicada.current = clave
+    const t = catalogo.tipologias.find(x => x.id === idSugerida)
+    if (!t) return
+    if (form.getValues('tipologiaId') !== t.id) {
+      form.setValue('categoriaId', t.categoria_id, { shouldValidate: true })
+      form.setValue('tipologiaId', t.id, { shouldValidate: true })
+      form.setValue('valores', {})
+      form.setValue('igsi', IGSI_VACIO)
+    }
+    toast.success(`Tipología seleccionada: ${t.nombre}`)
+    document.getElementById('categoria')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    // Quita el parámetro de la URL para que el mismo botón vuelva a funcionar si el usuario
+    // cambia la tipología a mano y luego lo pulsa otra vez
+    const url = new URL(window.location.href)
+    url.searchParams.delete('tipologia')
+    url.searchParams.delete('t')
+    window.history.replaceState(null, '', url.pathname + url.search)
+  }, [idSugerida, marcaTipologia, catalogo.tipologias, form])
 
   const onSubmit = async (v: FormularioTicket) => {
     if (!tipologia) return
