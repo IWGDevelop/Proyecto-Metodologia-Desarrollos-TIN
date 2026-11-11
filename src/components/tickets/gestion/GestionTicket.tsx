@@ -25,6 +25,7 @@ import { registrarAdjuntos } from '@/actions/tickets/adjuntos'
 import { SubirAdjuntos, type AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
 import { EditorComentario, type EstadoEditorComentario } from '@/components/tickets/EditorComentario'
 import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
+import { textoPlanoComentario } from '@/lib/tickets/comentario-rico'
 import { AsignarDialog } from './AsignarDialog'
 import { ResolverDialog } from './ResolverDialog'
 import { HistorialTicket } from './HistorialTicket'
@@ -238,7 +239,8 @@ export function GestionTicket({
         {/* Columna principal */}
         <div className="space-y-4">
           <Seccion titulo="Descripción" icon={FileText}>
-            <ContenidoComentario texto={t.descripcion} className="text-slate-800" />
+            {/* En una novedad IGSI las capturas se muestran en «Qué pasó»; aquí va solo el texto */}
+            <ContenidoComentario texto={t.novedad ? textoPlanoComentario(t.descripcion) : t.descripcion} className="text-slate-800" />
             {t.campos.length > 0 && (
               <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
                 {t.campos.map((c, i) => <Dato key={i} label={c.etiqueta}>{c.valor}</Dato>)}
@@ -262,7 +264,7 @@ export function GestionTicket({
                   <Dato label="Impacto">{IMPACTOS_OPERACION_IGSI.find(a => a.value === t.novedad!.impacto_operacion)?.label ?? t.novedad.impacto_operacion}</Dato>
                 </dl>
                 <dl className="grid gap-3">
-                  <Dato label="Qué pasó"><span className="whitespace-pre-wrap">{t.novedad.que_paso}</span></Dato>
+                  <Dato label="Qué pasó"><ContenidoComentario texto={t.novedad.que_paso} className="text-slate-800" /></Dato>
                   <Dato label="Qué esperaba"><span className="whitespace-pre-wrap">{t.novedad.que_esperaba}</span></Dato>
                   {t.novedad.mensaje_error && <Dato label="Mensaje de error"><code className="whitespace-pre-wrap rounded bg-slate-50 px-1.5 py-0.5 text-xs">{t.novedad.mensaje_error}</code></Dato>}
                   <Dato label="Validación previa">{t.novedad.validacion_previa ? 'Sí, revisó los datos del documento' : 'No'}</Dato>

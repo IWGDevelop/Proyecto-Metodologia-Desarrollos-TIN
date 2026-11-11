@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
+import { EditorComentario } from '@/components/tickets/EditorComentario'
 import { ACCIONES_IGSI, CADENA_IGSI, IMPACTOS_OPERACION_IGSI } from '@/lib/tickets/constantes'
 import type { ServiciosIGSI } from '@/lib/tickets/types'
 import { cn } from '@/lib/utils'
@@ -22,8 +23,20 @@ function Req() {
 }
 
 /** Formulario propio de Novedades IGSI (tabla tIgsiReporte de la especificación) */
-export function FormNovedadIGSI({ servicios }: { servicios: ServiciosIGSI }) {
-  const { register, control, setValue, formState: { errors } } = useFormContext<FormularioTicket>()
+export function FormNovedadIGSI({
+  servicios,
+  carpeta,
+  disabled,
+  onSubiendo,
+}: {
+  servicios: ServiciosIGSI
+  /** Carpeta de Firebase Storage para las capturas de «¿Qué pasó?» */
+  carpeta: string
+  disabled?: boolean
+  /** Capturas de «¿Qué pasó?» que aún se están subiendo */
+  onSubiendo?: (n: number) => void
+}) {
+  const { register, control, setValue, getValues, formState: { errors, isSubmitted } } = useFormContext<FormularioTicket>()
   const e = errors.igsi
   const tipoDoc = useWatch({ control, name: 'igsi.tipo_documento' })
   const sinNumero = useWatch({ control, name: 'igsi.sin_numero' })
@@ -189,9 +202,20 @@ export function FormNovedadIGSI({ servicios }: { servicios: ServiciosIGSI }) {
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        <div className="space-y-1.5">
+        <div className="col-span-full space-y-1.5">
           <Label htmlFor="igsi-paso" className="text-sm font-medium text-slate-700">¿Qué pasó?<Req /></Label>
-          <Textarea id="igsi-paso" rows={3} placeholder="Lo que hizo el sistema" aria-invalid={!!e?.que_paso} {...register('igsi.que_paso')} />
+          <EditorComentario
+            id="igsi-paso"
+            carpeta={carpeta}
+            contenidoInicial={getValues('igsi.que_paso')}
+            disabled={disabled}
+            placeholder="Lo que hizo el sistema, paso a paso. Pega aquí las capturas (Ctrl+V) junto al paso que muestran."
+            onChange={est => {
+              onSubiendo?.(est.subiendo)
+              setValue('igsi.que_paso', est.contenido, { shouldValidate: isSubmitted, shouldDirty: true })
+            }}
+          />
+          <p className="text-xs text-slate-400">Las capturas quedan en el orden en que las pegues, como en un correo, y cuentan como la captura obligatoria.</p>
           <MsgError msg={e?.que_paso?.message} />
         </div>
         <div className="space-y-1.5">

@@ -15,6 +15,7 @@ import {
 import type { EstadoTicket } from '@/lib/tickets/types'
 import { cn } from '@/lib/utils'
 import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
+import { textoPlanoComentario } from '@/lib/tickets/comentario-rico'
 import { EstadoChip, PrioridadChip, TipoGestionChip, fechaHora, fechaSolo } from '@/components/tickets/funcionario/Chips'
 import { ComentarYAdjuntar, DecisionResuelto } from '@/components/tickets/funcionario/AccionesMiTicket'
 import type { EventoVisible } from '@/components/tickets/funcionario/tipos'
@@ -125,7 +126,8 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
           {/* Descripción y campos */}
           <section className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Descripción</p>
-            <ContenidoComentario texto={t.descripcion} className="mt-2 text-slate-700" />
+            {/* En una novedad IGSI las capturas se muestran en «Qué pasó»; aquí va solo el texto */}
+            <ContenidoComentario texto={t.novedad ? textoPlanoComentario(t.descripcion) : t.descripcion} className="mt-2 text-slate-700" />
             {t.valores.length > 0 && (
               <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
                 {t.valores.map((v, i) => (
@@ -144,7 +146,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
                 <Dato label="Documentos relacionados">{n.documentos_relacionados}</Dato>
                 <Dato label="Servicio / modalidad">{n.servicio} · {n.modalidad}</Dato>
                 <Dato label="Acción">{ACCIONES_IGSI.find(a => a.value === n.accion)?.label ?? n.accion}</Dato>
-                <div className="sm:col-span-2"><Dato label="Qué pasó"><span className="whitespace-pre-wrap">{n.que_paso}</span></Dato></div>
+                <div className="sm:col-span-2"><Dato label="Qué pasó"><ContenidoComentario texto={n.que_paso} className="text-slate-700" /></Dato></div>
                 <div className="sm:col-span-2"><Dato label="Qué esperaba"><span className="whitespace-pre-wrap">{n.que_esperaba}</span></Dato></div>
                 {n.mensaje_error && (
                   <div className="sm:col-span-2">

@@ -70,7 +70,9 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
       if (!n.que_esperaba.trim()) falta(['igsi', 'que_esperaba'], 'Describe qué esperabas')
       if (!n.validacion_previa) falta(['igsi', 'validacion_previa'], 'Confirma que revisaste los datos antes de reportar')
       if (!n.impacto_operacion) falta(['igsi', 'impacto_operacion'], 'Indica el impacto en la operación')
-      if (!v.adjuntos.some(a => a.es_imagen)) falta(['adjuntos'], 'Adjunta al menos una captura de pantalla')
+      if (!v.adjuntos.some(a => a.es_imagen) && !tieneImagenIntercalada(n.que_paso)) {
+        falta(['adjuntos'], 'Adjunta al menos una captura de pantalla (o pégala en «¿Qué pasó?»)')
+      }
     } else {
       if (!v.impacto) falta(['impacto'], 'Elige el impacto')
       if (!v.asunto.trim()) falta(['asunto'], 'Escribe el asunto')

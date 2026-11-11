@@ -61,6 +61,7 @@ export function NuevoTicketForm({
   const [carpeta] = useState(() => `nuevos/${catalogo.solicitante.id}/${Date.now()}`)
   // Capturas de la descripción que aún se están subiendo (no se puede enviar mientras tanto)
   const [subiendoDescripcion, setSubiendoDescripcion] = useState(0)
+  const [subiendoQuePaso, setSubiendoQuePaso] = useState(0)
   const esquema = useMemo(() => crearEsquemaTicket(catalogo), [catalogo])
 
   const form = useForm<FormularioTicket>({
@@ -87,6 +88,7 @@ export function NuevoTicketForm({
   const adjuntos = useWatch({ control, name: 'adjuntos' }) as AdjuntoNuevo[]
   const requerimientoId = useWatch({ control, name: 'requerimientoId' })
   const descripcion = useWatch({ control, name: 'descripcion' })
+  const quePaso = useWatch({ control, name: 'igsi.que_paso' })
 
   const categoria = catalogo.categorias.find(c => c.id === categoriaId) ?? null
   const tipologiasCat = catalogo.tipologias.filter(t => t.categoria_id === categoriaId)
@@ -332,7 +334,12 @@ export function NuevoTicketForm({
               <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">2. Detalle</p>
 
               {tipologia.es_novedad_igsi ? (
-                <FormNovedadIGSI servicios={catalogo.serviciosIGSI} />
+                <FormNovedadIGSI
+                  servicios={catalogo.serviciosIGSI}
+                  carpeta={carpeta}
+                  disabled={isSubmitting}
+                  onSubiendo={setSubiendoQuePaso}
+                />
               ) : (
                 <>
                   <div className="grid gap-4 lg:grid-cols-2">
@@ -405,7 +412,9 @@ export function NuevoTicketForm({
                 value={adjuntos}
                 onChange={v => setValue('adjuntos', v, { shouldValidate: form.formState.isSubmitted })}
                 // Si ya pegó una captura en la descripción, la imagen obligatoria está cubierta
-                requerirImagen={tipologia.es_novedad_igsi || (tipologia.adjunto_obligatorio && !tieneImagenIntercalada(descripcion ?? ''))}
+                requerirImagen={tipologia.es_novedad_igsi
+                  ? !tieneImagenIntercalada(quePaso ?? '')
+                  : tipologia.adjunto_obligatorio && !tieneImagenIntercalada(descripcion ?? '')}
                 disabled={isSubmitting}
               />
               {errAdj && <p className="text-xs text-red-600">{errAdj}</p>}
@@ -424,9 +433,9 @@ export function NuevoTicketForm({
                   <p className="mt-1 text-xs text-slate-400">Indica el impacto para ver la prioridad</p>
                 )}
               </div>
-              <Button type="submit" disabled={isSubmitting || subiendoDescripcion > 0} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
-                {isSubmitting || subiendoDescripcion > 0 ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                {subiendoDescripcion > 0 ? 'Subiendo capturas…' : 'Crear ticket'}
+              <Button type="submit" disabled={isSubmitting || subiendoDescripcion + subiendoQuePaso > 0} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+                {isSubmitting || subiendoDescripcion + subiendoQuePaso > 0 ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {subiendoDescripcion + subiendoQuePaso > 0 ? 'Subiendo capturas…' : 'Crear ticket'}
               </Button>
             </section>
             </div>

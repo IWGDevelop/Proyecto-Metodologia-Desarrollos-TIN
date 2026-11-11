@@ -481,7 +481,7 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
       if (n.validacion_previa !== true) return { ok: false, error: 'Confirma que revisaste los datos del documento antes de reportar' }
       const impOp = IMPACTOS_OPERACION_IGSI.find(i => i.value === n.impacto_operacion)
       if (!impOp) return { ok: false, error: 'Indica el impacto en la operación' }
-      if (!(input.adjuntos ?? []).some(a => String(a?.tipo_archivo ?? '').startsWith('image/'))) {
+      if (!(input.adjuntos ?? []).some(a => String(a?.tipo_archivo ?? '').startsWith('image/')) && !tieneImagenIntercalada(quePaso)) {
         return { ok: false, error: 'Adjunta al menos una captura de pantalla de la novedad' }
       }
 
