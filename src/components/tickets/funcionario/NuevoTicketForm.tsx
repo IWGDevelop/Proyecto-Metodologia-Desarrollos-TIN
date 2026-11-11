@@ -9,9 +9,10 @@ import { toast } from 'sonner'
 import { AlertTriangle, ArrowLeft, Info, Loader2, Lock, ShieldCheck, Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { SubirAdjuntos, type AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
+import { EditorComentario } from '@/components/tickets/EditorComentario'
+import { tieneImagenIntercalada } from '@/lib/tickets/comentario-rico'
 import { crearTicket } from '@/actions/tickets/crear'
 import {
   CADENA_IGSI,
@@ -58,6 +59,8 @@ export function NuevoTicketForm({
   const router = useRouter()
   const tipologiaSugerida = catalogo.tipologias.find(t => t.id === tipologiaInicial) ?? null
   const [carpeta] = useState(() => `nuevos/${catalogo.solicitante.id}/${Date.now()}`)
+  // Capturas de la descripción que aún se están subiendo (no se puede enviar mientras tanto)
+  const [subiendoDescripcion, setSubiendoDescripcion] = useState(0)
   const esquema = useMemo(() => crearEsquemaTicket(catalogo), [catalogo])
 
   const form = useForm<FormularioTicket>({
@@ -83,6 +86,7 @@ export function NuevoTicketForm({
   const valores = useWatch({ control, name: 'valores' })
   const adjuntos = useWatch({ control, name: 'adjuntos' }) as AdjuntoNuevo[]
   const requerimientoId = useWatch({ control, name: 'requerimientoId' })
+  const descripcion = useWatch({ control, name: 'descripcion' })
 
   const categoria = catalogo.categorias.find(c => c.id === categoriaId) ?? null
   const tipologiasCat = catalogo.tipologias.filter(t => t.categoria_id === categoriaId)
@@ -355,7 +359,21 @@ export function NuevoTicketForm({
                   </div>
                   <div className="space-y-1.5">
                     <Label htmlFor="descripcion" className="text-sm font-medium text-slate-700">Descripción<span className="ml-0.5 text-red-500">*</span></Label>
-                    <Textarea id="descripcion" rows={5} placeholder="Detalle de la novedad o solicitud" aria-invalid={!!errors.descripcion} {...register('descripcion')} />
+                    <EditorComentario
+                      id="descripcion"
+                      carpeta={carpeta}
+                      contenidoInicial={form.getValues('descripcion')}
+                      altoMinimo="min-h-32"
+                      placeholder="Detalle de la novedad o solicitud. Pega aquí tus capturas (Ctrl+V) junto al texto que las explica."
+                      disabled={isSubmitting}
+                      onChange={e => {
+                        setSubiendoDescripcion(e.subiendo)
+                        setValue('descripcion', e.contenido, { shouldValidate: form.formState.isSubmitted })
+                      }}
+                    />
+                    <p className="text-xs text-slate-400">
+                      Las capturas que pegues quedan en el orden en que las pusiste, como en un correo. Los PDF y otros archivos van en «Imágenes y adjuntos».
+                    </p>
                     {errors.descripcion && <p className="text-xs text-red-600">{errors.descripcion.message}</p>}
                   </div>
                 </>
@@ -386,7 +404,8 @@ export function NuevoTicketForm({
                 carpeta={carpeta}
                 value={adjuntos}
                 onChange={v => setValue('adjuntos', v, { shouldValidate: form.formState.isSubmitted })}
-                requerirImagen={tipologia.adjunto_obligatorio || tipologia.es_novedad_igsi}
+                // Si ya pegó una captura en la descripción, la imagen obligatoria está cubierta
+                requerirImagen={tipologia.es_novedad_igsi || (tipologia.adjunto_obligatorio && !tieneImagenIntercalada(descripcion ?? ''))}
                 disabled={isSubmitting}
               />
               {errAdj && <p className="text-xs text-red-600">{errAdj}</p>}
@@ -405,9 +424,9 @@ export function NuevoTicketForm({
                   <p className="mt-1 text-xs text-slate-400">Indica el impacto para ver la prioridad</p>
                 )}
               </div>
-              <Button type="submit" disabled={isSubmitting} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
-                {isSubmitting ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
-                Crear ticket
+              <Button type="submit" disabled={isSubmitting || subiendoDescripcion > 0} className="gap-1.5 bg-blue-600 hover:bg-blue-700">
+                {isSubmitting || subiendoDescripcion > 0 ? <Loader2 size={15} className="animate-spin" /> : <Send size={15} />}
+                {subiendoDescripcion > 0 ? 'Subiendo capturas…' : 'Crear ticket'}
               </Button>
             </section>
             </div>

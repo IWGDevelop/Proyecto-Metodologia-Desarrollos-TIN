@@ -20,6 +20,7 @@ import {
   codigoTicket,
 } from '@/lib/tickets/constantes'
 import { accesoTickets, filasAdjuntos, hoyISO } from '@/lib/tickets/solicitante'
+import { tieneImagenIntercalada } from '@/lib/tickets/comentario-rico'
 import {
   etiquetaRequerimiento,
   listarRequerimientosParaTicket,
@@ -525,7 +526,8 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
     const adjuntos = input.adjuntos ?? []
     const adj = filasAdjuntos('__pendiente__', adjuntos, acceso.usuarioId)
     if (!adj.ok) return { ok: false, error: adj.error }
-    if (tipologia.adjunto_obligatorio && !adj.filas.some(f => f.es_imagen)) {
+    // Las capturas pegadas dentro de la descripción también cuentan como imagen
+    if (tipologia.adjunto_obligatorio && !adj.filas.some(f => f.es_imagen) && !tieneImagenIntercalada(descripcion)) {
       return { ok: false, error: 'Esta tipología exige al menos una imagen o captura de pantalla' }
     }
 

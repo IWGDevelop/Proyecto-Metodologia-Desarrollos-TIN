@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { toast } from 'sonner'
 import { CalendarClock, CheckCircle2, FileText, Loader2, ShieldCheck, ShieldX, User } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 import { useProcesos } from '@/context/ProcesosContext'
 import { decidirAprobacionTicket } from '@/actions/tickets/flujo'
 import type { AprobacionPendiente } from '@/actions/tickets/bandeja'
@@ -57,7 +58,7 @@ function TarjetaAprobacion({ a, resaltada, onDone }: { a: AprobacionPendiente; r
         </div>
       </div>
 
-      <p className="mt-3 whitespace-pre-wrap rounded-lg bg-slate-50 p-3 text-sm text-slate-700">{a.descripcion}</p>
+      <ContenidoComentario texto={a.descripcion} className="mt-3 rounded-lg bg-slate-50 p-3 text-slate-700" />
 
       {(a.campos.length > 0 || a.fechaRequerida) && (
         <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">

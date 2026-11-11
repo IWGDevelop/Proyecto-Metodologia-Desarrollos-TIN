@@ -28,10 +28,10 @@ Mesa de ayuda de TI de Interworld dentro de TIN-FLOW. Por aquí se reporta cualq
 Paso 1. Elegir la categoría y la tipología. Al elegir la tipología aparece un recuadro con sus características (tipo de gestión, contra qué se mide, si requiere aprobación o imagen) y la información que TIN necesita. Léalo antes de seguir.
 Paso 2. Describir la novedad y marcar el impacto:
 - Asunto: resumen corto, es el título del ticket.
-- Descripción: qué pasó, desde cuándo, qué intentó.
+- Descripción: qué pasó, desde cuándo, qué intentó. Funciona como un correo: se pueden pegar capturas (Ctrl+V) o usar «Insertar imagen» justo donde se explica cada paso, y quedan en ese orden. Las capturas pegadas en la descripción cuentan como la imagen que exigen algunas tipologías.
 - Datos específicos de la tipología (campos propios; los que tienen asterisco son obligatorios).
 - Impacto: "Solo me afecta a mí", "Afecta a mi área" o "Detiene la operación". La prioridad se calcula sola y se muestra en vivo.
-Paso 3. Adjuntar imágenes y archivos: arrastrar, hacer clic para seleccionar o pegar una captura con Ctrl+V. Formatos JPG, PNG, WEBP o PDF, máximo 10 MB cada uno. Algunas tipologías exigen al menos una imagen.
+Paso 3. Adjuntar imágenes y archivos adicionales (PDF u otras imágenes): arrastrar, hacer clic para seleccionar o pegar una captura con Ctrl+V. Formatos JPG, PNG, WEBP o PDF, máximo 10 MB cada uno. Algunas tipologías exigen al menos una imagen.
 Al pulsar Crear ticket, el ticket queda registrado con su código, el usuario recibe un correo de acuse y aparece en Mis tickets de TI. Si la tipología tiene responsable por defecto, nace Asignado; si no, lo asigna el Coordinador TIN.
 El botón Crear ticket se activa cuando todos los campos obligatorios están diligenciados (y la imagen, si la tipología la exige).
 

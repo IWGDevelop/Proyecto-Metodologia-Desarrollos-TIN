@@ -24,6 +24,7 @@ import {
 import { registrarAdjuntos } from '@/actions/tickets/adjuntos'
 import { SubirAdjuntos, type AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
 import { EditorComentario, type EstadoEditorComentario } from '@/components/tickets/EditorComentario'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 import { AsignarDialog } from './AsignarDialog'
 import { ResolverDialog } from './ResolverDialog'
 import { HistorialTicket } from './HistorialTicket'
@@ -237,7 +238,7 @@ export function GestionTicket({
         {/* Columna principal */}
         <div className="space-y-4">
           <Seccion titulo="Descripción" icon={FileText}>
-            <p className="whitespace-pre-wrap text-sm text-slate-800">{t.descripcion}</p>
+            <ContenidoComentario texto={t.descripcion} className="text-slate-800" />
             {t.campos.length > 0 && (
               <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
                 {t.campos.map((c, i) => <Dato key={i} label={c.etiqueta}>{c.valor}</Dato>)}

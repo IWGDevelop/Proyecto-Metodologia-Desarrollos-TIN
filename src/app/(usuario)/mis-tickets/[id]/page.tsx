@@ -125,7 +125,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
           {/* Descripción y campos */}
           <section className="rounded-xl border border-slate-200 bg-white p-5">
             <p className="text-xs font-semibold uppercase tracking-wide text-slate-400">Descripción</p>
-            <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{t.descripcion}</p>
+            <ContenidoComentario texto={t.descripcion} className="mt-2 text-slate-700" />
             {t.valores.length > 0 && (
               <dl className="mt-4 grid gap-3 border-t border-slate-100 pt-4 sm:grid-cols-2">
                 {t.valores.map((v, i) => (

@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { ClipboardPaste, ImagePlus, Loader2 } from 'lucide-react'
 import { storage } from '@/lib/firebase'
 import { ADJUNTOS_ACEPTADOS, ADJUNTO_TAMANO_MAX } from '@/lib/tickets/constantes'
-import { marcadorImagen } from '@/lib/tickets/comentario-rico'
+import { bloquesComentario, marcadorImagen } from '@/lib/tickets/comentario-rico'
 import { cn } from '@/lib/utils'
 
 export interface EstadoEditorComentario {
@@ -22,6 +22,11 @@ interface Props {
   placeholder?: string
   disabled?: boolean
   className?: string
+  /** Contenido con el que arranca el editor (texto con ![nombre](url)); solo se lee al montar */
+  contenidoInicial?: string
+  /** Alto mínimo del área de escritura (clase de Tailwind), por defecto min-h-24 */
+  altoMinimo?: string
+  id?: string
 }
 
 const BLOQUES = new Set(['DIV', 'P', 'LI', 'UL', 'OL', 'H1', 'H2', 'H3', 'H4', 'H5', 'H6', 'PRE', 'BLOCKQUOTE', 'TR'])
@@ -66,7 +71,7 @@ function serializar(raiz: HTMLElement): EstadoEditorComentario {
  * y se sigue escribiendo; las imágenes quedan en el orden en que se pusieron.
  * Para limpiarlo después de enviar, el padre lo vuelve a montar cambiando su `key`.
  */
-export function EditorComentario({ carpeta, onChange, placeholder, disabled, className }: Props) {
+export function EditorComentario({ carpeta, onChange, placeholder, disabled, className, contenidoInicial, altoMinimo, id }: Props) {
   const editorRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const rangoRef = useRef<Range | null>(null)
@@ -75,6 +80,30 @@ export function EditorComentario({ carpeta, onChange, placeholder, disabled, cla
   const [subiendo, setSubiendo] = useState(0)
 
   useEffect(() => { onChangeRef.current = onChange }, [onChange])
+
+  // Contenido inicial: se pinta una sola vez al montar (el editor no es controlado)
+  const inicialRef = useRef(contenidoInicial)
+  useEffect(() => {
+    const el = editorRef.current
+    const inicial = inicialRef.current
+    if (!el || !inicial) return
+    for (const b of bloquesComentario(inicial)) {
+      if (b.tipo === 'texto') {
+        el.appendChild(document.createTextNode(b.texto))
+        el.appendChild(document.createElement('br'))
+      } else {
+        const img = document.createElement('img')
+        img.src = b.url
+        img.alt = b.nombre
+        img.className = CLASE_IMG
+        img.dataset.url = b.url
+        img.dataset.nombre = b.nombre
+        el.appendChild(img)
+      }
+    }
+    const estado = serializar(el)
+    setVacio(!estado.contenido)
+  }, [])
 
   const emitir = useCallback(() => {
     const el = editorRef.current
@@ -207,6 +236,7 @@ export function EditorComentario({ carpeta, onChange, placeholder, disabled, cla
         )}
         <div
           ref={editorRef}
+          id={id}
           role="textbox"
           aria-multiline="true"
           aria-label={placeholder ?? 'Comentario'}
@@ -219,7 +249,7 @@ export function EditorComentario({ carpeta, onChange, placeholder, disabled, cla
           onBlur={guardarRango}
           onKeyUp={guardarRango}
           onMouseUp={guardarRango}
-          className="max-h-[60vh] min-h-24 overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-sm text-slate-800 outline-none"
+          className={cn('max-h-[60vh] overflow-y-auto whitespace-pre-wrap break-words px-3 py-2 text-sm text-slate-800 outline-none', altoMinimo ?? 'min-h-24')}
         />
       </div>
       <div className="flex flex-wrap items-center gap-3 border-t border-slate-100 px-3 py-1.5 text-[11px] text-slate-400">

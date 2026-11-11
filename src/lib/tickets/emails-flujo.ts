@@ -3,6 +3,7 @@ import { sendEmail } from '@/lib/email'
 import { codigoTicket, LABEL_ESTADO_TICKET, LABEL_PRIORIDAD_TICKET } from './constantes'
 import { obtenerConfigTickets } from './config'
 import { crearNotificacion } from './notificar'
+import { bloquesComentario } from './comentario-rico'
 import type { EstadoTicket, PrioridadTicket } from './types'
 
 // Correos y avisos del flujo de tickets (solo servidor). Todo es best-effort:
@@ -54,10 +55,17 @@ function boton(texto: string, href: string, color = '#2563eb') {
   return `<a href="${esc(href)}" style="display:inline-block;background:${color};color:#fff;text-decoration:none;padding:10px 22px;border-radius:8px;font-size:14px;font-weight:bold;margin:0 8px 8px 0">${esc(texto)}</a>`
 }
 
+/** Bloque de texto; las capturas intercaladas (![nombre](url)) se muestran como imagen en su lugar */
 function bloqueTexto(titulo: string, texto: string, color = '#2563eb') {
-  return `<div style="background:#f8fafc;border-left:3px solid ${color};border-radius:0 8px 8px 0;padding:14px 16px;margin-bottom:24px">
+  const bloques = bloquesComentario(texto)
+  const cuerpo = (bloques.length ? bloques : [{ tipo: 'texto' as const, texto }]).map(b =>
+    b.tipo === 'texto'
+      ? `<p style="margin:0 0 8px;font-size:14px;color:#1e293b;white-space:pre-wrap">${esc(b.texto)}</p>`
+      : `<a href="${esc(b.url)}" target="_blank" style="display:block;margin:4px 0 10px"><img src="${esc(b.url)}" alt="${esc(b.nombre)}" style="display:block;max-width:100%;height:auto;border:1px solid #e2e8f0;border-radius:8px"></a>`,
+  ).join('')
+  return `<div style="background:#f8fafc;border-left:3px solid ${color};border-radius:0 8px 8px 0;padding:14px 16px 6px;margin-bottom:24px">
     <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:#94a3b8">${esc(titulo)}</p>
-    <p style="margin:0;font-size:14px;color:#1e293b;white-space:pre-wrap">${esc(texto)}</p>
+    ${cuerpo}
   </div>`
 }
 

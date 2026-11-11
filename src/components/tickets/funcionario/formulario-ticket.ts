@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { ADJUNTOS_ACEPTADOS } from '@/lib/tickets/constantes'
+import { tieneImagenIntercalada } from '@/lib/tickets/comentario-rico'
 import type { CatalogoFormulario } from './tipos'
 
 // Esquema del formulario "Nuevo ticket". Los campos específicos dependen de la tipología,
@@ -74,7 +75,8 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
       if (!v.impacto) falta(['impacto'], 'Elige el impacto')
       if (!v.asunto.trim()) falta(['asunto'], 'Escribe el asunto')
       if (!v.descripcion.trim()) falta(['descripcion'], 'Describe la novedad o solicitud')
-      if (tip.adjunto_obligatorio && !v.adjuntos.some(a => a.es_imagen)) {
+      // Las capturas pegadas dentro de la descripción también cuentan como imagen
+      if (tip.adjunto_obligatorio && !v.adjuntos.some(a => a.es_imagen) && !tieneImagenIntercalada(v.descripcion)) {
         falta(['adjuntos'], 'Esta tipología exige al menos una imagen o captura')
       }
     }

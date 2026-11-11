@@ -33,6 +33,11 @@ export function bloquesComentario(contenido: string): BloqueComentario[] {
   return bloques
 }
 
+/** ¿El texto trae al menos una imagen intercalada válida? */
+export function tieneImagenIntercalada(contenido: string): boolean {
+  return bloquesComentario(contenido).some(b => b.tipo === 'imagen')
+}
+
 /** Texto sin las imágenes (para avisos, correos y vistas resumidas) */
 export function textoPlanoComentario(contenido: string): string {
   return contenido.replace(RE_IMAGEN, (_m, nombre: string) => `[imagen: ${nombre}]`).replace(/\n{3,}/g, '\n\n').trim()
