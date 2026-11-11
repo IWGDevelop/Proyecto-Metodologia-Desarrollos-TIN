@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { ArrowRight, Loader2, RotateCcw, Send, Sparkles, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { RE_TIPOLOGIA_ASISTENTE, extraerBorrador, guardarBorrador, textoVisible } from './borrador-asistente'
 
 // Asistente de IA (Gemini) que guía al funcionario para reportar su ticket.
 // La conversación vive solo en el navegador; se envía completa en cada pregunta.
@@ -13,8 +14,6 @@ interface Mensaje {
   rol: 'usuario' | 'asistente'
   texto: string
 }
-
-const RE_MARCADOR = /\[\[TIPOLOGIA:([0-9a-f-]{36})\]\]/gi
 
 const SUGERENCIAS = [
   'Mi computador está muy lento',
@@ -71,9 +70,20 @@ function TextoFormateado({ texto }: { texto: string }) {
   return <>{bloques}</>
 }
 
+/** Prepara la navegación al formulario: guarda el borrador (si lo hay) para ese clic y arma la URL */
+function urlFormulario(respuesta: string): string | null {
+  const id = [...respuesta.matchAll(RE_TIPOLOGIA_ASISTENTE)].map(x => x[1])[0]
+  if (!id) return null
+  const marca = String(Date.now())
+  const borrador = extraerBorrador(respuesta)
+  if (borrador) guardarBorrador(marca, id.toLowerCase(), borrador)
+  return `/mis-tickets/nuevo?tipologia=${id}&t=${marca}`
+}
+
 function Burbuja({ m, escribiendo, alAbrirFormulario }: { m: Mensaje; escribiendo?: boolean; alAbrirFormulario: (url: string) => void }) {
-  const ids = [...m.texto.matchAll(RE_MARCADOR)].map(x => x[1])
-  const texto = m.texto.replace(RE_MARCADOR, '').trim()
+  const ids = [...m.texto.matchAll(RE_TIPOLOGIA_ASISTENTE)].map(x => x[1])
+  const conBorrador = !!extraerBorrador(m.texto)
+  const texto = textoVisible(m.texto)
   const esUsuario = m.rol === 'usuario'
   return (
     <div className={cn('flex', esUsuario ? 'justify-end' : 'justify-start')}>
@@ -92,11 +102,12 @@ function Burbuja({ m, escribiendo, alAbrirFormulario }: { m: Mensaje; escribiend
             onClick={e => {
               if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return
               e.preventDefault()
-              alAbrirFormulario(`/mis-tickets/nuevo?tipologia=${id}&t=${Date.now()}`)
+              const url = urlFormulario(m.texto)
+              if (url) alAbrirFormulario(url)
             }}
             className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
           >
-            Abrir el formulario con esta tipología <ArrowRight size={13} />
+            {conBorrador ? 'Llenar el formulario con esta información' : 'Abrir el formulario con esta tipología'} <ArrowRight size={13} />
           </Link>
         ))}
       </div>
@@ -154,6 +165,11 @@ export function AsistenteTickets() {
         setMensajes([...historial, { rol: 'asistente', texto: acumulado }])
       }
       if (!acumulado.trim()) throw new Error('El asistente no devolvió respuesta. Intenta reformular tu pregunta.')
+      // El usuario pidió ir al formulario ("vamos", "llévame al ticket"…): se abre ya prellenado
+      if (extraerBorrador(acumulado)?.abrir) {
+        const url = urlFormulario(acumulado)
+        if (url) abrirFormulario(url)
+      }
     } catch (e) {
       if ((e as Error).name === 'AbortError') return
       setError((e as Error).message)
@@ -162,6 +178,12 @@ export function AsistenteTickets() {
       setEnviando(false)
       abortRef.current = null
     }
+  }
+
+  // Se minimiza para que el formulario quede a la vista; la conversación se conserva
+  const abrirFormulario = (url: string) => {
+    setAbierto(false)
+    router.push(url)
   }
 
   const reiniciar = () => {
@@ -206,11 +228,7 @@ export function AsistenteTickets() {
             key={i}
             m={m}
             escribiendo={enviando && i === mensajes.length - 1 && m.rol === 'asistente'}
-            // Se minimiza para que el formulario quede a la vista; la conversación se conserva
-            alAbrirFormulario={url => {
-              setAbierto(false)
-              router.push(url)
-            }}
+            alAbrirFormulario={abrirFormulario}
           />
         ))}
         {mensajes.length === 1 && (

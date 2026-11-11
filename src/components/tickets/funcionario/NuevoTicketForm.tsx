@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { FormProvider, useForm, useWatch } from 'react-hook-form'
+import { FormProvider, useForm, useWatch, type UseFormReturn } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { toast } from 'sonner'
 import { AlertTriangle, ArrowLeft, Info, Loader2, Lock, ShieldCheck, Send } from 'lucide-react'
@@ -15,6 +15,7 @@ import { EditorComentario } from '@/components/tickets/EditorComentario'
 import { tieneImagenIntercalada } from '@/lib/tickets/comentario-rico'
 import { crearTicket } from '@/actions/tickets/crear'
 import {
+  ACCIONES_IGSI,
   CADENA_IGSI,
   IMPACTOS_OPERACION_IGSI,
   IMPACTOS_TICKET,
@@ -37,6 +38,7 @@ import {
   type FormularioTicket,
 } from './formulario-ticket'
 import { SelectorRequerimiento } from './SelectorRequerimiento'
+import { tomarBorrador, type BorradorAsistente } from './borrador-asistente'
 import type { CatalogoFormulario } from './tipos'
 
 function hoy() {
@@ -44,6 +46,65 @@ function hoy() {
 }
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
+
+/** Pone en el formulario lo que propuso el asistente; devuelve cuántos datos llenó */
+function aplicarBorrador(
+  form: UseFormReturn<FormularioTicket>,
+  catalogo: CatalogoFormulario,
+  b: BorradorAsistente,
+  t: CatalogoFormulario['tipologias'][number],
+): number {
+  let n = 0
+  const poner = (campo: Parameters<typeof form.setValue>[0], valor: string | undefined) => {
+    if (!valor) return
+    form.setValue(campo, valor as never, { shouldDirty: true })
+    n++
+  }
+  const enLista = <T extends { value: string; label: string }>(lista: T[], v?: string) =>
+    v ? lista.find(x => x.value === v.toUpperCase() || normalizar(x.label) === normalizar(v))?.value : undefined
+
+  if (t.es_novedad_igsi) {
+    const ig = b.igsi ?? {}
+    poner('igsi.tipo_documento', enLista(CADENA_IGSI, ig.tipo_documento))
+    poner('igsi.numero_documento', ig.numero_documento)
+    poner('igsi.accion', enLista(ACCIONES_IGSI, ig.accion))
+    poner('igsi.que_paso', ig.que_paso ?? b.descripcion)
+    poner('igsi.que_esperaba', ig.que_esperaba)
+    poner('igsi.mensaje_error', ig.mensaje_error)
+    poner('igsi.impacto_operacion', enLista(IMPACTOS_OPERACION_IGSI, ig.impacto_operacion))
+  } else {
+    poner('asunto', b.asunto)
+    poner('descripcion', b.descripcion)
+    poner('impacto', enLista(IMPACTOS_TICKET, b.impacto))
+  }
+
+  // Campos propios de la tipología, por etiqueta; los de funcionario no se adivinan
+  const porEtiqueta = new Map(Object.entries(b.campos ?? {}).map(([k, v]) => [normalizar(k), v]))
+  for (const c of catalogo.campos.filter(x => x.tipologia_id === t.id)) {
+    const v = porEtiqueta.get(normalizar(c.etiqueta))?.trim()
+    if (!v) continue
+    const nombre = `valores.${claveCampo(c.id)}` as const
+    switch (c.tipo_dato) {
+      case 'USUARIO':
+        break
+      case 'LISTA':
+        poner(nombre, (c.opciones ?? []).find(o => normalizar(o) === normalizar(v)))
+        break
+      case 'FECHA':
+        poner(nombre, /^\d{4}-\d{2}-\d{2}$/.test(v) ? v : undefined)
+        break
+      case 'NUMERO':
+        poner(nombre, Number.isFinite(Number(v.replace(',', '.'))) ? v.replace(',', '.') : undefined)
+        break
+      case 'CASILLA':
+        poner(nombre, ['si', 'true'].includes(normalizar(v)) ? 'true' : ['no', 'false'].includes(normalizar(v)) ? 'false' : undefined)
+        break
+      default:
+        poner(nombre, v)
+    }
+  }
+  return n
+}
 
 export function NuevoTicketForm({
   catalogo,
@@ -62,6 +123,8 @@ export function NuevoTicketForm({
   // Capturas de la descripción que aún se están subiendo (no se puede enviar mientras tanto)
   const [subiendoDescripcion, setSubiendoDescripcion] = useState(0)
   const [subiendoQuePaso, setSubiendoQuePaso] = useState(0)
+  // Cambia cuando el asistente prellena el formulario: vuelve a montar los editores (no controlados)
+  const [versionBorrador, setVersionBorrador] = useState(0)
   const esquema = useMemo(() => crearEsquemaTicket(catalogo), [catalogo])
 
   const form = useForm<FormularioTicket>({
@@ -141,7 +204,20 @@ export function NuevoTicketForm({
       form.setValue('valores', {})
       form.setValue('igsi', IGSI_VACIO)
     }
-    toast.success(`Tipología seleccionada: ${t.nombre}`)
+    const borrador = tomarBorrador(marcaTipologia, t.id)
+    if (borrador) {
+      const n = aplicarBorrador(form, catalogo, borrador, t)
+      // El borrador viene de sessionStorage (sistema externo); remonta los editores no controlados
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setVersionBorrador(v => v + 1)
+      toast.success(`Tipología seleccionada: ${t.nombre}`, {
+        description: n > 0
+          ? 'Llené el formulario con la sugerencia del asistente. Revísalo, completa lo que falte y adjunta tus capturas.'
+          : undefined,
+      })
+    } else {
+      toast.success(`Tipología seleccionada: ${t.nombre}`)
+    }
     document.getElementById('categoria')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     // Quita el parámetro de la URL para que el mismo botón vuelva a funcionar si el usuario
     // cambia la tipología a mano y luego lo pulsa otra vez
@@ -149,7 +225,7 @@ export function NuevoTicketForm({
     url.searchParams.delete('tipologia')
     url.searchParams.delete('t')
     window.history.replaceState(null, '', url.pathname + url.search)
-  }, [idSugerida, marcaTipologia, catalogo.tipologias, form])
+  }, [idSugerida, marcaTipologia, catalogo, form])
 
   const onSubmit = async (v: FormularioTicket) => {
     if (!tipologia) return
@@ -335,6 +411,7 @@ export function NuevoTicketForm({
 
               {tipologia.es_novedad_igsi ? (
                 <FormNovedadIGSI
+                  key={versionBorrador}
                   servicios={catalogo.serviciosIGSI}
                   carpeta={carpeta}
                   disabled={isSubmitting}
@@ -367,6 +444,7 @@ export function NuevoTicketForm({
                   <div className="space-y-1.5">
                     <Label htmlFor="descripcion" className="text-sm font-medium text-slate-700">Descripción<span className="ml-0.5 text-red-500">*</span></Label>
                     <EditorComentario
+                      key={versionBorrador}
                       id="descripcion"
                       carpeta={carpeta}
                       contenidoInicial={form.getValues('descripcion')}
