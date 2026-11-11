@@ -13,6 +13,8 @@ export default async function NuevoTicketPage({
   if (!catalogo) redirect('/login')
   // ?requerimiento=<id>: viene del botón "Abrir ticket relacionado" del requerimiento
   const requerimiento = Array.isArray(sp.requerimiento) ? sp.requerimiento[0] : sp.requerimiento
+  // ?tipologia=<id>: viene del botón del asistente de IA
+  const tipologia = Array.isArray(sp.tipologia) ? sp.tipologia[0] : sp.tipologia
 
   return (
     <div className="p-6">
@@ -21,7 +23,7 @@ export default async function NuevoTicketPage({
           El catálogo de tickets aún no está configurado. Comunícate con TIN.
         </div>
       ) : (
-        <NuevoTicketForm catalogo={catalogo} requerimientoInicial={requerimiento ?? null} />
+        <NuevoTicketForm catalogo={catalogo} requerimientoInicial={requerimiento ?? null} tipologiaInicial={tipologia ?? null} />
       )}
     </div>
   )

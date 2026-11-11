@@ -44,16 +44,25 @@ function hoy() {
 
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim()
 
-export function NuevoTicketForm({ catalogo, requerimientoInicial }: { catalogo: CatalogoFormulario; requerimientoInicial?: string | null }) {
+export function NuevoTicketForm({
+  catalogo,
+  requerimientoInicial,
+  tipologiaInicial,
+}: {
+  catalogo: CatalogoFormulario
+  requerimientoInicial?: string | null
+  tipologiaInicial?: string | null
+}) {
   const router = useRouter()
+  const tipologiaSugerida = catalogo.tipologias.find(t => t.id === tipologiaInicial) ?? null
   const [carpeta] = useState(() => `nuevos/${catalogo.solicitante.id}/${Date.now()}`)
   const esquema = useMemo(() => crearEsquemaTicket(catalogo), [catalogo])
 
   const form = useForm<FormularioTicket>({
     resolver: zodResolver(esquema),
     defaultValues: {
-      categoriaId: '',
-      tipologiaId: '',
+      categoriaId: tipologiaSugerida?.categoria_id ?? '',
+      tipologiaId: tipologiaSugerida?.id ?? '',
       impacto: '',
       asunto: '',
       descripcion: '',
