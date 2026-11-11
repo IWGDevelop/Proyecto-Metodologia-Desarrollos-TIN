@@ -5,11 +5,12 @@ import { Providers } from '@/components/layout/Providers'
 import { Toaster } from '@/components/ui/sonner'
 import { getProcesosInternos } from '@/actions/procesos-internos'
 import { getCatalogoEstados } from '@/actions/estados-kanban'
+import { METADATA_TIN_FLOW } from '@/lib/metadata-apps'
 
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
-  title: 'TIN-FLOW — Interworld Group',
+  ...METADATA_TIN_FLOW,
   description: 'Plataforma de gestión de proyectos y desarrollos tecnológicos de Interworld Group',
 }
 
