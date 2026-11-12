@@ -1,6 +1,6 @@
 import {
   ArrowRight, Bell, Bug, CheckCircle2, CircleDot, Eye, EyeOff, Flag, GitBranch, Lock, MessageSquare,
-  Paperclip, PlusCircle, RotateCcw, ShieldCheck, ShieldX, Tag, UserPlus, Zap,
+  Paperclip, PlusCircle, RotateCcw, ShieldCheck, ShieldX, Tag, UserPlus, Users, Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { LABEL_ESTADO_TICKET, LABEL_EVENTO_TICKET, LABEL_PRIORIDAD_TICKET } from '@/lib/tickets/constantes'
@@ -24,6 +24,7 @@ const ICONOS: Record<TipoEventoTicket, typeof CircleDot> = {
   REAPERTURA: RotateCcw,
   CIERRE: Lock,
   PRIMERA_RESPUESTA: Zap,
+  INTERESADO: Users,
 }
 
 const COLORES: Partial<Record<TipoEventoTicket, string>> = {

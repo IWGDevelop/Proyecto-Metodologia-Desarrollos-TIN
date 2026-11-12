@@ -6,9 +6,10 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NO_AUTORIZADO } from '@/lib/supabase/guards'
 import { registrarEventos } from '@/lib/tickets/historial'
 import { accesoTickets, filasAdjuntos, puedeVerTicket } from '@/lib/tickets/solicitante'
+import { esInteresado } from '@/lib/tickets/interesados'
 import type { AdjuntoNuevo } from '@/components/tickets/SubirAdjuntos'
 
-/** Registra adjuntos ya subidos a Firebase. Solicitante, responsable, coordinador o admin. */
+/** Registra adjuntos ya subidos a Firebase. Solicitante, parte interesada, responsable, coordinador o admin. */
 export async function registrarAdjuntos(ticketId: string, adjuntos: AdjuntoNuevo[]): Promise<{ ok: boolean; error?: string }> {
   try {
     const acceso = await accesoTickets()
@@ -24,7 +25,8 @@ export async function registrarAdjuntos(ticketId: string, adjuntos: AdjuntoNuevo
       .eq('id', ticketId)
       .maybeSingle()
     if (!ticket) return { ok: false, error: 'Ticket no encontrado' }
-    if (!puedeVerTicket(acceso, ticket, !!ticket.tipologia?.visibilidad_restringida)) {
+    if (!puedeVerTicket(acceso, ticket, !!ticket.tipologia?.visibilidad_restringida)
+      && !(await esInteresado(supabase, ticketId, acceso.usuarioId))) {
       return { ok: false, error: NO_AUTORIZADO }
     }
     if (ticket.estado === 'CERRADO') return { ok: false, error: 'El ticket está cerrado; reábrelo para agregar adjuntos' }

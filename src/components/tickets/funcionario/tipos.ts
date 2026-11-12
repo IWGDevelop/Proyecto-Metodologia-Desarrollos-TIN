@@ -81,6 +81,8 @@ export interface CrearTicketInput {
   igsi?: NovedadIGSIInput | null
   /** Requerimiento entregado o cerrado sobre el que se abre el ticket */
   requerimientoId?: string | null
+  /** Funcionarios que se involucran como partes interesadas */
+  interesados?: string[]
 }
 
 export interface ResultadoCrear {
@@ -90,6 +92,8 @@ export interface ResultadoCrear {
   codigo?: string
   /** Códigos de tickets hijos creados (hallazgo de auditoría, plantilla) */
   hijos?: string[]
+  /** Advertencia no bloqueante (por ejemplo, no se pudieron agregar las partes interesadas) */
+  aviso?: string
 }
 
 export interface PlantillaFormulario {
@@ -132,6 +136,10 @@ export interface MiTicketFila {
   fecha_cierre: string | null
   updated_at: string
   es_hijo: boolean
+  /** El usuario no es el solicitante: lo sigue como parte interesada */
+  es_interesado: boolean
+  /** Nombre del solicitante (se muestra en los tickets que sigue como parte interesada) */
+  solicitante: string | null
 }
 
 export interface FiltrosMisTickets {
@@ -146,6 +154,8 @@ export interface EventoVisible {
   fecha: string
   usuario: string | null
   es_mio: boolean
+  /** Quién escribió: el solicitante, una parte interesada o TIN */
+  autor: 'SOLICITANTE' | 'INTERESADO' | 'TIN' | null
   valor_anterior: string | null
   valor_nuevo: string | null
   comentario: string | null
@@ -199,4 +209,10 @@ export interface MiTicketDetalle {
   padre: { id: string; codigo: string; asunto: string } | null
   hijos: { id: string; codigo: string; asunto: string; estado: EstadoTicket }[]
   requerimiento: RequerimientoResumen | null
+  /** Rol del usuario en el ticket: el solicitante o una parte interesada */
+  rol: 'SOLICITANTE' | 'INTERESADO'
+  solicitante: string | null
+  interesados: { id: string; nombre_completo: string; cargo: string | null }[]
+  /** El usuario actual (para "dejar de seguir") */
+  usuarioId: string
 }

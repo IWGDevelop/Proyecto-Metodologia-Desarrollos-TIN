@@ -4,6 +4,7 @@
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual, puedeGestionar } from '@/lib/supabase/guards'
 import { codigoTicket, RECURSOS_TICKETS } from '@/lib/tickets/constantes'
+import { ticketsComoInteresado } from '@/lib/tickets/interesados'
 
 // Avisos dentro de TIN-FLOW (ticket_notificaciones) del usuario actual.
 
@@ -53,9 +54,12 @@ export async function listarMisAvisos(incluirLeidas = false): Promise<AvisosUsua
         .eq('leida', false),
     ])
 
+    // Tickets que el usuario sigue como parte interesada: el aviso lo lleva a su vista
+    const siguiendo = base === '/admin/tickets' ? new Set(await ticketsComoInteresado(supabase, actual.user.id)) : new Set<string>()
     const avisos: AvisoTicket[] = ((data ?? []) as any[]).map(n => {
-      // El solicitante va a su vista aunque sea personal de TIN
-      const ruta = n.ticket && n.ticket.solicitante_id === actual.user.id && base === '/admin/tickets' ? '/mis-tickets' : base
+      // El solicitante y las partes interesadas van a su vista aunque sean personal de TIN
+      const propio = n.ticket && (n.ticket.solicitante_id === actual.user.id || siguiendo.has(n.ticket_id))
+      const ruta = propio && base === '/admin/tickets' ? '/mis-tickets' : base
       return {
         id: n.id,
         mensaje: n.mensaje,

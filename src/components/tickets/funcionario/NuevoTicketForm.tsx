@@ -38,6 +38,7 @@ import {
   type FormularioTicket,
 } from './formulario-ticket'
 import { SelectorRequerimiento } from './SelectorRequerimiento'
+import { SelectorInteresados, type InteresadoUI } from '@/components/tickets/Interesados'
 import { tomarBorrador, type BorradorAsistente } from './borrador-asistente'
 import type { CatalogoFormulario } from './tipos'
 
@@ -153,6 +154,8 @@ export function NuevoTicketForm({
   // "Requerimiento relacionado" va oculto salvo que el usuario diga que es sobre un desarrollo,
   // venga preseleccionado o la tipología lo exija (ajuste a un desarrollo entregado)
   const [relacionarDesarrollo, setRelacionarDesarrollo] = useState(() => !!form.getValues('requerimientoId'))
+  // Partes interesadas elegidas (se guardan al crear el ticket)
+  const [interesados, setInteresados] = useState<InteresadoUI[]>([])
   const descripcion = useWatch({ control, name: 'descripcion' })
   const quePaso = useWatch({ control, name: 'igsi.que_paso' })
 
@@ -272,6 +275,7 @@ export function NuevoTicketForm({
       adjuntos: v.adjuntos,
       igsi,
       requerimientoId: v.requerimientoId || null,
+      interesados: interesados.map(p => p.id),
     })
     if (!res.ok || !res.id) {
       toast.error(res.error ?? 'No se pudo crear el ticket')
@@ -280,6 +284,7 @@ export function NuevoTicketForm({
     toast.success(`Ticket ${res.codigo} creado`, {
       description: res.hijos?.length ? `También se creó: ${res.hijos.join(', ')}` : undefined,
     })
+    if (res.aviso) toast.warning(res.aviso)
     router.push(`/mis-tickets/${res.id}`)
   }
 
@@ -404,6 +409,18 @@ export function NuevoTicketForm({
             {errors.requerimientoId && <p className="text-xs text-red-600">{errors.requerimientoId.message}</p>}
           </div>
           )}
+
+          <div className="space-y-1.5 border-t border-slate-100 pt-4">
+            <Label className="text-sm font-medium text-slate-700">
+              Partes interesadas <span className="ml-1 font-normal text-slate-400">(opcional)</span>
+            </Label>
+            <p className="text-xs text-slate-500">
+              Involucra a otros funcionarios: verán el ticket en «Mis tickets de TI», podrán comentar y adjuntar, y recibirán sus novedades por correo.
+            </p>
+            <div className="lg:max-w-2xl">
+              <SelectorInteresados value={interesados} onChange={setInteresados} disabled={isSubmitting} />
+            </div>
+          </div>
 
           {tipologia?.requiere_aprobacion && (
             catalogo.solicitante.jefeNombre ? (

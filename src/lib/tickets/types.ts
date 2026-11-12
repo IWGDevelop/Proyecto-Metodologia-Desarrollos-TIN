@@ -35,6 +35,7 @@ export type TipoEventoTicket =
   | 'REAPERTURA'
   | 'CIERRE'
   | 'PRIMERA_RESPUESTA'
+  | 'INTERESADO'
 export type ClasificacionBug = 'BUG' | 'DEUDA_TECNICA' | 'PARAMETRIZACION' | 'INFRAESTRUCTURA'
 export type SeveridadBug = 'BLOQUEANTE' | 'ALTA' | 'MEDIA' | 'BAJA'
 export type EstadoBug = 'REPORTADO' | 'CONFIRMADO' | 'PRIORIZADO' | 'EN_DESARROLLO' | 'EN_PRUEBAS' | 'DESPLEGADO'

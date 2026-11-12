@@ -27,6 +27,7 @@ import { EditorComentario, type EstadoEditorComentario } from '@/components/tick
 import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 import { textoPlanoComentario } from '@/lib/tickets/comentario-rico'
 import { AsignarDialog } from './AsignarDialog'
+import { GestorInteresados } from '@/components/tickets/Interesados'
 import { ResolverDialog } from './ResolverDialog'
 import { HistorialTicket } from './HistorialTicket'
 import { RequerimientoRelacionado } from './RequerimientoRelacionado'
@@ -539,6 +540,15 @@ export function GestionTicket({
               )}
             </dl>
           </Seccion>
+
+          <GestorInteresados
+            ticketId={t.id}
+            interesados={t.interesados}
+            puedeEditar={p.gestionar}
+            usuarioId={p.usuarioId}
+            cerrado={t.estado === 'CERRADO'}
+            className="p-4"
+          />
 
           {(t.requerimiento || p.gestionar) && (
             <Seccion titulo="Requerimiento relacionado" icon={FolderGit2}>

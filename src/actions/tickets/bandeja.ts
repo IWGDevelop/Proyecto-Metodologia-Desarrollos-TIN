@@ -29,6 +29,7 @@ import type {
 } from '@/lib/tickets/types'
 import { idsPersonalTI } from '@/lib/tickets/personal-ti'
 import { recalcularTiemposTicket } from '@/lib/tickets/tiempos'
+import { listarInteresados } from '@/lib/tickets/interesados'
 
 // Consultas de la bandeja y de la vista de gestión de TIN.
 
@@ -332,6 +333,8 @@ export interface TicketGestion {
   padre: { id: string; codigo: string; asunto: string; estado: EstadoTicket } | null
   hijos: { id: string; codigo: string; asunto: string; estado: EstadoTicket }[]
   requerimiento: RequerimientoResumen | null
+  /** Partes interesadas del ticket */
+  interesados: { id: string; nombre_completo: string; cargo: string | null }[]
   bugs: { id: string; codigo: string; titulo: string; estado: EstadoBug; severidad: SeveridadBug; clasificacion: ClasificacionBug }[]
   campos: { etiqueta: string; valor: string; tipo: string }[]
   novedad: TicketNovedadIGSI | null
@@ -407,6 +410,7 @@ export async function obtenerTicketGestion(id: string): Promise<TicketGestion | 
     config,
     causas,
     requerimiento,
+    interesados,
   ] = await Promise.all([
     supabase.from('perfiles').select('id, nombre_completo, email, cargo, proceso_interno, sede, jefe_id').eq('id', ticket.solicitante_id).maybeSingle(),
     ticket.ticket_padre_id
@@ -427,6 +431,7 @@ export async function obtenerTicketGestion(id: string): Promise<TicketGestion | 
     obtenerConfigTickets(supabase),
     supabase.from('ticket_causas').select('*').eq('activa', true).eq('ambito', ticket.tipologia?.es_novedad_igsi ? 'IGSI' : 'GENERAL').order('tipo_causa').order('orden'),
     cargarRequerimientoResumen(supabase, ticket.requerimiento_id),
+    listarInteresados(supabase, id),
   ])
 
   type ValorCampo = { valor: string | null; campo: { etiqueta: string; tipo_dato: string; orden: number } | null }
@@ -504,6 +509,7 @@ export async function obtenerTicketGestion(id: string): Promise<TicketGestion | 
     padre: padre ? { id: padre.id, codigo: codigoTicket(padre.numero), asunto: padre.asunto, estado: padre.estado } : null,
     hijos: ((hijos ?? []) as { id: string; numero: number; asunto: string; estado: EstadoTicket }[]).map(h => ({ id: h.id, codigo: codigoTicket(h.numero), asunto: h.asunto, estado: h.estado })),
     requerimiento,
+    interesados: interesados.map(p => ({ id: p.id, nombre_completo: p.nombre_completo, cargo: p.cargo })),
     bugs,
     campos: valoresTyped
       .sort((a, b) => a.campo!.orden - b.campo!.orden)

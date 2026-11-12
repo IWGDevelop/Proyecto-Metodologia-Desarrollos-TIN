@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
-  AlertCircle, ArrowLeft, CheckCircle2, Clock, CornerDownRight, FileText, MessageSquareReply, ShieldCheck,
+  AlertCircle, ArrowLeft, CheckCircle2, Clock, CornerDownRight, Eye, FileText, MessageSquareReply, ShieldCheck,
 } from 'lucide-react'
 import { obtenerMiTicket } from '@/actions/tickets/mis-tickets'
 import {
@@ -19,6 +19,7 @@ import { textoPlanoComentario } from '@/lib/tickets/comentario-rico'
 import { EstadoChip, PrioridadChip, TipoGestionChip, fechaHora, fechaSolo } from '@/components/tickets/funcionario/Chips'
 import { ComentarYAdjuntar, DecisionResuelto } from '@/components/tickets/funcionario/AccionesMiTicket'
 import type { EventoVisible } from '@/components/tickets/funcionario/tipos'
+import { GestorInteresados } from '@/components/tickets/Interesados'
 
 export const dynamic = 'force-dynamic'
 
@@ -29,7 +30,11 @@ function textoEvento(e: EventoVisible): string {
     case 'CREACION': return 'Ticket creado'
     case 'CAMBIO_ESTADO': return `${labelEstado(e.valor_anterior)} → ${labelEstado(e.valor_nuevo)}`
     case 'ADJUNTO': return `Adjuntó ${e.valor_nuevo ?? 'un archivo'}`
-    case 'COMENTARIO': return e.es_mio ? 'Tu comentario' : 'Comentario de TIN'
+    case 'COMENTARIO':
+      return e.es_mio ? 'Tu comentario'
+        : e.autor === 'SOLICITANTE' ? 'Comentario del solicitante'
+        : e.autor === 'INTERESADO' ? 'Comentario de una parte interesada'
+        : 'Comentario de TIN'
     default: return LABEL_EVENTO_TICKET[e.tipo_evento] ?? e.tipo_evento
   }
 }
@@ -69,6 +74,16 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
         <p className="mt-0.5 text-sm text-slate-500">{t.categoria} · {t.tipologia}</p>
       </div>
 
+      {t.rol === 'INTERESADO' && (
+        <div className="flex gap-2 rounded-xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-900">
+          <Eye size={16} className="mt-0.5 shrink-0" />
+          <span>
+            Sigues este ticket como <strong>parte interesada</strong>{t.solicitante ? <> de <strong>{t.solicitante}</strong></> : null}.
+            Puedes comentar y adjuntar información, y te avisaremos de sus novedades. Confirmar la solución o reabrirlo le corresponde al solicitante.
+          </span>
+        </div>
+      )}
+
       {/* Avisos según el estado */}
       {t.estado === 'ESPERA_USUARIO' && (
         <div className="rounded-xl border-2 border-amber-300 bg-amber-50 p-4">
@@ -95,7 +110,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
         <div className="flex gap-2 rounded-xl border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
           <ShieldCheck size={16} className="mt-0.5 shrink-0" />
           <span>
-            Pendiente de aprobación {t.aprobador ? <>de <strong>{t.aprobador}</strong></> : <>de un coordinador TIN (no tienes jefe inmediato configurado)</>}.
+            Pendiente de aprobación {t.aprobador ? <>de <strong>{t.aprobador}</strong></> : <>de un coordinador TIN{t.rol === 'SOLICITANTE' ? ' (no tienes jefe inmediato configurado)' : ''}</>}.
             Cuando se apruebe, TIN empieza a atenderlo.
           </span>
         </div>
@@ -111,7 +126,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
         </div>
       )}
 
-      {t.estado === 'RESUELTO' && (
+      {t.estado === 'RESUELTO' && t.rol === 'SOLICITANTE' && (
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <p className="text-sm font-semibold text-slate-800">¿La solución resolvió tu solicitud?</p>
           <p className="mb-3 mt-0.5 text-xs text-slate-500">
@@ -228,6 +243,14 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
 
         {/* Columna de datos */}
         <aside className="space-y-5">
+          <GestorInteresados
+            ticketId={t.id}
+            interesados={t.interesados}
+            puedeEditar={t.rol === 'SOLICITANTE'}
+            usuarioId={t.usuarioId}
+            cerrado={t.estado === 'CERRADO'}
+            solicitante={t.rol === 'INTERESADO' ? t.solicitante : null}
+          />
           <section className="rounded-xl border border-slate-200 bg-white p-5">
             <dl className="space-y-3">
               <Dato label="Estado"><EstadoChip estado={t.estado} /></Dato>

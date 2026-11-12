@@ -18,7 +18,8 @@ import {
   recalcularTiemposSeguro,
   registrarPrimeraRespuestaSiFalta,
 } from '@/lib/tickets/flujo'
-import { avisar, enviarAsignacion } from '@/lib/tickets/emails-flujo'
+import { avisar, avisarComentario, enviarAsignacion } from '@/lib/tickets/emails-flujo'
+import { esInteresado } from '@/lib/tickets/interesados'
 import { crearBug, enlazarTicketABug } from '@/lib/tickets/bugs'
 import {
   cargarRequerimientoResumen,
@@ -302,12 +303,16 @@ export async function agregarComentarioTicket(ticketId: string, texto: string, v
 
     const esSolicitante = t.solicitante_id === ctx.usuarioId
     const gestiona = puedeVerTicketGestion(ctx, t, !!t.tipologia?.visibilidad_restringida) && puedeGestionarTicket(ctx, t)
-    if (!esSolicitante && !gestiona) return { ok: false, error: NO_AUTORIZADO }
-    if (esSolicitante && !gestiona && t.estado === 'CERRADO') {
+    // Las partes interesadas también comentan, como el solicitante
+    const interesado = !esSolicitante && !gestiona && await esInteresado(supabase, t.id, ctx.usuarioId)
+    if (!esSolicitante && !gestiona && !interesado) return { ok: false, error: NO_AUTORIZADO }
+    const comoUsuario = (esSolicitante || interesado) && !gestiona
+    if (comoUsuario && t.estado === 'CERRADO') {
       return { ok: false, error: 'El ticket está cerrado. Reábrelo si el problema continúa.' }
     }
-    // El solicitante siempre escribe comentarios visibles
-    const visible = esSolicitante && !gestiona ? true : !!visibleUsuario
+    // El solicitante y las partes interesadas siempre escriben comentarios visibles
+    const visible = comoUsuario ? true : !!visibleUsuario
+    const autor = esSolicitante ? 'SOLICITANTE' : interesado ? 'INTERESADO' : 'TIN'
 
     await registrarEvento(supabase, {
       ticketId: t.id,
@@ -315,26 +320,25 @@ export async function agregarComentarioTicket(ticketId: string, texto: string, v
       usuarioId: ctx.usuarioId,
       comentario: contenido,
       visibleUsuario: visible,
-      metadata: { autor: esSolicitante ? 'SOLICITANTE' : 'TIN' },
+      metadata: { autor },
     })
     await supabase.from('tickets').update({ updated_at: new Date().toISOString() }).eq('id', t.id)
 
-    if (esSolicitante) {
+    if (esSolicitante || interesado) {
       if (t.estado === 'ESPERA_USUARIO') {
         await aplicarCambioEstado(supabase, {
           ticketId: t.id,
           nuevoEstado: 'EN_PROCESO',
           usuarioId: ctx.usuarioId,
-          comentario: 'El solicitante respondió',
+          comentario: esSolicitante ? 'El solicitante respondió' : 'Respondió una parte interesada',
           visibleUsuario: true,
         })
-      } else if (t.responsable_id && t.responsable_id !== ctx.usuarioId) {
-        await avisar(supabase, [t.responsable_id], t.id, `Nuevo comentario del solicitante en ${codigoTicket(t.numero)}`)
       }
+      await avisarComentario(supabase, t.id, ctx.usuarioId, autor)
     } else if (visible) {
       const primera = await registrarPrimeraRespuestaSiFalta(supabase, t.id, ctx.usuarioId, 'COMENTARIO')
       if (primera) await recalcularTiemposSeguro(supabase, t.id)
-      await avisar(supabase, [t.solicitante_id], t.id, `TIN comentó tu ticket ${codigoTicket(t.numero)}`)
+      await avisarComentario(supabase, t.id, ctx.usuarioId, 'TIN')
     }
 
     refrescar(ticketId)

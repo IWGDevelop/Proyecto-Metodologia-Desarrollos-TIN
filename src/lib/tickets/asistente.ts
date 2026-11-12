@@ -41,6 +41,7 @@ El botón Crear ticket se activa cuando todos los campos obligatorios están dil
 - Tipologías que requieren aprobación (por ejemplo, Compras): el ticket nace "En espera de aprobación" y no pasa a TIN hasta que su jefe inmediato lo apruebe. Si no tiene jefe configurado, lo aprueba un coordinador TIN. Mientras espera la aprobación, el reloj no corre.
 - Plantilla de ingreso o retiro de personal: la usan TIN y talento humano; crea un ticket padre y un ticket hijo por cada tarea.
 - Si ninguna tipología corresponde, elija la categoría Otros; TIN la reclasificará.
+- Partes interesadas (opcional): al crear el ticket, o después desde su detalle, el solicitante puede involucrar a otros funcionarios buscándolos por nombre o correo. Ellos ven el ticket en «Mis tickets de TI» (con la etiqueta «Parte interesada»), pueden comentar y adjuntar, y reciben por correo y en los avisos las novedades del ticket (aprobación, solicitud de información, resuelto, cerrado). No pueden confirmar la solución ni reabrir; eso le corresponde al solicitante. Cada uno puede dejar de seguir el ticket. Máximo 15 por ticket.
 
 ## Prioridad (la calcula el sistema; el usuario no la elige)
 ${PRIORIDADES_TICKET.map(p => `- ${p.label}: ${p.regla}.`).join('\n')}

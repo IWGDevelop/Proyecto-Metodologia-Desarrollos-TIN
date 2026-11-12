@@ -10,6 +10,8 @@ import { obtenerConfigTickets } from '@/lib/tickets/config'
 import { registrarEvento, registrarEventos, type EventoTicket } from '@/lib/tickets/historial'
 import { despuesDeCrearTicket } from '@/lib/tickets/flujo'
 import { enlazarTicketABug } from '@/lib/tickets/bugs'
+import { agregarInteresadosTicket } from '@/lib/tickets/interesados'
+import { enviarInteresadosAgregados } from '@/lib/tickets/emails-flujo'
 import {
   ACCIONES_IGSI,
   CADENA_IGSI,
@@ -640,9 +642,22 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
     }
 
     await avisarCreacion(creados)
+
+    // Partes interesadas: si algo falla, el ticket ya quedó creado; se informa en el resultado
+    let aviso: string | undefined
+    if (Array.isArray(input.interesados) && input.interesados.length) {
+      try {
+        const agregados = await agregarInteresadosTicket(supabase, { id: creado.id, solicitante_id: acceso.usuarioId }, input.interesados, acceso.usuarioId)
+        if (agregados.length) await enviarInteresadosAgregados(supabase, creado.id, agregados.map(p => p.id), acceso.usuarioId)
+      } catch (e) {
+        console.error('[tickets] No se pudieron agregar las partes interesadas', e)
+        aviso = `El ticket se creó, pero no se pudieron agregar las partes interesadas: ${(e as Error).message}`
+      }
+    }
+
     refrescar()
     if (requerimiento) revalidatePath(`/admin/requerimientos/${requerimiento.id}`)
-    return { ok: true, id: creado.id, codigo: codigoTicket(creado.numero), hijos }
+    return { ok: true, id: creado.id, codigo: codigoTicket(creado.numero), hijos, aviso }
   } catch (e: any) {
     return { ok: false, error: e?.message ?? 'Error al crear el ticket' }
   }

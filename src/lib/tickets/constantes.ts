@@ -211,6 +211,7 @@ export const LABEL_EVENTO_TICKET: Record<TipoEventoTicket, string> = {
   REAPERTURA:          'Reapertura',
   CIERRE:              'Cierre',
   PRIMERA_RESPUESTA:   'Primera respuesta',
+  INTERESADO:          'Partes interesadas',
 }
 
 export const DISPARADORES_RECORDATORIO: { value: DisparadorRecordatorio; label: string }[] = [

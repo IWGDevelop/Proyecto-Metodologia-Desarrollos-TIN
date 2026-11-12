@@ -31,7 +31,7 @@ export function MisTicketsLista({ tickets, estadoInicial }: { tickets: MiTicketF
       if (estado === 'ABIERTOS' && t.estado === 'CERRADO') return false
       if (estado !== 'ABIERTOS' && estado !== 'TODOS' && t.estado !== estado) return false
       if (!texto) return true
-      return [t.codigo, t.asunto, t.categoria, t.tipologia, t.responsable ?? ''].some(x => x.toLowerCase().includes(texto))
+      return [t.codigo, t.asunto, t.categoria, t.tipologia, t.responsable ?? '', t.solicitante ?? ''].some(x => x.toLowerCase().includes(texto))
     })
   }, [tickets, estado, q])
 
@@ -111,6 +111,11 @@ export function MisTicketsLista({ tickets, estadoInicial }: { tickets: MiTicketF
                         {t.es_hijo && <CornerDownRight size={12} className="mr-1 inline text-slate-400" />}
                         {t.asunto}
                       </Link>
+                      {t.es_interesado && (
+                        <span className="mt-0.5 inline-flex items-center rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700" title="Lo sigues como parte interesada">
+                          Parte interesada{t.solicitante ? ` · de ${t.solicitante}` : ''}
+                        </span>
+                      )}
                     </td>
                     <td className="px-3 py-2.5 text-xs">
                       <p className="text-slate-500">{t.categoria}</p>
@@ -136,6 +141,11 @@ export function MisTicketsLista({ tickets, estadoInicial }: { tickets: MiTicketF
                   <EstadoChip estado={t.estado} className="ml-auto" />
                 </div>
                 <p className="mt-1.5 font-medium text-slate-800">{t.asunto}</p>
+                {t.es_interesado && (
+                  <span className="mt-0.5 inline-flex rounded-full bg-violet-50 px-1.5 py-0.5 text-[10px] font-medium text-violet-700">
+                    Parte interesada{t.solicitante ? ` · de ${t.solicitante}` : ''}
+                  </span>
+                )}
                 <p className="mt-0.5 text-xs text-slate-500">{t.categoria} · {t.tipologia}</p>
                 <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-500">
                   <PrioridadChip prioridad={t.prioridad} />

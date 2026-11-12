@@ -5,6 +5,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual } from '@/lib/supabase/guards'
 import { ESTADOS_TICKET, codigoTicket } from '@/lib/tickets/constantes'
 import { nombresPerfiles } from '@/lib/tickets/solicitante'
+import { esInteresado, listarInteresados, ticketsComoInteresado } from '@/lib/tickets/interesados'
 import { cargarRequerimientoResumen, ticketsDeRequerimiento, type TicketDeRequerimiento } from '@/lib/tickets/requerimientos'
 import type { EstadoTicket, TicketHistorial } from '@/lib/tickets/types'
 import type {
@@ -14,18 +15,24 @@ import type {
   MiTicketFila,
 } from '@/components/tickets/funcionario/tipos'
 
-// Vista del funcionario: solo sus propios tickets (solicitante_id = usuario actual).
+// Vista del funcionario: sus tickets (solicitante_id = usuario actual) y los que sigue como parte interesada.
 
 export async function listarMisTickets(filtros: FiltrosMisTickets = {}): Promise<MiTicketFila[]> {
   const actual = await getUsuarioActual()
   if (!actual) return []
   const supabase = createAdminClient()
+  const yo = actual.user.id
+  // Sus tickets y los que sigue como parte interesada
+  const comoInteresado = await ticketsComoInteresado(supabase, yo)
 
   let q = (supabase as any)
     .from('tickets')
-    .select('id, numero, asunto, estado, prioridad, responsable_id, ticket_padre_id, fecha_creacion, fecha_requerida, fecha_resuelto, fecha_cierre, updated_at, categoria:ticket_categorias(nombre), tipologia:ticket_tipologias(nombre, tipo_gestion)')
-    .eq('solicitante_id', actual.user.id)
+    .select('id, numero, asunto, estado, prioridad, solicitante_id, responsable_id, ticket_padre_id, fecha_creacion, fecha_requerida, fecha_resuelto, fecha_cierre, updated_at, categoria:ticket_categorias(nombre), tipologia:ticket_tipologias(nombre, tipo_gestion)')
     .order('fecha_creacion', { ascending: false })
+  q = comoInteresado.length
+    ? q.or(`solicitante_id.eq.${yo},id.in.(${comoInteresado.join(',')})`)
+    : q.eq('solicitante_id', yo)
+  q = q
     .limit(500)
 
   const estado = filtros.estado
@@ -43,7 +50,10 @@ export async function listarMisTickets(filtros: FiltrosMisTickets = {}): Promise
     return []
   }
   const filas = (data ?? []) as any[]
-  const nombres = await nombresPerfiles(supabase, filas.map(f => f.responsable_id))
+  const nombres = await nombresPerfiles(supabase, [
+    ...filas.map(f => f.responsable_id),
+    ...filas.filter(f => f.solicitante_id !== yo).map(f => f.solicitante_id),
+  ])
   return filas.map(f => ({
     id: f.id,
     codigo: codigoTicket(Number(f.numero)),
@@ -60,6 +70,8 @@ export async function listarMisTickets(filtros: FiltrosMisTickets = {}): Promise
     fecha_cierre: f.fecha_cierre,
     updated_at: f.updated_at,
     es_hijo: !!f.ticket_padre_id,
+    es_interesado: f.solicitante_id !== yo,
+    solicitante: f.solicitante_id !== yo ? (nombres.get(f.solicitante_id) ?? null) : null,
   }))
 }
 
@@ -82,9 +94,11 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
     .select('*, categoria:ticket_categorias(nombre), tipologia:ticket_tipologias(nombre, tipo_gestion, requiere_aprobacion)')
     .eq('id', id)
     .maybeSingle()
-  if (!t || t.solicitante_id !== yo) return null
+  if (!t) return null
+  const esSolicitante = t.solicitante_id === yo
+  if (!esSolicitante && !(await esInteresado(supabase, id, yo))) return null
 
-  const [valoresR, novedadR, adjuntosR, historialR, cierreR, padreR, hijosR, requerimiento] = await Promise.all([
+  const [valoresR, novedadR, adjuntosR, historialR, cierreR, padreR, hijosR, requerimiento, interesados] = await Promise.all([
     (supabase as any).from('ticket_valores_campo')
       .select('valor, campo:ticket_campos_tipologia(etiqueta, tipo_dato, orden)').eq('ticket_id', id),
     (supabase as any).from('ticket_novedades_igsi').select('*').eq('ticket_id', id).maybeSingle(),
@@ -97,7 +111,9 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
       : Promise.resolve({ data: null }),
     (supabase as any).from('tickets').select('id, numero, asunto, estado').eq('ticket_padre_id', id).eq('solicitante_id', yo).order('numero'),
     cargarRequerimientoResumen(supabase, t.requerimiento_id),
+    listarInteresados(supabase, id),
   ])
+  const idsInteresados = new Set(interesados.map(p => p.id))
 
   // Historial: solo eventos visibles para el usuario y los cambios de estado (sin comentario interno)
   const eventos = ((historialR.data ?? []) as TicketHistorial[])
@@ -105,7 +121,7 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
   const valoresCrudos = ((valoresR.data ?? []) as any[])
   const idsUsuario = valoresCrudos.filter(v => v.campo?.tipo_dato === 'USUARIO').map(v => v.valor)
   const nombres = await nombresPerfiles(supabase, [
-    t.responsable_id, t.aprobador_id,
+    t.responsable_id, t.aprobador_id, t.solicitante_id,
     ...eventos.map(e => e.usuario_id),
     ...((adjuntosR.data ?? []) as any[]).map(a => a.cargado_por),
     ...idsUsuario,
@@ -117,6 +133,10 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
     fecha: e.fecha,
     usuario: e.usuario_id ? (nombres.get(e.usuario_id) ?? 'Usuario') : null,
     es_mio: e.usuario_id === yo,
+    autor: !e.usuario_id ? null
+      : e.usuario_id === t.solicitante_id ? 'SOLICITANTE'
+      : idsInteresados.has(e.usuario_id) || (e.metadata as { autor?: string } | null)?.autor === 'INTERESADO' ? 'INTERESADO'
+      : 'TIN',
     valor_anterior: e.tipo_evento === 'CAMBIO_ESTADO' || e.tipo_evento === 'ADJUNTO' ? e.valor_anterior : null,
     valor_nuevo: e.tipo_evento === 'CAMBIO_ESTADO' || e.tipo_evento === 'ADJUNTO' || e.tipo_evento === 'CREACION' ? e.valor_nuevo : null,
     comentario: e.visible_usuario ? e.comentario : null,
@@ -212,5 +232,9 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
       id: h.id, codigo: codigoTicket(Number(h.numero)), asunto: h.asunto, estado: h.estado as EstadoTicket,
     })),
     requerimiento,
+    rol: esSolicitante ? 'SOLICITANTE' : 'INTERESADO',
+    solicitante: nombres.get(t.solicitante_id) ?? null,
+    interesados: interesados.map(p => ({ id: p.id, nombre_completo: p.nombre_completo, cargo: p.cargo })),
+    usuarioId: yo,
   }
 }

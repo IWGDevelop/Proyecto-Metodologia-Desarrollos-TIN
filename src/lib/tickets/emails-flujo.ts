@@ -4,6 +4,7 @@ import { codigoTicket, LABEL_ESTADO_TICKET, LABEL_PRIORIDAD_TICKET } from './con
 import { obtenerConfigTickets } from './config'
 import { crearNotificacion } from './notificar'
 import { bloquesComentario } from './comentario-rico'
+import { listarInteresados } from './interesados'
 import type { EstadoTicket, PrioridadTicket } from './types'
 
 // Correos y avisos del flujo de tickets (solo servidor). Todo es best-effort:
@@ -94,6 +95,8 @@ interface DatosCorreo {
   solicitante: PerfilCorreo | null
   responsable: PerfilCorreo | null
   aprobador: PerfilCorreo | null
+  /** Partes interesadas del ticket (ticket_interesados) */
+  interesados: PerfilCorreo[]
   emailsCoordinador: string[]
   appUrl: string
 }
@@ -113,7 +116,10 @@ async function cargarDatos(supabase: SupabaseClient, ticketId: string): Promise<
   const ids = [ticket.solicitante_id, ticket.responsable_id, ticket.aprobador_id].filter((x): x is string => !!x)
   const { data: perfiles } = await supabase.from('perfiles').select('id, nombre_completo, email').in('id', ids)
   const mapa = new Map<string, PerfilCorreo>((perfiles ?? []).map((p: PerfilCorreo) => [p.id, p]))
-  const config = await obtenerConfigTickets(supabase)
+  const [config, interesados] = await Promise.all([
+    obtenerConfigTickets(supabase),
+    listarInteresados(supabase, ticket.id),
+  ])
   return {
     id: ticket.id,
     codigo: codigoTicket(ticket.numero),
@@ -128,6 +134,7 @@ async function cargarDatos(supabase: SupabaseClient, ticketId: string): Promise<
     solicitante: mapa.get(ticket.solicitante_id) ?? null,
     responsable: ticket.responsable_id ? mapa.get(ticket.responsable_id) ?? null : null,
     aprobador: ticket.aprobador_id ? mapa.get(ticket.aprobador_id) ?? null : null,
+    interesados: interesados.map(p => ({ id: p.id, nombre_completo: p.nombre_completo, email: p.email })),
     emailsCoordinador: config.emailsCoordinador ?? [],
     appUrl: getAppUrl(),
   }
@@ -149,7 +156,7 @@ function filasTicket(d: DatosCorreo): [string, string | null | undefined][] {
   ]
 }
 
-async function enviar(to: string | string[] | null | undefined, subject: string, html: string, ticketId: string) {
+async function enviar(to: string | (string | null | undefined)[] | null | undefined, subject: string, html: string, ticketId: string) {
   const destinos = (Array.isArray(to) ? to : [to]).filter((x): x is string => !!x && x.includes('@'))
   if (destinos.length === 0) return
   try {
@@ -177,6 +184,72 @@ async function conDatos(supabase: SupabaseClient, ticketId: string, fn: (d: Dato
   } catch (e) {
     console.error('[tickets] Error preparando el correo del ticket', ticketId, e)
   }
+}
+
+// ── Partes interesadas ───────────────────────────────────────────────────────
+
+/**
+ * Correo y aviso a las partes interesadas sobre una novedad del ticket.
+ * `excluir`: ids que no deben recibirlo (por ejemplo, quien hizo la acción).
+ */
+async function notificarInteresados(
+  supabase: SupabaseClient,
+  d: DatosCorreo,
+  titulo: string,
+  aviso: string,
+  extra = '',
+  excluir: (string | null | undefined)[] = [],
+) {
+  const destino = d.interesados.filter(p => !excluir.includes(p.id))
+  if (!destino.length) return
+  const enlace = `${d.appUrl}/mis-tickets/${d.id}`
+  const html = shell(`
+    <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">${esc(titulo)}</h2>
+    <p style="margin:0 0 20px;font-size:14px;color:#64748b">Recibes este correo porque eres parte interesada en el ticket <strong>${esc(d.codigo)}</strong> de <strong>${esc(d.solicitante?.nombre_completo)}</strong>.</p>
+    ${extra}
+    ${tablaDatos(filasTicket(d))}
+    ${boton('Ver el ticket →', enlace)}
+  `)
+  await enviar(destino.map(p => p.email), asunto(d, titulo), html, d.id)
+  await avisar(supabase, destino.map(p => p.id), d.id, aviso)
+}
+
+/** Bienvenida a los funcionarios que se acaban de agregar como partes interesadas */
+export async function enviarInteresadosAgregados(supabase: SupabaseClient, ticketId: string, usuarioIds: string[], agregadoPor: string | null): Promise<void> {
+  if (!usuarioIds.length) return
+  await conDatos(supabase, ticketId, async d => {
+    const nuevos = d.interesados.filter(p => usuarioIds.includes(p.id))
+    if (!nuevos.length) return
+    let quien = d.solicitante?.nombre_completo ?? 'El solicitante'
+    if (agregadoPor && agregadoPor !== d.solicitante?.id) {
+      const { data } = await supabase.from('perfiles').select('nombre_completo').eq('id', agregadoPor).maybeSingle()
+      quien = (data as { nombre_completo?: string } | null)?.nombre_completo ?? 'TIN'
+    }
+    const enlace = `${d.appUrl}/mis-tickets/${d.id}`
+    const html = shell(`
+      <h2 style="margin:0 0 8px;font-size:18px;color:#1e293b">Te involucraron en un ticket</h2>
+      <p style="margin:0 0 20px;font-size:14px;color:#64748b"><strong>${esc(quien)}</strong> te agregó como parte interesada en el ticket <strong>${esc(d.codigo)}</strong>. Puedes verlo en «Mis tickets de TI», comentar y adjuntar información, y te avisaremos de sus novedades.</p>
+      ${tablaDatos([...filasTicket(d), ['Solicitante', d.solicitante?.nombre_completo]])}
+      ${bloqueTexto('Descripción', d.descripcion)}
+      ${boton('Ver el ticket →', enlace)}
+    `)
+    await enviar(nuevos.map(p => p.email), asunto(d, 'Te involucraron en un ticket'), html, d.id)
+    await avisar(supabase, nuevos.map(p => p.id), d.id, `${quien} te agregó como parte interesada en ${d.codigo}: ${d.asunto}`)
+  })
+}
+
+/** Aviso (sin correo) de un comentario a quienes siguen el ticket, salvo al autor */
+export async function avisarComentario(supabase: SupabaseClient, ticketId: string, autorId: string, autor: 'TIN' | 'SOLICITANTE' | 'INTERESADO'): Promise<void> {
+  await conDatos(supabase, ticketId, async d => {
+    const { data } = await supabase.from('perfiles').select('nombre_completo').eq('id', autorId).maybeSingle()
+    const nombre = (data as { nombre_completo?: string } | null)?.nombre_completo ?? (autor === 'TIN' ? 'TIN' : 'Un funcionario')
+    const destino = new Set<string>()
+    for (const p of d.interesados) destino.add(p.id)
+    if (autor !== 'SOLICITANTE' && d.solicitante) destino.add(d.solicitante.id)
+    if (autor !== 'TIN' && d.responsable) destino.add(d.responsable.id)
+    destino.delete(autorId)
+    await avisar(supabase, [...destino], d.id, `${nombre} comentó el ticket ${d.codigo}`)
+  })
 }
 
 // ── Correos del flujo ────────────────────────────────────────────────────────
@@ -240,6 +313,9 @@ export async function enviarResultadoAprobacion(supabase: SupabaseClient, ticket
     `)
     await enviar(d.solicitante?.email, asunto(d, aprobado ? 'Solicitud aprobada' : 'Solicitud rechazada'), html, d.id)
     await avisar(supabase, [d.solicitante?.id], d.id, `${d.codigo}: tu solicitud fue ${aprobado ? 'aprobada' : 'rechazada'}`)
+    await notificarInteresados(supabase, d, aprobado ? 'Solicitud aprobada' : 'Solicitud rechazada',
+      `${d.codigo}: la solicitud fue ${aprobado ? 'aprobada' : 'rechazada'}`,
+      observacion ? bloqueTexto('Observación del aprobador', observacion, aprobado ? '#16a34a' : '#dc2626') : '')
   })
 }
 
@@ -274,6 +350,10 @@ export async function enviarPeticionInformacion(supabase: SupabaseClient, ticket
     `)
     await enviar(d.solicitante?.email, asunto(d, 'Información requerida'), html, d.id)
     await avisar(supabase, [d.solicitante?.id], d.id, `${d.codigo}: TIN necesita información para continuar`)
+    await notificarInteresados(supabase, d, 'TIN necesita información para continuar',
+      `${d.codigo}: TIN necesita información para continuar`,
+      (comentario ? bloqueTexto(d.responsable?.nombre_completo ?? 'TIN', comentario, '#d97706') : '') +
+      '<p style="margin:0 0 20px;font-size:13px;color:#475569">Si tienes la información, puedes responder con un comentario en el ticket.</p>')
   })
 }
 
@@ -309,6 +389,8 @@ export async function enviarRespuestaResuelto(supabase: SupabaseClient, ticketId
     `)
     await enviar(d.solicitante?.email, asunto(d, 'Ticket resuelto'), html, d.id)
     await avisar(supabase, [d.solicitante?.id], d.id, `${d.codigo} fue resuelto. Confirma la solución o reábrelo.`)
+    await notificarInteresados(supabase, d, 'Ticket resuelto', `${d.codigo} fue resuelto`,
+      respuesta ? bloqueTexto(conceptual ? 'Cómo se debía hacer' : 'Respuesta de TIN', respuesta, '#16a34a') : '')
   })
 }
 
@@ -330,6 +412,9 @@ export async function enviarCierre(supabase: SupabaseClient, ticketId: string, a
     `)
     await enviar(d.solicitante?.email, asunto(d, automatico ? 'Ticket cerrado automáticamente' : 'Ticket cerrado'), html, d.id)
     await avisar(supabase, [d.solicitante?.id], d.id, `${d.codigo} quedó cerrado${automatico ? ' automáticamente' : ''}`)
+    await notificarInteresados(supabase, d, automatico ? 'Ticket cerrado automáticamente' : 'Ticket cerrado',
+      `${d.codigo} quedó cerrado${automatico ? ' automáticamente' : ''}`,
+      comentario ? bloqueTexto('Comentario', comentario, '#64748b') : '')
     if (d.responsable && d.responsable.id !== d.solicitante?.id) {
       await avisar(supabase, [d.responsable.id], d.id, `${d.codigo} quedó cerrado${automatico ? ' automáticamente' : ''}`)
     }
@@ -350,5 +435,6 @@ export async function avisarReapertura(supabase: SupabaseClient, ticketId: strin
     `)
     await enviar(d.responsable.email, asunto(d, 'Ticket reabierto'), html, d.id)
     await avisar(supabase, [d.responsable.id], d.id, `${d.codigo} fue reabierto`)
+    await avisar(supabase, d.interesados.map(p => p.id), d.id, `${d.codigo} fue reabierto`)
   })
 }
