@@ -7,6 +7,7 @@ import { obtenerMiTicket } from '@/actions/tickets/mis-tickets'
 import {
   ACCIONES_IGSI,
   CADENA_IGSI,
+  EMPRESAS_IGSI,
   IMPACTOS_OPERACION_IGSI,
   LABEL_ESTADO_TICKET,
   LABEL_EVENTO_TICKET,
@@ -157,6 +158,7 @@ export default async function MiTicketPage({ params }: { params: Promise<{ id: s
             <section className="rounded-xl border border-blue-200 bg-white p-5">
               <p className="text-xs font-semibold uppercase tracking-wide text-blue-500">Novedad IGSI</p>
               <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+                <Dato label="Empresa">{n.empresa ? `${n.empresa} · ${EMPRESAS_IGSI.find(x => x.value === n.empresa)?.nombre ?? ''}` : null}</Dato>
                 <Dato label="Documento">{docLabel} {n.numero_documento ?? <span className="text-slate-400">(sin número)</span>}</Dato>
                 <Dato label="Documentos relacionados">{n.documentos_relacionados}</Dato>
                 <Dato label="Servicio / modalidad">{n.servicio} · {n.modalidad}</Dato>

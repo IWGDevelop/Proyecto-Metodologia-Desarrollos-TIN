@@ -10,6 +10,7 @@ export interface BorradorAsistente {
   campos?: Record<string, string>
   /** Formulario de Novedad en IGSI */
   igsi?: {
+    empresa?: string
     tipo_documento?: string
     numero_documento?: string
     accion?: string
@@ -51,6 +52,7 @@ export function extraerBorrador(respuesta: string): BorradorAsistente | null {
         impacto: texto(j.impacto, 40),
         campos,
         igsi: {
+          empresa: texto(ig.empresa, 10),
           tipo_documento: texto(ig.tipo_documento, 40),
           numero_documento: texto(ig.numero_documento, 100),
           accion: texto(ig.accion, 40),

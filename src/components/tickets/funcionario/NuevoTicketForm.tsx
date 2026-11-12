@@ -17,13 +17,14 @@ import { crearTicket } from '@/actions/tickets/crear'
 import {
   ACCIONES_IGSI,
   CADENA_IGSI,
+  EMPRESAS_IGSI,
   IMPACTOS_OPERACION_IGSI,
   IMPACTOS_TICKET,
   MEDICIONES,
   PRIORIDADES_TICKET,
   calcularPrioridad,
 } from '@/lib/tickets/constantes'
-import type { AccionIGSI, ImpactoOperacionIGSI, ImpactoTicket, TipoDocumentoIGSI } from '@/lib/tickets/types'
+import type { AccionIGSI, EmpresaIGSI, ImpactoOperacionIGSI, ImpactoTicket, TipoDocumentoIGSI } from '@/lib/tickets/types'
 import { cn } from '@/lib/utils'
 import { CampoDinamico } from './CampoDinamico'
 import { FormNovedadIGSI } from './FormNovedadIGSI'
@@ -66,6 +67,7 @@ function aplicarBorrador(
 
   if (t.es_novedad_igsi) {
     const ig = b.igsi ?? {}
+    poner('igsi.empresa', enLista(EMPRESAS_IGSI, ig.empresa))
     poner('igsi.tipo_documento', enLista(CADENA_IGSI, ig.tipo_documento))
     poner('igsi.numero_documento', ig.numero_documento)
     poner('igsi.accion', enLista(ACCIONES_IGSI, ig.accion))
@@ -250,6 +252,7 @@ export function NuevoTicketForm({
         .map(([l, num]) => `${l}: ${num}`)
         .join(' · ')
       igsi = {
+        empresa: n.empresa as EmpresaIGSI,
         tipo_documento: n.tipo_documento as TipoDocumentoIGSI,
         tipo_documento_otro: n.tipo_documento_otro || null,
         numero_documento: n.sin_numero ? null : n.numero_documento.trim(),

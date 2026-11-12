@@ -16,7 +16,12 @@ export type EstadoTicket =
   | 'CERRADO'
 export type TipoDatoCampo = 'TEXTO' | 'TEXTO_LARGO' | 'NUMERO' | 'FECHA' | 'LISTA' | 'CASILLA' | 'USUARIO'
 export type AmbitoCausa = 'IGSI' | 'GENERAL'
-export type TipoDocumentoIGSI = 'SS' | 'DO' | 'REMESA' | 'MANIFIESTO' | 'OTRO'
+export type TipoDocumentoIGSI =
+  | 'SS' | 'DO' | 'REMESA' | 'MANIFIESTO'
+  | 'SEGUIMIENTO' | 'COTIZACION' | 'TARIFARIO' | 'CUMPLIDO_REMESA' | 'CUMPLIDO_MANIFIESTO' | 'OP' | 'LIQUIDACION'
+  | 'OTRO'
+/** Empresa del documento afectado en IGSI */
+export type EmpresaIGSI = 'IWF' | 'ILT'
 export type AccionIGSI = 'CREAR' | 'MODIFICAR' | 'ANULAR' | 'LIQUIDAR' | 'IMPRIMIR' | 'REPORTAR' | 'CONSULTAR' | 'OTRA'
 export type ImpactoOperacionIGSI = 'DETIENE' | 'RETRASA' | 'NO_AFECTA'
 export type TipoEventoTicket =
@@ -149,6 +154,8 @@ export interface TicketValorCampo {
 
 export interface TicketNovedadIGSI {
   ticket_id: string
+  /** null en las novedades creadas antes de pedir la empresa */
+  empresa: EmpresaIGSI | null
   tipo_documento: TipoDocumentoIGSI
   tipo_documento_otro: string | null
   numero_documento: string | null

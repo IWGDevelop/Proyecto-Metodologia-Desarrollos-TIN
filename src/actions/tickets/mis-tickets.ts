@@ -201,6 +201,7 @@ export async function obtenerMiTicket(id: string): Promise<MiTicketDetalle | nul
           : v.valor,
       })),
     novedad: n ? {
+      empresa: n.empresa ?? null,
       tipo_documento: n.tipo_documento,
       tipo_documento_otro: n.tipo_documento_otro,
       numero_documento: n.numero_documento,

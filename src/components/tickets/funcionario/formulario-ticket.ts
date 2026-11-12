@@ -12,6 +12,9 @@ export const claveCampo = (id: string) => `c_${id}`
 /** Cadena documental visible en el selector (sin "Otro") */
 export const CADENA_VISUAL = ['SS', 'DO', 'REMESA', 'MANIFIESTO'] as const
 
+/** Documentos sueltos (fuera de la cadena) que se pueden reportar */
+export const OTROS_DOCUMENTOS_IGSI = ['SEGUIMIENTO', 'COTIZACION', 'TARIFARIO', 'CUMPLIDO_REMESA', 'CUMPLIDO_MANIFIESTO', 'OP', 'LIQUIDACION'] as const
+
 const adjuntoSchema = z.object({
   nombre_archivo: z.string(),
   tipo_archivo: z.string(),
@@ -22,6 +25,7 @@ const adjuntoSchema = z.object({
 })
 
 const igsiSchema = z.object({
+  empresa: z.string(),
   tipo_documento: z.string(),
   tipo_documento_otro: z.string(),
   numero_documento: z.string(),
@@ -60,6 +64,7 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
 
     if (tip.es_novedad_igsi) {
       const n = v.igsi
+      if (!n.empresa) falta(['igsi', 'empresa'], 'Elige la empresa: IWF o ILT')
       if (!n.tipo_documento) falta(['igsi', 'tipo_documento'], 'Elige el documento afectado')
       if (n.tipo_documento === 'OTRO' && !n.tipo_documento_otro.trim()) falta(['igsi', 'tipo_documento_otro'], 'Indica cuál documento')
       if (!n.sin_numero && !n.numero_documento.trim()) falta(['igsi', 'numero_documento'], 'Escribe el número del documento')
@@ -104,6 +109,7 @@ export function crearEsquemaTicket(catalogo: CatalogoFormulario) {
 export type FormularioTicket = z.infer<ReturnType<typeof crearEsquemaTicket>>
 
 export const IGSI_VACIO: FormularioTicket['igsi'] = {
+  empresa: '',
   tipo_documento: '',
   tipo_documento_otro: '',
   numero_documento: '',

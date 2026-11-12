@@ -1,5 +1,6 @@
 import { cn } from '@/lib/utils'
 import type { TipoDocumentoIGSI } from '@/lib/tickets/types'
+import { CADENA_IGSI } from '@/lib/tickets/constantes'
 
 const CADENA: { value: TipoDocumentoIGSI; label: string }[] = [
   { value: 'SS', label: 'SS' },
@@ -15,6 +16,10 @@ export function CadenaDocumento({ documento }: { documento: TipoDocumentoIGSI | 
     return <span className="inline-block rounded bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-600">Otro documento</span>
   }
   const idx = CADENA.findIndex(c => c.value === documento)
+  // Documento suelto (Seguimiento, Cotización, OP…): se muestra solo, sin la cadena
+  if (idx < 0) {
+    return <span className="inline-block rounded bg-blue-600 px-1.5 py-0.5 text-[10px] font-semibold text-white">{CADENA_IGSI.find(c => c.value === documento)?.label ?? documento}</span>
+  }
   return (
     <div className="flex items-center gap-0.5" aria-label={`Documento afectado: ${CADENA[idx]?.label ?? documento}`}>
       {CADENA.map((c, i) => (

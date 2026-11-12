@@ -12,10 +12,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils'
 import { useProcesos } from '@/context/ProcesosContext'
 import {
-  ACCIONES_IGSI, CADENA_IGSI, CLASIFICACIONES_BUG, ESTADOS_BUG, ESTADOS_TICKET, IMPACTOS_OPERACION_IGSI, LABEL_IMPACTO_TICKET,
+  ACCIONES_IGSI, CADENA_DOCUMENTAL_IGSI, CADENA_IGSI, CLASIFICACIONES_BUG, EMPRESAS_IGSI, ESTADOS_BUG, ESTADOS_TICKET, IMPACTOS_OPERACION_IGSI, LABEL_IMPACTO_TICKET,
   MEDICIONES, PRIORIDADES_TICKET, SEVERIDADES_BUG, TIPOS_GESTION, TRANSICIONES,
 } from '@/lib/tickets/constantes'
-import type { EstadoTicket, PrioridadTicket } from '@/lib/tickets/types'
+import type { EstadoTicket, PrioridadTicket, TipoDocumentoIGSI } from '@/lib/tickets/types'
 import type { ResponsableOpcion, TicketGestion, TipologiaOpcion } from '@/actions/tickets/bandeja'
 import {
   agregarComentarioTicket, cambiarEstadoTicket, cambiarPrioridadTicket, decidirAprobacionTicket,
@@ -112,7 +112,11 @@ function Dato({ label, children }: { label: string; children: React.ReactNode })
 }
 
 function CadenaDocumentos({ tipo }: { tipo: string }) {
-  const cadena = CADENA_IGSI.filter(c => c.value !== 'OTRO')
+  // Documento suelto (Seguimiento, Cotización, OP…): se muestra solo, sin la cadena
+  if (tipo !== 'OTRO' && !CADENA_DOCUMENTAL_IGSI.includes(tipo as TipoDocumentoIGSI)) {
+    return <span className="rounded-md bg-blue-600 px-2 py-0.5 text-xs font-semibold text-white">{CADENA_IGSI.find(c => c.value === tipo)?.label ?? tipo}</span>
+  }
+  const cadena = CADENA_IGSI.filter(c => CADENA_DOCUMENTAL_IGSI.includes(c.value))
   const idx = cadena.findIndex(c => c.value === tipo)
   return (
     <div className="flex flex-wrap items-center gap-1" aria-label={`Documento afectado: ${tipo}`}>
@@ -303,6 +307,7 @@ export function GestionTicket({
                   <CadenaDocumentos tipo={t.novedad.tipo_documento} />
                 </div>
                 <dl className="grid gap-3 sm:grid-cols-2">
+                  <Dato label="Empresa">{EMPRESAS_IGSI.find(x => x.value === t.novedad!.empresa) ? `${t.novedad.empresa} · ${EMPRESAS_IGSI.find(x => x.value === t.novedad!.empresa)!.nombre}` : null}</Dato>
                   <Dato label="Número del documento">{t.novedad.numero_documento}{t.novedad.tipo_documento === 'OTRO' && t.novedad.tipo_documento_otro ? ` (${t.novedad.tipo_documento_otro})` : ''}</Dato>
                   <Dato label="Documentos relacionados">{t.novedad.documentos_relacionados}</Dato>
                   <Dato label="Servicio">{t.novedad.servicio}</Dato>

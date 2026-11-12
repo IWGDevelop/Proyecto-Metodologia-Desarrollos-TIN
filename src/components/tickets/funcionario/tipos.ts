@@ -1,6 +1,7 @@
 // Tipos compartidos entre las Server Actions del funcionario y sus componentes (solo tipos).
 import type {
   AccionIGSI,
+  EmpresaIGSI,
   EstadoTicket,
   ImpactoOperacionIGSI,
   ImpactoTicket,
@@ -54,6 +55,7 @@ export interface CatalogoFormulario {
 }
 
 export interface NovedadIGSIInput {
+  empresa: EmpresaIGSI
   tipo_documento: TipoDocumentoIGSI
   tipo_documento_otro?: string | null
   numero_documento?: string | null
@@ -188,6 +190,7 @@ export interface MiTicketDetalle {
   reaperturas: number
   valores: { etiqueta: string; tipo_dato: string; valor: string }[]
   novedad: {
+    empresa: EmpresaIGSI | null
     tipo_documento: TipoDocumentoIGSI
     tipo_documento_otro: string | null
     numero_documento: string | null

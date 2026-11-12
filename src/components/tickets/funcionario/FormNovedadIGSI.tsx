@@ -7,10 +7,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { EditorComentario } from '@/components/tickets/EditorComentario'
-import { ACCIONES_IGSI, CADENA_IGSI, IMPACTOS_OPERACION_IGSI } from '@/lib/tickets/constantes'
+import { ACCIONES_IGSI, CADENA_IGSI, EMPRESAS_IGSI, IMPACTOS_OPERACION_IGSI } from '@/lib/tickets/constantes'
 import type { ServiciosIGSI } from '@/lib/tickets/types'
 import { cn } from '@/lib/utils'
-import { CADENA_VISUAL, SELECT_CLASS, type FormularioTicket } from './formulario-ticket'
+import { CADENA_VISUAL, OTROS_DOCUMENTOS_IGSI, SELECT_CLASS, type FormularioTicket } from './formulario-ticket'
 
 const labelDoc = (v: string) => CADENA_IGSI.find(c => c.value === v)?.label ?? v
 
@@ -39,6 +39,7 @@ export function FormNovedadIGSI({
   const { register, control, setValue, getValues, formState: { errors, isSubmitted } } = useFormContext<FormularioTicket>()
   const e = errors.igsi
   const tipoDoc = useWatch({ control, name: 'igsi.tipo_documento' })
+  const empresa = useWatch({ control, name: 'igsi.empresa' })
   const sinNumero = useWatch({ control, name: 'igsi.sin_numero' })
   const servicio = useWatch({ control, name: 'igsi.servicio' })
   const nombresServicio = Object.keys(servicios)
@@ -60,7 +61,32 @@ export function FormNovedadIGSI({
         <p className="text-xs text-blue-800/80">Entre más completo el reporte, más rápido se resuelve. Incluye capturas de la pantalla completa.</p>
       </div>
 
-      {/* Documento afectado: cadena SS → DO → Remesa → Manifiesto */}
+      {/* Empresa del documento */}
+      <div className="space-y-2">
+        <Label className="text-sm font-medium text-slate-700">Empresa<Req /></Label>
+        <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Empresa">
+          {EMPRESAS_IGSI.map(emp => (
+            <button
+              key={emp.value}
+              type="button"
+              role="radio"
+              aria-checked={empresa === emp.value}
+              disabled={disabled}
+              onClick={() => setValue('igsi.empresa', emp.value, { shouldValidate: isSubmitted, shouldDirty: true })}
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-left transition-colors',
+                empresa === emp.value ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-700 hover:border-blue-300',
+              )}
+            >
+              <span className="block text-sm font-semibold">{emp.label}</span>
+              <span className={cn('block text-[11px]', empresa === emp.value ? 'text-white/80' : 'text-slate-400')}>{emp.nombre}</span>
+            </button>
+          ))}
+        </div>
+        <MsgError msg={e?.empresa?.message} />
+      </div>
+
+      {/* Documento afectado: cadena SS → DO → Remesa → Manifiesto y documentos sueltos */}
       <div className="space-y-2">
         <Label className="text-sm font-medium text-slate-700">Documento afectado<Req /></Label>
         <div className="flex flex-wrap items-center gap-1" role="radiogroup" aria-label="Documento afectado">
@@ -87,13 +113,31 @@ export function FormNovedadIGSI({
               </div>
             )
           })}
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5" role="radiogroup" aria-label="Otros documentos">
+          <span className="mr-1 text-xs text-slate-500">Otros documentos:</span>
+          {OTROS_DOCUMENTOS_IGSI.map(d => (
+            <button
+              key={d}
+              type="button"
+              role="radio"
+              aria-checked={tipoDoc === d}
+              onClick={() => elegirDoc(d)}
+              className={cn(
+                'rounded-lg border px-3 py-1.5 text-sm font-medium transition-colors',
+                tipoDoc === d ? 'border-blue-600 bg-blue-600 text-white' : 'border-slate-200 bg-white text-slate-600 hover:border-blue-300',
+              )}
+            >
+              {labelDoc(d)}
+            </button>
+          ))}
           <button
             type="button"
             role="radio"
             aria-checked={tipoDoc === 'OTRO'}
             onClick={() => elegirDoc('OTRO')}
             className={cn(
-              'ml-2 rounded-lg border px-3 py-1.5 text-sm font-medium',
+              'rounded-lg border px-3 py-1.5 text-sm font-medium',
               tipoDoc === 'OTRO' ? 'border-blue-600 bg-blue-600 text-white' : 'border-dashed border-slate-300 bg-white text-slate-600',
             )}
           >
@@ -114,7 +158,7 @@ export function FormNovedadIGSI({
           )}
           <div className="space-y-1.5">
             <Label htmlFor="igsi-numero" className="text-sm font-medium text-slate-700">
-              Número {tipoDoc === 'OTRO' ? 'del documento' : `de ${tipoDoc === 'REMESA' ? 'la' : 'el'} ${labelDoc(tipoDoc)}`}
+              Número {tipoDoc === 'OTRO' ? 'del documento' : `de ${labelDoc(tipoDoc)}`}
               {!sinNumero && <Req />}
             </Label>
             <Input id="igsi-numero" disabled={sinNumero} aria-invalid={!!e?.numero_documento} {...register('igsi.numero_documento')} />

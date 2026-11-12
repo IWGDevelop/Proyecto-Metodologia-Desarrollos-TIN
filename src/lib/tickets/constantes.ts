@@ -3,6 +3,7 @@ import type {
   ClasificacionBug,
   DestinatarioRecordatorio,
   DisparadorRecordatorio,
+  EmpresaIGSI,
   EstadoBug,
   EstadoTicket,
   ImpactoOperacionIGSI,
@@ -142,13 +143,32 @@ export const ADJUNTO_TAMANO_MAX = 10 * 1024 * 1024
 
 // ── Novedades IGSI ───────────────────────────────────────────────────────────
 
-/** Cadena documental de IGSI, en orden */
+/**
+ * Documentos de IGSI que se pueden reportar. Los cuatro primeros forman la cadena
+ * SS → DO → Remesa → Manifiesto (en ese orden); los demás son documentos sueltos.
+ */
 export const CADENA_IGSI: { value: TipoDocumentoIGSI; label: string }[] = [
-  { value: 'SS',         label: 'SS' },
-  { value: 'DO',         label: 'DO' },
-  { value: 'REMESA',     label: 'Remesa' },
-  { value: 'MANIFIESTO', label: 'Manifiesto' },
-  { value: 'OTRO',       label: 'Otro' },
+  { value: 'SS',                  label: 'SS' },
+  { value: 'DO',                  label: 'DO' },
+  { value: 'REMESA',              label: 'Remesa' },
+  { value: 'MANIFIESTO',          label: 'Manifiesto' },
+  { value: 'SEGUIMIENTO',         label: 'Seguimiento' },
+  { value: 'COTIZACION',          label: 'Cotización' },
+  { value: 'TARIFARIO',           label: 'Tarifario' },
+  { value: 'CUMPLIDO_REMESA',     label: 'Cumplido remesa' },
+  { value: 'CUMPLIDO_MANIFIESTO', label: 'Cumplido manifiesto' },
+  { value: 'OP',                  label: 'OP' },
+  { value: 'LIQUIDACION',         label: 'Liquidación' },
+  { value: 'OTRO',                label: 'Otro' },
+]
+
+/** Documentos que forman la cadena documental, en orden */
+export const CADENA_DOCUMENTAL_IGSI: TipoDocumentoIGSI[] = ['SS', 'DO', 'REMESA', 'MANIFIESTO']
+
+/** Empresas del grupo para la novedad IGSI */
+export const EMPRESAS_IGSI: { value: EmpresaIGSI; label: string; nombre: string }[] = [
+  { value: 'IWF', label: 'IWF', nombre: 'Interworld Freight' },
+  { value: 'ILT', label: 'ILT', nombre: 'Interworld Land Transport' },
 ]
 
 export const ACCIONES_IGSI: { value: AccionIGSI; label: string }[] = [

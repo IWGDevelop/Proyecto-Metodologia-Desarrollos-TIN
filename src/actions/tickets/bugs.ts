@@ -6,7 +6,7 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
 import { contextoTickets, esPersonalTIN } from '@/lib/tickets/acceso-gestion'
 import { crearBug, diasAbiertoBug, enlazarTicketABug } from '@/lib/tickets/bugs'
-import { codigoBug, codigoTicket, RECURSOS_TICKETS } from '@/lib/tickets/constantes'
+import { CADENA_IGSI, codigoBug, codigoTicket, RECURSOS_TICKETS } from '@/lib/tickets/constantes'
 import { leerTodo } from '@/lib/tickets/tiempos'
 import type { ClasificacionBug, EstadoBug, EstadoTicket, SeveridadBug, TipoDocumentoIGSI } from '@/lib/tickets/types'
 import { idsPersonalTI } from '@/lib/tickets/personal-ti'
@@ -16,7 +16,7 @@ type Resultado = { ok: boolean; error?: string }
 const CLASIFICACIONES: ClasificacionBug[] = ['BUG', 'DEUDA_TECNICA', 'PARAMETRIZACION', 'INFRAESTRUCTURA']
 const SEVERIDADES: SeveridadBug[] = ['BLOQUEANTE', 'ALTA', 'MEDIA', 'BAJA']
 const ESTADOS: EstadoBug[] = ['REPORTADO', 'CONFIRMADO', 'PRIORIZADO', 'EN_DESARROLLO', 'EN_PRUEBAS', 'DESPLEGADO']
-const DOCUMENTOS: TipoDocumentoIGSI[] = ['SS', 'DO', 'REMESA', 'MANIFIESTO', 'OTRO']
+const DOCUMENTOS: TipoDocumentoIGSI[] = CADENA_IGSI.map(c => c.value)
 
 export interface BugTablero {
   id: string

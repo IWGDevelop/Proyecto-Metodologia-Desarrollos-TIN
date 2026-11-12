@@ -15,6 +15,7 @@ import { enviarInteresadosAgregados } from '@/lib/tickets/emails-flujo'
 import {
   ACCIONES_IGSI,
   CADENA_IGSI,
+  EMPRESAS_IGSI,
   CATEGORIA_OTROS,
   IMPACTOS_OPERACION_IGSI,
   IMPACTOS_TICKET,
@@ -458,6 +459,8 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
     if (tipologia.es_novedad_igsi) {
       const n = input.igsi
       if (!n) return { ok: false, error: 'Completa el formulario de la novedad IGSI' }
+      const empresa = EMPRESAS_IGSI.find(e => e.value === n.empresa)
+      if (!empresa) return { ok: false, error: 'Elige la empresa del documento: IWF o ILT' }
       const doc = CADENA_IGSI.find(c => c.value === n.tipo_documento)
       if (!doc) return { ok: false, error: 'Elige el documento afectado' }
       const docOtro = String(n.tipo_documento_otro ?? '').trim()
@@ -489,7 +492,7 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
 
       impacto = impOp.impacto
       const docLabel = doc.value === 'OTRO' ? docOtro : doc.label
-      if (!asunto) asunto = `Novedad IGSI · ${docLabel} ${numero || '(sin número)'} · ${accion.label}`
+      if (!asunto) asunto = `Novedad IGSI · ${empresa.label} · ${docLabel} ${numero || '(sin número)'} · ${accion.label}`
       if (!descripcion) {
         descripcion = [
           `Qué pasó: ${quePaso}`,
@@ -498,6 +501,7 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
         ].filter(Boolean).join('\n')
       }
       filaIgsi = {
+        empresa: empresa.value,
         tipo_documento: doc.value,
         tipo_documento_otro: doc.value === 'OTRO' ? docOtro : null,
         numero_documento: numero || null,
@@ -548,8 +552,17 @@ export async function crearTicket(input: CrearTicketInput): Promise<ResultadoCre
       metadataCreacion: { adjuntos: adj.filas.length, ...(filaIgsi ? { novedad_igsi: true } : {}) },
       extras: async ticketId => {
         if (filaIgsi) {
-          const { error } = await (supabase as any).from('ticket_novedades_igsi').insert({ ticket_id: ticketId, ...filaIgsi })
-          if (error) return error.message
+          let { error } = await (supabase as any).from('ticket_novedades_igsi').insert({ ticket_id: ticketId, ...filaIgsi })
+          // Sin la columna empresa (migración de documentos IGSI pendiente) se guarda sin ella
+          if (error && /empresa/.test(error.message ?? '') && 'empresa' in filaIgsi) {
+            const sinEmpresa: Record<string, unknown> = { ...filaIgsi }
+            delete sinEmpresa.empresa
+            ;({ error } = await (supabase as any).from('ticket_novedades_igsi').insert({ ticket_id: ticketId, ...sinEmpresa }))
+          }
+          if (error) {
+            if (/tipo_documento_check/.test(error.message ?? '')) return 'Ese tipo de documento aún no está habilitado en la base de datos (falta ejecutar la migración de documentos IGSI)'
+            return error.message
+          }
         }
         if (adj.filas.length > 0) {
           const { error } = await (supabase as any)
