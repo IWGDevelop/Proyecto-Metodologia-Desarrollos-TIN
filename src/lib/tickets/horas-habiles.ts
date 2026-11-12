@@ -79,9 +79,66 @@ function diaSemana(fecha: string): number {
   return new Date(Date.UTC(y, m - 1, d)).getUTCDay()
 }
 
+// ── Festivos de Colombia ─────────────────────────────────────────────────────
+
+/** Domingo de Pascua (algoritmo de Meeus/Jones/Butcher), como "YYYY-MM-DD" */
+function domingoDePascua(anio: number): string {
+  const a = anio % 19
+  const b = Math.floor(anio / 100)
+  const c = anio % 100
+  const d = Math.floor(b / 4)
+  const e = b % 4
+  const f = Math.floor((b + 8) / 25)
+  const g = Math.floor((b - f + 1) / 3)
+  const h = (19 * a + b - d - g + 15) % 30
+  const i = Math.floor(c / 4)
+  const k = c % 4
+  const l = (32 + 2 * e + 2 * i - h - k) % 7
+  const m = Math.floor((a + 11 * h + 22 * l) / 451)
+  const mes = Math.floor((h + l - 7 * m + 114) / 31)
+  const dia = ((h + l - 7 * m + 114) % 31) + 1
+  return `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+}
+
+/** Ley Emiliani: si la fecha no cae en lunes, pasa al lunes siguiente */
+function alLunesSiguiente(fecha: string): string {
+  const dow = diaSemana(fecha)
+  return dow === 1 ? fecha : sumarDias(fecha, (8 - dow) % 7)
+}
+
+const cacheFestivos = new Map<number, Set<string>>()
+
+/** Festivos nacionales de Colombia de un año (Ley 51 de 1983), como fechas "YYYY-MM-DD" */
+export function festivosColombia(anio: number): Set<string> {
+  const guardado = cacheFestivos.get(anio)
+  if (guardado) return guardado
+  const f = (mes: number, dia: number) => `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}`
+  const pascua = domingoDePascua(anio)
+  const festivos = new Set<string>([
+    // Fijos
+    f(1, 1), f(5, 1), f(7, 20), f(8, 7), f(12, 8), f(12, 25),
+    // Se trasladan al lunes
+    ...[f(1, 6), f(3, 19), f(6, 29), f(8, 15), f(10, 12), f(11, 1), f(11, 11)].map(alLunesSiguiente),
+    // Dependen de la Pascua
+    sumarDias(pascua, -3), // Jueves Santo
+    sumarDias(pascua, -2), // Viernes Santo
+    alLunesSiguiente(sumarDias(pascua, 39)), // Ascensión
+    alLunesSiguiente(sumarDias(pascua, 60)), // Corpus Christi
+    alLunesSiguiente(sumarDias(pascua, 68)), // Sagrado Corazón
+  ])
+  cacheFestivos.set(anio, festivos)
+  return festivos
+}
+
+export function esFestivoColombia(fecha: string): boolean {
+  return festivosColombia(Number(fecha.slice(0, 4))).has(fecha.slice(0, 10))
+}
+
 /**
  * Tramos laborables de una fecha local, en minutos desde la medianoche,
  * ya sin la pausa de almuerzo. [] si no es día hábil.
+ * Los festivos de Colombia se calculan solos; ticket_calendario solo hace falta para
+ * excepciones (un día no hábil adicional o una jornada especial, que manda sobre el festivo).
  */
 function tramosDelDia(fecha: string, cal: CalendarioLaboral): [number, number][] {
   const h = cal.horario
@@ -93,7 +150,7 @@ function tramosDelDia(fecha: string, cal: CalendarioLaboral): [number, number][]
     ini = minutos(exc.hora_inicio) ?? minutos(h.inicio)
     fin = minutos(exc.hora_fin) ?? minutos(h.fin)
   } else {
-    if (!h.dias.includes(diaSemana(fecha))) return []
+    if (!h.dias.includes(diaSemana(fecha)) || esFestivoColombia(fecha)) return []
     ini = minutos(h.inicio)
     fin = minutos(h.fin)
   }

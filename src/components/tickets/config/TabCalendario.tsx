@@ -97,7 +97,7 @@ function Excepciones({ calendario, hoy }: { calendario: DatosConfigTickets['cale
   return (
     <Seccion
       titulo="Festivos y jornadas especiales"
-      descripcion="Excepciones al horario general: festivos (no hábiles) o días con horario distinto."
+      descripcion="Los festivos de Colombia se calculan solos (Ley Emiliani y Semana Santa). Aquí van las excepciones: días no hábiles adicionales o jornadas con horario distinto, que mandan sobre el festivo."
       acciones={
         <SelectNativo className="w-28" value={String(anio)} onChange={v => setAnio(Number(v))} ariaLabel="Año"
           opciones={anios.map(a => ({ value: String(a), label: String(a) }))} />

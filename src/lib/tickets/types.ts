@@ -215,6 +215,10 @@ export interface TicketTiempos {
   cumple_respuesta: boolean | null
   cumple_solucion: boolean | null
   dias_vs_fecha_requerida: number | null
+  /** Horas hábiles de la solicitud: de la creación al cierre, o hasta el cálculo si sigue abierta */
+  t_transcurrido?: number | null
+  /** Horas hábiles en cada estado (suma de todas las veces que estuvo en él; Cerrado no cuenta) */
+  horas_por_estado?: Partial<Record<EstadoTicket, number>> | null
   calculado_en: string
 }
 

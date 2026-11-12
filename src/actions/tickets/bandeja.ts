@@ -28,6 +28,7 @@ import type {
   ClasificacionBug,
 } from '@/lib/tickets/types'
 import { idsPersonalTI } from '@/lib/tickets/personal-ti'
+import { recalcularTiemposTicket } from '@/lib/tickets/tiempos'
 
 // Consultas de la bandeja y de la vista de gestión de TIN.
 
@@ -418,7 +419,10 @@ export async function obtenerTicketGestion(id: string): Promise<TicketGestion | 
     supabase.from('ticket_adjuntos').select('*').eq('ticket_id', id).order('fecha'),
     supabase.from('ticket_historial').select('*').eq('ticket_id', id).order('fecha').order('id'),
     supabase.from('ticket_cierres').select('respuesta, requiere_capacitacion, requiere_ajuste, fecha, cerrado_por, causa:ticket_causas(tipo_causa, subcausa)').eq('ticket_id', id).maybeSingle(),
-    supabase.from('ticket_tiempos').select('*').eq('ticket_id', id).maybeSingle(),
+    // Se recalculan al abrir el detalle para que las horas del estado actual estén al día
+    recalcularTiemposTicket(supabase, id)
+      .catch(e => console.error('[tickets] no se pudieron recalcular los tiempos', e))
+      .then(() => supabase.from('ticket_tiempos').select('*').eq('ticket_id', id).maybeSingle()),
     objetivosVigentes(supabase),
     obtenerConfigTickets(supabase),
     supabase.from('ticket_causas').select('*').eq('activa', true).eq('ambito', ticket.tipologia?.es_novedad_igsi ? 'IGSI' : 'GENERAL').order('tipo_causa').order('orden'),

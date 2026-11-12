@@ -192,6 +192,17 @@ export function calcularTiempos(
 
   const t_consumido = resuelto ? t_solucion : horasConReloj(tramos, creacion, ahora, ahora, cal)
 
+  // Horas hábiles en cada estado (sumando todas las veces que estuvo en él) y total de la
+  // solicitud: de la creación al cierre, o hasta ahora si sigue abierta. Cerrado no suma.
+  const horasPorEstado: Partial<Record<EstadoTicket, number>> = {}
+  for (const t of tramos) {
+    if (t.estado === 'CERRADO') continue
+    const h = horasHabilesEntre(t.desde, t.hasta ?? ahora, cal)
+    horasPorEstado[t.estado] = (horasPorEstado[t.estado] ?? 0) + h
+  }
+  for (const e of Object.keys(horasPorEstado) as EstadoTicket[]) horasPorEstado[e] = red(horasPorEstado[e] ?? 0)
+  const t_transcurrido = horasHabilesEntre(creacion, fechaCierre ?? ahora, cal)
+
   const cumple_respuesta = objetivo && t_primera_respuesta !== null ? t_primera_respuesta <= Number(objetivo.horas_respuesta) : null
   const cumple_solucion = objetivo && t_solucion !== null ? t_solucion <= Number(objetivo.horas_solucion) : null
 
@@ -218,6 +229,8 @@ export function calcularTiempos(
     t_confirmacion: t_confirmacion === null ? null : red(t_confirmacion),
     t_total: t_total === null ? null : red(t_total),
     t_consumido: t_consumido === null ? null : red(t_consumido),
+    t_transcurrido: red(t_transcurrido),
+    horas_por_estado: horasPorEstado,
     reaperturas,
     cumple_respuesta,
     cumple_solucion,
@@ -374,15 +387,41 @@ export async function recalcularTiemposTickets(
       t_espera_aprobacion: r.t_espera_aprobacion, t_espera_usuario: r.t_espera_usuario, t_espera_proveedor: r.t_espera_proveedor,
       t_confirmacion: r.t_confirmacion, t_total: r.t_total, t_consumido: r.t_consumido, reaperturas: r.reaperturas,
       cumple_respuesta: r.cumple_respuesta, cumple_solucion: r.cumple_solucion, dias_vs_fecha_requerida: r.dias_vs_fecha_requerida,
+      t_transcurrido: r.t_transcurrido, horas_por_estado: r.horas_por_estado,
     }
     filas.push({ ticket_id: t.id, ...fila, calculado_en: ahora.toISOString() })
   }
 
+  // Si la migración de horas por estado aún no se ejecutó, se guarda sin esas columnas
+  let sinColumnasNuevas = false
+  const sinNuevas = (lote: typeof filas) => lote.map(f => {
+    const copia: Record<string, unknown> = { ...f }
+    delete copia.t_transcurrido
+    delete copia.horas_por_estado
+    return copia
+  })
   for (let i = 0; i < filas.length; i += 200) {
-    const { error } = await supabase.from('ticket_tiempos').upsert(filas.slice(i, i + 200), { onConflict: 'ticket_id' })
+    const lote = filas.slice(i, i + 200)
+    let { error } = await supabase.from('ticket_tiempos').upsert(sinColumnasNuevas ? sinNuevas(lote) : lote, { onConflict: 'ticket_id' })
+    if (error && !sinColumnasNuevas && /t_transcurrido|horas_por_estado/.test(error.message ?? '')) {
+      sinColumnasNuevas = true
+      ;({ error } = await supabase.from('ticket_tiempos').upsert(sinNuevas(lote), { onConflict: 'ticket_id' }))
+    }
     if (error) throw new Error(`No se pudieron guardar los tiempos: ${error.message}`)
   }
   return resultado
+}
+
+/** Recalcula los tiempos de todos los tickets (al cambiar el horario laboral o el calendario) */
+export async function recalcularTiemposTodos(supabase: SupabaseClient): Promise<number> {
+  const filas = await leerTodo<{ id: string }>((d, h) => supabase.from('tickets').select('id').order('numero').range(d, h))
+  const ids = filas.map(f => f.id)
+  const [cal, objetivos] = await Promise.all([cargarCalendarioLaboral(supabase), cargarObjetivos(supabase)])
+  const ahora = new Date()
+  for (let i = 0; i < ids.length; i += 200) {
+    await recalcularTiemposTickets(supabase, ids.slice(i, i + 200), { cal, objetivos, ahora })
+  }
+  return ids.length
 }
 
 /** Recalcula y guarda los tiempos de un ticket (lo llaman el flujo y el cron) */

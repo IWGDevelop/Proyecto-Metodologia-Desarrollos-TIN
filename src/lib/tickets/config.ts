@@ -18,7 +18,7 @@ export interface ConfigTickets {
 }
 
 export const CONFIG_TICKETS_DEFECTO: ConfigTickets = {
-  horarioLaboral: { dias: [1, 2, 3, 4, 5], inicio: '08:00', fin: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '13:00' },
+  horarioLaboral: { dias: [1, 2, 3, 4, 5], inicio: '08:00', fin: '17:00', almuerzo_inicio: '12:00', almuerzo_fin: '14:00' },
   diasCierreAutomatico: 3,
   emailsCoordinador: [],
   emailsDireccion: [],

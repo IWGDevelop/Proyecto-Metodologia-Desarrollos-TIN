@@ -594,7 +594,7 @@ WHERE NOT EXISTS (
 
 -- ── 8. Parámetros generales (ticket_config) ───────────────────────────────────
 INSERT INTO ticket_config (clave, valor, descripcion) VALUES
-  ('horario_laboral', '{"dias":[1,2,3,4,5],"inicio":"08:00","fin":"17:00","almuerzo_inicio":"12:00","almuerzo_fin":"13:00"}'::jsonb,
+  ('horario_laboral', '{"dias":[1,2,3,4,5],"inicio":"08:00","fin":"17:00","almuerzo_inicio":"12:00","almuerzo_fin":"14:00"}'::jsonb,
    'Horario laboral para medir horas hábiles (días 0 = domingo … 6 = sábado, horas HH:MM)'),
   ('dias_cierre_automatico', '3'::jsonb,
    'Días hábiles en Resuelto o en espera de usuario antes del cierre automático'),

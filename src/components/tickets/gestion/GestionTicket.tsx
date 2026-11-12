@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { cn } from '@/lib/utils'
 import { useProcesos } from '@/context/ProcesosContext'
 import {
-  ACCIONES_IGSI, CADENA_IGSI, CLASIFICACIONES_BUG, ESTADOS_BUG, IMPACTOS_OPERACION_IGSI, LABEL_IMPACTO_TICKET,
+  ACCIONES_IGSI, CADENA_IGSI, CLASIFICACIONES_BUG, ESTADOS_BUG, ESTADOS_TICKET, IMPACTOS_OPERACION_IGSI, LABEL_IMPACTO_TICKET,
   MEDICIONES, PRIORIDADES_TICKET, SEVERIDADES_BUG, TIPOS_GESTION, TRANSICIONES,
 } from '@/lib/tickets/constantes'
 import type { EstadoTicket, PrioridadTicket } from '@/lib/tickets/types'
@@ -133,6 +133,52 @@ function CadenaDocumentos({ tipo }: { tipo: string }) {
 
 function horas(v: number | null | undefined) {
   return v == null ? '—' : `${Number(v).toFixed(1)} h`
+}
+
+/** Horas hábiles de la jornada (8:00 a 17:00 sin el almuerzo de 12:00 a 14:00) */
+const HORAS_JORNADA = 7
+
+/** Horas hábiles que el ticket pasó en cada estado y el total de la solicitud */
+function HorasPorEstado({ porEstado, total, abierto }: {
+  porEstado: Partial<Record<string, number>> | null | undefined
+  total: number | null | undefined
+  abierto: boolean
+}) {
+  const filas = ESTADOS_TICKET
+    .filter(e => e.value !== 'CERRADO' && porEstado?.[e.value] != null)
+    .map(e => ({ ...e, horas: Number(porEstado?.[e.value] ?? 0) }))
+  if (!filas.length && total == null) return null
+  const max = Math.max(...filas.map(f => f.horas), 0.01)
+  return (
+    <div className="col-span-2 space-y-2 border-t border-slate-100 pt-3">
+      <p className="text-[11px] uppercase tracking-wide text-slate-400">Horas hábiles por estado</p>
+      <ul className="space-y-1.5">
+        {filas.map(f => (
+          <li key={f.value} className="grid grid-cols-[1fr_auto] items-center gap-x-2 text-xs">
+            <span className="flex items-center gap-2">
+              <span className={cn('rounded px-1.5 py-0.5 text-[10px] font-medium', f.color)}>{f.label}</span>
+            </span>
+            <span className="font-medium tabular-nums text-slate-700">{horas(f.horas)}</span>
+            <span className="col-span-2 h-1 overflow-hidden rounded-full bg-slate-100">
+              <span className="block h-full rounded-full bg-blue-400" style={{ width: `${Math.max(2, (f.horas / max) * 100)}%` }} />
+            </span>
+          </li>
+        ))}
+      </ul>
+      {total != null && (
+        <div className="flex items-baseline justify-between rounded-lg bg-slate-50 px-2.5 py-1.5">
+          <span className="text-xs font-semibold text-slate-700">Total de la solicitud{abierto ? ' (a la fecha)' : ''}</span>
+          <span className="text-sm font-semibold tabular-nums text-slate-800">
+            {horas(total)}
+            <span className="ml-1 text-[11px] font-normal text-slate-400">≈ {(Number(total) / HORAS_JORNADA).toFixed(1)} días hábiles</span>
+          </span>
+        </div>
+      )}
+      <p className="text-[10.5px] text-slate-400">
+        Lunes a viernes de 8:00 a 17:00, sin el almuerzo de 12:00 a 14:00 ({HORAS_JORNADA} h por día), sin sábados, domingos ni festivos de Colombia.
+      </p>
+    </div>
+  )
 }
 
 type Dialogo =
@@ -485,6 +531,7 @@ export function GestionTicket({
                   <Dato label="Espera proveedor">{horas(t.tiempos.t_espera_proveedor)}</Dato>
                   <Dato label="Espera aprobación">{horas(t.tiempos.t_espera_aprobacion)}</Dato>
                   <Dato label="Total">{horas(t.tiempos.t_total)}</Dato>
+                  <HorasPorEstado porEstado={t.tiempos.horas_por_estado} total={t.tiempos.t_transcurrido} abierto={t.estado !== 'CERRADO'} />
                 </>
               )}
               {t.objetivo && (

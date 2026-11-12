@@ -32,6 +32,7 @@ import type {
   TipoGestion,
 } from '@/lib/tickets/types'
 import { PROCESOS_TI } from '@/lib/tickets/personal-ti'
+import { recalcularTiemposTodos } from '@/lib/tickets/tiempos'
 
 type Resultado = { ok: boolean; error?: string }
 
@@ -60,6 +61,15 @@ function db() {
 
 function refrescar() {
   revalidatePath(RUTA)
+}
+
+/** El horario o el calendario cambiaron: se recalculan las horas hábiles de todos los tickets */
+async function recalcularTiempos() {
+  try {
+    await recalcularTiemposTodos(db())
+  } catch (e) {
+    console.error('[tickets] no se pudieron recalcular los tiempos tras cambiar el calendario', e)
+  }
 }
 
 function fallo(e: unknown, def: string): Resultado {
@@ -696,7 +706,10 @@ export async function guardarHorarioLaboral(h: HorarioLaboral): Promise<Resultad
     const r = await guardarConfig(CONFIG_CLAVES.HORARIO_LABORAL, {
       dias, inicio: h.inicio, fin: h.fin, almuerzo_inicio: ai, almuerzo_fin: af,
     } satisfies HorarioLaboral)
-    if (r.ok) refrescar()
+    if (r.ok) {
+      await recalcularTiempos()
+      refrescar()
+    }
     return r
   } catch (e) { return fallo(e, 'Error al guardar el horario') }
 }
@@ -723,6 +736,7 @@ export async function guardarDiaCalendario(d: {
       fecha: d.fecha, es_habil: !!d.es_habil, hora_inicio, hora_fin, descripcion: textoONull(d.descripcion),
     }, { onConflict: 'fecha' })
     if (error) return { ok: false, error: error.message }
+    await recalcularTiempos()
     refrescar()
     return { ok: true }
   } catch (e) { return fallo(e, 'Error al guardar la fecha') }
@@ -734,6 +748,7 @@ export async function eliminarDiaCalendario(fecha: string): Promise<Resultado> {
     if (!esFechaISO(fecha)) return { ok: false, error: 'Fecha no válida' }
     const { error } = await db().from('ticket_calendario').delete().eq('fecha', fecha)
     if (error) return { ok: false, error: error.message }
+    await recalcularTiempos()
     refrescar()
     return { ok: true }
   } catch (e) { return fallo(e, 'Error al quitar la fecha') }
