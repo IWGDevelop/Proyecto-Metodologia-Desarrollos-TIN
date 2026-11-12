@@ -4,11 +4,12 @@
 import { revalidatePath } from 'next/cache'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
-import { contextoTickets, esPersonalTIN, idsConRecurso } from '@/lib/tickets/acceso-gestion'
+import { contextoTickets, esPersonalTIN } from '@/lib/tickets/acceso-gestion'
 import { crearBug, diasAbiertoBug, enlazarTicketABug } from '@/lib/tickets/bugs'
 import { codigoBug, codigoTicket, RECURSOS_TICKETS } from '@/lib/tickets/constantes'
 import { leerTodo } from '@/lib/tickets/tiempos'
 import type { ClasificacionBug, EstadoBug, EstadoTicket, SeveridadBug, TipoDocumentoIGSI } from '@/lib/tickets/types'
+import { idsPersonalTI } from '@/lib/tickets/personal-ti'
 
 type Resultado = { ok: boolean; error?: string }
 
@@ -182,7 +183,7 @@ export async function obtenerDetalleBug(id: string): Promise<DetalleBug | null> 
 export async function listarResponsablesBugs(): Promise<{ id: string; nombre: string }[]> {
   await exigirBugs()
   const supabase = createAdminClient()
-  const ids = await idsConRecurso(supabase, RECURSOS_TICKETS.ATENDER)
+  const ids = await idsPersonalTI(supabase)
   if (!ids.length) return []
   const { data } = await (supabase as any).from('perfiles').select('id, nombre_completo').in('id', ids).order('nombre_completo')
   return ((data ?? []) as { id: string; nombre_completo: string }[]).map(p => ({ id: p.id, nombre: p.nombre_completo }))

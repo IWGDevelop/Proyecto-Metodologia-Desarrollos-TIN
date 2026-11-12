@@ -31,6 +31,7 @@ import type {
   TipoDatoCampo,
   TipoGestion,
 } from '@/lib/tickets/types'
+import { PROCESOS_TI } from '@/lib/tickets/personal-ti'
 
 type Resultado = { ok: boolean; error?: string }
 
@@ -158,32 +159,20 @@ export type DatosConfigTickets = {
   plantillas: TicketPlantilla[]
   plantillaItems: TicketPlantillaItem[]
   config: ConfigTickets
-  /** Perfiles activos que pueden ser responsables (tickets:atender o ADMIN_TIN) */
+  /** Personal de TI activo (procesos TI e IA), que puede ser responsable */
   responsables: PerfilResponsable[]
   /** Tickets existentes por tipología (para advertir antes de desactivar) */
   ticketsPorTipologia: Record<string, number>
   hoy: string
 }
 
-/** Perfiles activos con permiso `tickets:atender` o rol ADMIN_TIN */
+/** Personal de TI activo (procesos TI e IA): son los que pueden ser responsables */
 async function cargarResponsables(): Promise<PerfilResponsable[]> {
-  const supabase = db()
-  const { data: permisos } = await supabase
-    .from('permisos_rol')
-    .select('rol_id')
-    .eq('recurso', RECURSOS_TICKETS.ATENDER)
-    .eq('puede_ver', true)
-  const rolIds = (permisos ?? []).map((p: { rol_id: string }) => p.rol_id)
-  let roles: string[] = ['ADMIN_TIN']
-  if (rolIds.length) {
-    const { data: rs } = await supabase.from('roles_personalizados').select('nombre').in('id', rolIds)
-    roles = [...new Set([...roles, ...(rs ?? []).map((r: { nombre: string }) => r.nombre)])]
-  }
-  const { data } = await supabase
+  const { data } = await db()
     .from('perfiles')
     .select('id, nombre_completo, rol, email')
     .eq('activo', true)
-    .in('rol', roles)
+    .in('proceso_interno', [...PROCESOS_TI])
     .order('nombre_completo')
   return (data ?? []) as PerfilResponsable[]
 }

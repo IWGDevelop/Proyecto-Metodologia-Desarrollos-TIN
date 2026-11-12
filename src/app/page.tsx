@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 import { getUser, getPerfil } from '@/lib/supabase/auth'
 import { getPermisosUsuario } from '@/actions/roles-permisos'
+import { concederPermisosTI } from '@/lib/tickets/personal-ti'
 
 export default async function HomePage() {
   const user = await getUser()
@@ -16,7 +17,7 @@ export default async function HomePage() {
   }
 
   // For USUARIO (and any custom role): check if they have admin menu permissions
-  const permisos = await getPermisosUsuario(perfil.rol)
+  const permisos = concederPermisosTI(await getPermisosUsuario(perfil.rol), perfil.proceso_interno)
   const tieneAccesoAdmin = Object.entries(permisos).some(
     ([recurso, p]) => recurso.startsWith('menu:') && p.puede_ver
   )

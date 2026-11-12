@@ -4,6 +4,7 @@ import { AdminShell } from '@/components/layout/AdminShell'
 import { getPermisosUsuario } from '@/actions/roles-permisos'
 import { getContadorPendientes } from '@/actions/pendientes'
 import type { PermisosMap } from '@/actions/roles-permisos'
+import { concederPermisosTI } from '@/lib/tickets/personal-ti'
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
   const user = await getUser()
@@ -33,10 +34,11 @@ export default async function AdminLayout({ children }: { children: React.ReactN
     // Full access — no permission checks
   } else if (perfilEfectivo.rol === 'PRESIDENCIA') {
     // Backward compat: PRESIDENCIA always has admin access; fetch permisos for tab/action gating
-    permisos = await getPermisosUsuario(perfilEfectivo.rol)
+    permisos = concederPermisosTI(await getPermisosUsuario(perfilEfectivo.rol), perfilEfectivo.proceso_interno)
   } else {
-    // Any other role (USUARIO, custom) needs at least one menu permission to enter admin
-    permisos = await getPermisosUsuario(perfilEfectivo.rol)
+    // Any other role (USUARIO, custom) needs at least one menu permission to enter admin.
+    // El personal de TI recibe además la bandeja de tickets (ver personal-ti.ts)
+    permisos = concederPermisosTI(await getPermisosUsuario(perfilEfectivo.rol), perfilEfectivo.proceso_interno)
     const tieneAccesoAdmin = Object.entries(permisos).some(
       ([recurso, p]) => recurso.startsWith('menu:') && p.puede_ver
     )

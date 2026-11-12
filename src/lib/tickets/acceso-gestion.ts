@@ -1,4 +1,3 @@
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { getUsuarioActual, puedeGestionar } from '@/lib/supabase/guards'
 import { RECURSOS_TICKETS } from './constantes'
 
@@ -54,25 +53,4 @@ export function puedeVerTicketGestion(ctx: ContextoTickets, t: TicketAcceso, res
 export function puedeGestionarTicket(ctx: ContextoTickets, t: TicketAcceso): boolean {
   if (ctx.esAdmin || ctx.coordinar) return true
   return ctx.atender && t.responsable_id === ctx.usuarioId
-}
-
-/** Ids de perfiles activos que pueden ser responsables (ADMIN_TIN o rol con tickets:atender) */
-export async function idsConRecurso(supabase: SupabaseClient, recurso: string): Promise<string[]> {
-  const { data: permisos } = await supabase
-    .from('permisos_rol')
-    .select('rol_id')
-    .eq('recurso', recurso)
-    .eq('puede_ver', true)
-  const rolIds = (permisos ?? []).map((p: { rol_id: string }) => p.rol_id)
-  let roles: string[] = ['ADMIN_TIN']
-  if (rolIds.length > 0) {
-    const { data } = await supabase.from('roles_personalizados').select('nombre').in('id', rolIds)
-    roles = [...new Set([...roles, ...(data ?? []).map((r: { nombre: string }) => r.nombre)])]
-  }
-  const { data: perfiles } = await supabase
-    .from('perfiles')
-    .select('id')
-    .eq('activo', true)
-    .in('rol', roles)
-  return (perfiles ?? []).map((p: { id: string }) => p.id)
 }

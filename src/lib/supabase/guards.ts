@@ -1,6 +1,7 @@
 import { cache } from 'react'
 import { createClient } from './server'
 import { createAdminClient } from './admin'
+import { RECURSOS_PERSONAL_TI, esProcesoTI } from '@/lib/tickets/personal-ti'
 
 // Verificaciones de autorización para Server Actions.
 // Las Server Actions se pueden invocar por POST fuera de la UI,
@@ -15,11 +16,15 @@ export const getUsuarioActual = cache(async () => {
 
   const { data: perfil } = await (supabase as any)
     .from('perfiles')
-    .select('id, rol')
+    .select('id, rol, proceso_interno')
     .eq('id', user.id)
     .single()
 
-  return { user, rol: (perfil?.rol as string | undefined) ?? null }
+  return {
+    user,
+    rol: (perfil?.rol as string | undefined) ?? null,
+    proceso: (perfil?.proceso_interno as string | undefined) ?? null,
+  }
 })
 
 // Recursos con puede_ver = true para el rol
@@ -50,6 +55,8 @@ export async function tieneAccesoAdmin(): Promise<boolean> {
     const actual = await getUsuarioActual()
     if (!actual) return false
     if (!actual.rol || actual.rol === 'ADMIN_TIN' || actual.rol === 'PRESIDENCIA') return true
+    // El personal de TI entra a la bandeja de tickets aunque su rol no tenga menús
+    if (esProcesoTI(actual.proceso)) return true
     return (await getRecursosVisibles(actual.rol)).some(r => r.startsWith('menu:'))
   } catch {
     return false
@@ -68,6 +75,8 @@ export async function puedeGestionar(recurso: string): Promise<boolean> {
     if (!actual) return false
     // Sin perfil el layout admin lo trata como ADMIN_TIN; se mantiene el mismo criterio
     if (!actual.rol || actual.rol === 'ADMIN_TIN') return true
+    // Personal de TI (procesos TI e IA): atiende tickets y ve la bandeja aunque su rol no lo tenga
+    if (esProcesoTI(actual.proceso) && (RECURSOS_PERSONAL_TI as readonly string[]).includes(recurso)) return true
     return await rolTienePermiso(actual.rol, recurso)
   } catch {
     return false

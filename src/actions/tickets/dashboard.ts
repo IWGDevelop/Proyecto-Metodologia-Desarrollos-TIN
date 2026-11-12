@@ -3,13 +3,13 @@
 
 import { createAdminClient } from '@/lib/supabase/admin'
 import { getUsuarioActual, puedeGestionar, NO_AUTORIZADO } from '@/lib/supabase/guards'
-import { idsConRecurso } from '@/lib/tickets/acceso-gestion'
 import { diasAbiertoBug } from '@/lib/tickets/bugs'
 import { codigoBug, codigoTicket, ESTADOS_ABIERTOS, RECURSOS_TICKETS } from '@/lib/tickets/constantes'
 import { cargarCalendarioLaboral, fechaLocal } from '@/lib/tickets/horas-habiles'
 import { nivelRecordatorio, type NivelRecordatorio } from '@/lib/tickets/semaforo'
 import { calcularTiempos, cargarHistorialTiempos, cargarObjetivos, elegirObjetivo, leerTodo } from '@/lib/tickets/tiempos'
 import type { EstadoBug, EstadoTicket, PrioridadTicket, SeMideContra, SeveridadBug } from '@/lib/tickets/types'
+import { idsPersonalTI } from '@/lib/tickets/personal-ti'
 
 // Datos del dashboard de tickets (/admin/tickets-dashboard).
 // Tickets del periodo con sus tiempos (ticket_tiempos), abiertos con tiempos en vivo
@@ -151,7 +151,7 @@ export async function obtenerDashboardTickets(entrada: Partial<FiltrosDashboard>
       filtrar(sb.from('tickets').select(SELECT_TICKET)).in('estado', ESTADOS_ABIERTOS).order('numero', { ascending: true }).range(d, h),
     ),
     sb.from('ticket_categorias').select('id, nombre').order('orden').then((r: any) => (r.data ?? []) as { id: string; nombre: string }[]),
-    idsConRecurso(supabase, RECURSOS_TICKETS.ATENDER),
+    idsPersonalTI(supabase),
     leerTodo<{ area: string | null }>((d, h) => sb.from('tickets').select('area').not('area', 'is', null).range(d, h)),
   ])
 

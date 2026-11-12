@@ -6,13 +6,12 @@ import { NO_AUTORIZADO } from '@/lib/supabase/guards'
 import {
   contextoTickets,
   esPersonalTIN,
-  idsConRecurso,
   puedeGestionarTicket,
   puedeVerTicketGestion,
 } from '@/lib/tickets/acceso-gestion'
 import { obtenerConfigTickets } from '@/lib/tickets/config'
 import { cargarRequerimientoResumen, listarRequerimientosParaTicket, type RequerimientoResumen } from '@/lib/tickets/requerimientos'
-import { codigoTicket, ESTADOS_ABIERTOS, ESTADOS_ESPERA, RECURSOS_TICKETS, ZONA_HORARIA } from '@/lib/tickets/constantes'
+import { codigoTicket, ESTADOS_ABIERTOS, ESTADOS_ESPERA, ZONA_HORARIA } from '@/lib/tickets/constantes'
 import type {
   AmbitoCausa,
   EstadoTicket,
@@ -28,6 +27,7 @@ import type {
   SeveridadBug,
   ClasificacionBug,
 } from '@/lib/tickets/types'
+import { idsPersonalTI } from '@/lib/tickets/personal-ti'
 
 // Consultas de la bandeja y de la vista de gestión de TIN.
 
@@ -241,7 +241,7 @@ export async function listarResponsables(): Promise<ResponsableOpcion[]> {
   const ctx = await contextoTickets()
   if (!ctx || !esPersonalTIN(ctx)) return []
   const supabase = createAdminClient()
-  const ids = await idsConRecurso(supabase, RECURSOS_TICKETS.ATENDER)
+  const ids = await idsPersonalTI(supabase)
   if (ids.length === 0) return []
   const { data } = await supabase
     .from('perfiles')

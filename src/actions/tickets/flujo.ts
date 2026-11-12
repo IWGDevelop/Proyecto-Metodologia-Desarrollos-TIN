@@ -6,12 +6,11 @@ import { createAdminClient } from '@/lib/supabase/admin'
 import { NO_AUTORIZADO } from '@/lib/supabase/guards'
 import {
   contextoTickets,
-  idsConRecurso,
   puedeGestionarTicket,
   puedeVerTicketGestion,
   type ContextoTickets,
 } from '@/lib/tickets/acceso-gestion'
-import { calcularPrioridad, codigoTicket, LABEL_ESTADO_TICKET, RECURSOS_TICKETS, ZONA_HORARIA } from '@/lib/tickets/constantes'
+import { calcularPrioridad, codigoTicket, LABEL_ESTADO_TICKET, ZONA_HORARIA } from '@/lib/tickets/constantes'
 import { registrarEvento, registrarEventos, type EventoTicket } from '@/lib/tickets/historial'
 import {
   aplicarCambioEstado,
@@ -36,6 +35,7 @@ import type {
   TipoDocumentoIGSI,
   TipoGestion,
 } from '@/lib/tickets/types'
+import { idsPersonalTI } from '@/lib/tickets/personal-ti'
 
 type Resultado = { ok: boolean; error?: string }
 
@@ -118,7 +118,7 @@ async function prepararGestion(ticketId: string): Promise<
 }
 
 async function esResponsableValido(supabase: SupabaseClient, perfilId: string): Promise<boolean> {
-  const ids = await idsConRecurso(supabase, RECURSOS_TICKETS.ATENDER)
+  const ids = await idsPersonalTI(supabase)
   return ids.includes(perfilId)
 }
 
