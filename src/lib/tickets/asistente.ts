@@ -76,7 +76,7 @@ Eres ConeIA, el asistente de TIN-TICKETS, la mesa de ayuda de TI de Interworld G
 Reglas:
 0. Te llamas ConeIA. Si te saludan o preguntan quién eres, preséntate como "ConeIA de TIN-TICKETS". No repitas la presentación en cada respuesta.
 1. Responde siempre en español, en tono cordial, claro y breve (usa viñetas cortas cuando ayuden). Trata al usuario de "tú".
-2. Usa solo la información del manual y del catálogo que tienes abajo. No inventes tipologías, campos, tiempos ni procedimientos. Si no sabes algo, dilo y sugiere preguntarle a TIN en un comentario o crear el ticket en la categoría Otros.
+2. Usa solo la información del manual, del catálogo y de los fragmentos de instructivos que tienes abajo. No inventes tipologías, campos, tiempos ni procedimientos. Si no sabes algo, dilo y sugiere preguntarle a TIN en un comentario o crear el ticket en la categoría Otros.
 3. Tú NO creas tickets, no los consultas y no cambias su estado. Explica cómo hacerlo en el sistema.
 4. No intentes resolver tú la falla técnica en profundidad: puedes sugerir una verificación rápida y obvia (por ejemplo, reiniciar el equipo), pero tu objetivo es que el ticket quede bien reportado.
 5. Cuando el usuario describa su problema, identifica la tipología más adecuada del catálogo. Si hay ambigüedad, haz como máximo una o dos preguntas para decidir. Luego indica: categoría y tipología, si requiere aprobación o imagen, los campos que deberá diligenciar (destaca los obligatorios), qué impacto marcar según lo que contó y qué adjuntar. Propón también un asunto corto.
@@ -90,6 +90,7 @@ Reglas:
    - NUNCA inventes datos: omite lo que el usuario no dijo (números de documento, fechas, valores). El usuario revisará y completará el formulario.
    - abrir: ponlo en true solo cuando el usuario pida ir ya al formulario o crear el ticket ("vamos", "vayamos a tickets", "llévame", "ábrelo", "listo, créalo"); en ese caso responde en una o dos líneas que le abres el formulario prellenado para que lo revise, adjunte sus capturas y pulse Crear ticket, e incluye de nuevo los dos marcadores con el borrador completo y actualizado con todo lo conversado.
    - No muestres ni expliques el JSON; el sistema lo oculta.
+6c. Si abajo aparecen "Fragmentos de instructivos y procedimientos de TIN", úsalos para resolver dudas sobre normas y procedimientos de TI (correo, delegaciones, VPN, equipos, préstamos, contraseñas, etc.). Explica lo que dice el documento y cítalo por su código (por ejemplo: "según el instructivo TIN-I-008"). Si el procedimiento exige una solicitud o una acción de TIN, recomienda además la tipología del catálogo que corresponda. No inventes lo que los fragmentos no dicen; si no alcanzan, dilo.
 7. No pidas ni repitas contraseñas, claves ni datos sensibles. Si el usuario los escribe, recuérdale que no los ponga en el ticket.
 8. Si te preguntan algo ajeno a TIN-TICKETS o al soporte de TI, responde amablemente que solo puedes ayudar con los tickets de TI.
 `
@@ -147,7 +148,7 @@ export async function catalogoParaAsistente(supabase: SupabaseClient, acceso: Ac
   return bloques.join('\n\n') || 'El catálogo de tickets aún no está configurado.'
 }
 
-export function instruccionesSistema(catalogo: string, nombreUsuario: string | null): string {
+export function instruccionesSistema(catalogo: string, nombreUsuario: string | null, conocimiento = ''): string {
   return [
     INSTRUCCIONES,
     nombreUsuario ? `El usuario se llama ${nombreUsuario}.` : '',
@@ -156,6 +157,9 @@ export function instruccionesSistema(catalogo: string, nombreUsuario: string | n
     MANUAL,
     '# Catálogo vigente de categorías y tipologías',
     catalogo,
+    conocimiento
+      ? `# Fragmentos de instructivos y procedimientos de TIN (los más relacionados con la pregunta)\n${conocimiento}`
+      : '',
   ].join('\n')
 }
 
@@ -295,11 +299,13 @@ export interface Interaccion {
   modelo?: string | null
   duracionMs?: number | null
   uso?: UsoGemini
+  /** Códigos de los instructivos usados como contexto (RAG) */
+  documentosConsultados?: string[]
 }
 
 /** Guarda una pregunta del asistente y su respuesta en ticket_asistente_interacciones */
 export async function registrarInteraccion(supabase: SupabaseClient, i: Interaccion): Promise<void> {
-  const fila = {
+  const fila: Record<string, unknown> = {
     usuario_id: i.usuarioId,
     conversacion_id: i.conversacionId,
     turno: i.turno,
@@ -314,7 +320,13 @@ export async function registrarInteraccion(supabase: SupabaseClient, i: Interacc
     tokens_salida: i.uso?.tokensSalida ?? null,
     tokens_razonamiento: i.uso?.tokensRazonamiento ?? null,
   }
+  if (i.documentosConsultados?.length) fila.documentos_consultados = i.documentosConsultados
   let { error } = await (supabase as any).from('ticket_asistente_interacciones').insert(fila)
+  // Sin la columna documentos_consultados (migración del RAG pendiente) se guarda sin ella
+  if (error && 'documentos_consultados' in fila && /documentos_consultados/.test(error.message ?? '')) {
+    delete fila.documentos_consultados
+    ;({ error } = await (supabase as any).from('ticket_asistente_interacciones').insert(fila))
+  }
   // Si el modelo propuso un id de tipología que no existe (FK), se guarda sin él
   if (error?.code === '23503' && fila.tipologia_sugerida_id) {
     ;({ error } = await (supabase as any).from('ticket_asistente_interacciones').insert({ ...fila, tipologia_sugerida_id: null }))

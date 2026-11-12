@@ -8,6 +8,7 @@ import {
   streamGemini,
   type MensajeAsistente,
 } from '@/lib/tickets/asistente'
+import { buscarConocimiento, conocimientoParaPrompt, documentosDe } from '@/lib/tickets/conocimiento'
 
 // Asistente de IA de TIN-TICKETS: recibe la conversación y responde en streaming (texto plano).
 // Cada pregunta queda registrada en ticket_asistente_interacciones (trazabilidad y estadísticas).
@@ -75,12 +76,17 @@ export async function POST(req: Request) {
 
   const inicio = Date.now()
   try {
-    const [catalogo, perfil] = await Promise.all([
+    // RAG: se buscan los fragmentos de instructivos con las dos últimas preguntas del usuario
+    // (la anterior da contexto a preguntas cortas como "¿y cómo lo pido?")
+    const consulta = mensajes.filter(m => m.rol === 'usuario').slice(-2).map(m => m.texto).join('\n')
+    const [catalogo, perfil, fragmentos] = await Promise.all([
       catalogoParaAsistente(supabase, acceso),
       supabase.from('perfiles').select('nombre_completo').eq('id', acceso.usuarioId).maybeSingle(),
+      buscarConocimiento(supabase, consulta),
     ])
+    const documentosConsultados = documentosDe(fragmentos)
     const nombre = (perfil.data as { nombre_completo?: string } | null)?.nombre_completo?.split(' ')[0] ?? null
-    const stream = await streamGemini(instruccionesSistema(catalogo, nombre), mensajes, fin =>
+    const stream = await streamGemini(instruccionesSistema(catalogo, nombre, conocimientoParaPrompt(fragmentos)), mensajes, fin =>
       registrarInteraccion(supabase, {
         ...base,
         respuesta: fin.texto,
@@ -89,6 +95,7 @@ export async function POST(req: Request) {
         modelo: fin.modelo,
         duracionMs: Date.now() - inicio,
         uso: fin.uso,
+        documentosConsultados,
       }),
     )
     return new Response(stream, {
