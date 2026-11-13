@@ -18,6 +18,8 @@ export interface EstadoEditorComentario {
 
 interface Props {
   carpeta: string
+  /** Carpeta raíz en Firebase Storage (por defecto 'tickets'); la imagen queda en `${raizStorage}/${carpeta}/...` */
+  raizStorage?: string
   onChange: (estado: EstadoEditorComentario) => void
   placeholder?: string
   disabled?: boolean
@@ -71,7 +73,7 @@ function serializar(raiz: HTMLElement): EstadoEditorComentario {
  * y se sigue escribiendo; las imágenes quedan en el orden en que se pusieron.
  * Para limpiarlo después de enviar, el padre lo vuelve a montar cambiando su `key`.
  */
-export function EditorComentario({ carpeta, onChange, placeholder, disabled, className, contenidoInicial, altoMinimo, id }: Props) {
+export function EditorComentario({ carpeta, raizStorage = 'tickets', onChange, placeholder, disabled, className, contenidoInicial, altoMinimo, id }: Props) {
   const editorRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
   const rangoRef = useRef<Range | null>(null)
@@ -164,7 +166,7 @@ export function EditorComentario({ carpeta, onChange, placeholder, disabled, cla
     insertarNodo(img)
     emitir()
 
-    const ruta = `tickets/${carpeta}/${Date.now()}-${limpiarNombre(nombre)}`
+    const ruta = `${raizStorage}/${carpeta}/${Date.now()}-${limpiarNombre(nombre)}`
     uploadBytes(refStorage(storage, ruta), archivo, { contentType: archivo.type })
       .then(snap => getDownloadURL(snap.ref))
       .then(url => {

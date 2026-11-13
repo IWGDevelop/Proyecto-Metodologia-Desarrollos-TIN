@@ -9,6 +9,8 @@ import {
   AlertOctagon, ClipboardList, AlertTriangle, Clock, FileText, LifeBuoy,
 } from 'lucide-react'
 import { cn, formatCOP } from '@/lib/utils'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
+import { textoPlanoComentario, tieneImagenIntercalada } from '@/lib/tickets/comentario-rico'
 import { useEstados } from '@/context/EstadosContext'
 import type {
   CumplimientoTarea, EventoHistorial, EventoTipo, SoporteTarea,
@@ -193,13 +195,15 @@ function EventoCard({ evento }: { evento: EventoHistorial }) {
                 {evento.extra.estado_anterior && <span className="text-xs text-slate-400">→</span>}
                 <EstadoBadge estado={evento.extra.estado_nuevo} />
               </div>
+            ) : evento.tipo === 'comentario' && expandido ? (
+              <ContenidoComentario texto={evento.titulo ?? ''} className="leading-snug text-slate-800" />
             ) : (
               <p className={cn(
                 'text-sm leading-snug',
                 incumplida ? 'font-medium text-red-900' : 'text-slate-800',
-                evento.tipo === 'comentario' && !expandido && 'line-clamp-3',
+                evento.tipo === 'comentario' && 'line-clamp-3 whitespace-pre-line',
               )}>
-                {evento.titulo}
+                {evento.tipo === 'comentario' ? textoPlanoComentario(evento.titulo ?? '') : evento.titulo}
               </p>
             )}
 
@@ -227,7 +231,7 @@ function EventoCard({ evento }: { evento: EventoHistorial }) {
             )}
 
             {/* Expandir comentarios largos */}
-            {evento.tipo === 'comentario' && (evento.titulo?.length ?? 0) > 120 && (
+            {evento.tipo === 'comentario' && (textoPlanoComentario(evento.titulo ?? '').length > 120 || tieneImagenIntercalada(evento.titulo ?? '')) && (
               <button
                 onClick={() => setExpandido(v => !v)}
                 className="mt-1 flex items-center gap-0.5 text-[11px] text-blue-600 hover:text-blue-800"

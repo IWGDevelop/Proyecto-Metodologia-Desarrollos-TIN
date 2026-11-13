@@ -15,6 +15,8 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { formatFechaRelativa, formatCOP, cn } from '@/lib/utils'
 import { toast } from 'sonner'
+import { EditorComentario, type EstadoEditorComentario } from '@/components/tickets/EditorComentario'
+import { ContenidoComentario } from '@/components/tickets/ContenidoComentario'
 import {
   MessageSquare, CheckSquare, Square, Plus, Trash2,
   CalendarCheck, UserCheck, AlertCircle, DollarSign, ChevronDown, ChevronUp,
@@ -333,7 +335,8 @@ type Seccion = 'comentarios' | 'tareas'
 
 export function TabComentarios({ requerimientoId, isAdmin = false }: Props) {
   const [seccion, setSeccion]           = useState<Seccion>('comentarios')
-  const [texto, setTexto]               = useState('')
+  const [editor, setEditor]             = useState<EstadoEditorComentario>({ contenido: '', subiendo: 0 })
+  const [editorKey, setEditorKey]       = useState(0)
   const [modalTarea, setModalTarea]     = useState(false)
   const [isPending, startTransition]    = useTransition()
   const qc = useQueryClient()
@@ -361,11 +364,13 @@ export function TabComentarios({ requerimientoId, isAdmin = false }: Props) {
 
   const handleSubmitComentario = (e: React.FormEvent) => {
     e.preventDefault()
-    if (!texto.trim()) return
+    const contenido = editor.contenido.trim()
+    if (!contenido || editor.subiendo > 0) return
     startTransition(async () => {
       try {
-        await agregarComentario(requerimientoId, texto.trim())
-        setTexto('')
+        await agregarComentario(requerimientoId, contenido)
+        setEditor({ contenido: '', subiendo: 0 })
+        setEditorKey(k => k + 1)
         qc.invalidateQueries({ queryKey: ['comentarios', requerimientoId] })
         toast.success('Comentario agregado')
       } catch { toast.error('Error al agregar comentario') }
@@ -424,16 +429,24 @@ export function TabComentarios({ requerimientoId, isAdmin = false }: Props) {
           <form onSubmit={handleSubmitComentario} className="rounded-xl border border-slate-200 bg-white p-4 space-y-3">
             <p className="text-sm font-semibold text-slate-700">Agregar comentario</p>
             <div className="space-y-1.5">
-              <Label className="text-xs">Comentario</Label>
-              <Textarea
-                rows={3}
-                placeholder="Escribe tu comentario..."
-                value={texto}
-                onChange={e => setTexto(e.target.value)}
+              <Label className="text-xs" htmlFor="editor-comentario-req">Comentario</Label>
+              <EditorComentario
+                key={editorKey}
+                id="editor-comentario-req"
+                raizStorage="igsi-requerimientos"
+                carpeta={`${requerimientoId}/comentarios`}
+                placeholder="Escribe tu comentario... puedes pegar capturas con Ctrl+V"
+                onChange={setEditor}
+                disabled={isPending}
               />
             </div>
-            <Button type="submit" size="sm" disabled={isPending || !texto.trim()} className="bg-blue-600 hover:bg-blue-700">
-              {isPending ? 'Guardando...' : 'Agregar comentario'}
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending || !editor.contenido.trim() || editor.subiendo > 0}
+              className="bg-blue-600 hover:bg-blue-700"
+            >
+              {isPending ? 'Guardando...' : editor.subiendo > 0 ? 'Subiendo imágenes...' : 'Agregar comentario'}
             </Button>
           </form>
 
@@ -455,7 +468,7 @@ export function TabComentarios({ requerimientoId, isAdmin = false }: Props) {
                       </div>
                       <span className="shrink-0 text-xs text-slate-400">{formatFechaRelativa(c.created_at)}</span>
                     </div>
-                    <p className="mt-2 ml-9 text-sm text-slate-600 whitespace-pre-wrap">{c.comentario}</p>
+                    <ContenidoComentario texto={c.comentario} className="mt-2 ml-9 text-slate-600" />
                   </li>
                 ))}
               </ol>
